@@ -1,0 +1,133 @@
+@model Sale
+@{
+    ViewData["Title"] = "Tax Invoice - " + Model.InvoiceNumber;
+}
+
+<div class="ph d-print-none">
+    <div>
+        <h1 class="ph-title">Tax Invoice</h1>
+        <p class="ph-sub">Invoice #@Model.InvoiceNumber for @Model.CustomerName</p>
+    </div>
+    <div class="ph-actions">
+        <a href="@Url.Action("Index","Sales")" class="btn-d btn-outline btn-sm-d">
+            <i class="bi bi-arrow-left"></i> Invoices List
+        </a>
+        <button onclick="window.print()" class="btn-d btn-outline btn-sm-d">
+            <i class="bi bi-printer"></i> Print Invoice
+        </button>
+        <a href="@Url.Action("DownloadInvoice","Sales",new{id=Model.Id})" class="btn-d btn-primary btn-sm-d">
+            <i class="bi bi-file-pdf"></i> Download PDF
+        </a>
+    </div>
+</div>
+
+<!-- Invoice Sheet -->
+<div class="card-d card-p-lg text-light" id="print-area" style="background:#1E293B;max-width:850px;margin:0 auto">
+    <!-- Header -->
+    <div class="d-flex justify-content-between pb-4 mb-4 border-bottom" style="border-color:var(--border)!important">
+        <div>
+            <h3 style="font-weight:800;color:var(--primary);margin-bottom:4px">SMART INVENTORY</h3>
+            <div style="font-size:12px;color:var(--text-muted)">SIMS Enterprise Solutions</div>
+            <div style="font-size:12px;color:var(--text-muted)">Tax GSTIN: 27AAAAA0000A1Z5</div>
+        </div>
+        <div class="text-end">
+            <h2 style="font-weight:800;color:var(--text-primary);margin-bottom:0">TAX INVOICE</h2>
+            <div class="code-pill my-1">Invoice #: @Model.InvoiceNumber</div>
+            <div style="font-size:12px;color:var(--text-muted)">Date: @Model.Date.ToIstString("MMM d, yyyy HH:mm IST")</div>
+        </div>
+    </div>
+
+    <!-- Billed Details -->
+    <div class="row mb-4">
+        <div class="col-6">
+            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">BILLED TO:</div>
+            <h5 style="font-weight:700;color:var(--text-primary);margin-bottom:4px">@Model.CustomerName</h5>
+            @if (!string.IsNullOrEmpty(Model.CustomerPhone))
+            {
+                <div style="font-size:12px;color:var(--text-secondary)">Phone: @Model.CustomerPhone</div>
+            }
+        </div>
+        <div class="col-6 text-end">
+            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">STATUS & CASHIER:</div>
+            <span class="badge-d badge-green mb-1">PAID</span>
+            <div style="font-size:12px;color:var(--text-secondary)">Billing Cashier: @Model.CreatedBy</div>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="tbl-wrap mb-4" style="background:var(--bg)">
+        <div class="tbl-scroll">
+            <table class="tbl">
+                <thead>
+                    <tr>
+                        <th style="width:45px">#</th>
+                        <th>Item Description</th>
+                        <th>SKU</th>
+                        <th class="text-end">Unit Price</th>
+                        <th class="text-center">Qty</th>
+                        <th class="text-end">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{ int i = 1; }
+                    @foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td style="color:var(--text-muted)">@i</td>
+                            <td class="td-strong">@item.ProductName</td>
+                            <td><span class="code-pill">@item.ProductCode</span></td>
+                            <td class="text-end" style="color:var(--text-secondary)">₹@item.SellingPrice.ToString("F2")</td>
+                            <td class="text-center" style="font-weight:600">@item.Quantity</td>
+                            <td class="text-end td-strong">₹@item.Total.ToString("F2")</td>
+                        </tr>
+                        i++;
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="row justify-content-end">
+        <div class="col-md-5">
+            <div class="d-flex justify-content-between mb-2">
+                <span style="color:var(--text-secondary)">Sub-Total:</span>
+                <span class="td-strong">₹@Model.SubTotal.ToString("N2")</span>
+            </div>
+            @if (Model.Discount > 0)
+            {
+                <div class="d-flex justify-content-between mb-2" style="color:var(--danger)">
+                    <span>Discount:</span>
+                    <span>-₹@Model.Discount.ToString("N2")</span>
+                </div>
+            }
+            <div class="d-flex justify-content-between mb-2">
+                <span style="color:var(--text-secondary)">GST (@Model.GstPercentage%):</span>
+                <span class="td-strong">₹@Model.GstAmount.ToString("N2")</span>
+            </div>
+            <hr class="s-divider my-2" />
+            <div class="d-flex justify-content-between align-items-center">
+                <span style="font-weight:700;color:var(--text-primary)">Grand Total:</span>
+                <span style="font-size:22px;font-weight:800;color:var(--primary-text)">₹@Model.GrandTotal.ToString("N2")</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center border-top pt-4 mt-5" style="border-color:var(--border)!important">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:4px">Thank you for shopping with us!</p>
+        <p style="font-size:11px;color:var(--text-disabled);margin:0">This is a computer-generated tax invoice and requires no physical signature.</p>
+    </div>
+</div>
+
+<style>
+    @@media print {
+        body * { visibility: hidden; }
+        #print-area, #print-area * { visibility: visible; }
+        #print-area {
+            position: absolute; left: 0; top: 0; width: 100%;
+            border: none !important; box-shadow: none !important;
+            padding: 0 !important; color: #000 !important; background: #fff !important;
+        }
+        #print-area * { color: #000 !important; }
+    }
+</style>

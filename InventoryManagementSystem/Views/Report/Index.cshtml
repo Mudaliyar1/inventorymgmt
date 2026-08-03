@@ -1,0 +1,141 @@
+@{
+    ViewData["Title"] = "Reports Center";
+}
+
+<div class="ph">
+    <div>
+        <h1 class="ph-title">System Reports Center</h1>
+        <p class="ph-sub">Export spreadsheets and documents to review inventory valuation and commercial statistics.</p>
+    </div>
+</div>
+
+<!-- Quick Stats Grid -->
+<div class="row g-3 mb-4">
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div>
+                <div class="sc-label">Period Revenue</div>
+                <div class="sc-value" style="font-size:24px">₹@(((decimal)ViewBag.TotalRevenue).ToString("N2"))</div>
+                <span class="sc-trend trend-flat"><i class="bi bi-calendar"></i> Selected range</span>
+            </div>
+            <div class="sc-icon ic-green">
+                <i class="bi bi-currency-rupee"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div>
+                <div class="sc-label">Total Sales</div>
+                <div class="sc-value" style="font-size:24px">@ViewBag.SalesCount <small style="font-size:13px;color:var(--text-muted)">Orders</small></div>
+                <span class="sc-trend trend-flat"><i class="bi bi-receipt"></i> Total checkout count</span>
+            </div>
+            <div class="sc-icon ic-blue">
+                <i class="bi bi-receipt-cutoff"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div>
+                <div class="sc-label">Avg Order Value</div>
+                <div class="sc-value" style="font-size:24px">₹@(((decimal)ViewBag.AvgInvoice).ToString("N2"))</div>
+                <span class="sc-trend trend-flat"><i class="bi bi-calculator"></i> Per transaction</span>
+            </div>
+            <div class="sc-icon ic-sky">
+                <i class="bi bi-calculator"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card" style="@(ViewBag.LowStockCount > 0 ? "border-color:var(--warning)" : "")">
+            <div>
+                <div class="sc-label">Low Stock SKUs</div>
+                <div class="sc-value" style="font-size:24px;@(ViewBag.LowStockCount > 0 ? "color:var(--warning)" : "")">@ViewBag.LowStockCount</div>
+                <span class="sc-trend trend-flat"><i class="bi bi-exclamation-triangle"></i> Needs restock</span>
+            </div>
+            <div class="sc-icon ic-amber">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters & Reports Generators Grid -->
+<div class="row g-4">
+    <!-- Sales Report Card -->
+    <div class="col-lg-6">
+        <div class="card-d card-p-lg h-100">
+            <div class="s-title"><i class="bi bi-cash-stack me-2" style="color:var(--success)"></i>Sales Report Generator</div>
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px">
+                Filter and compile a detailed spreadsheet report containing items billing breakdown, taxes (GST), and discounts for any date interval.
+            </p>
+            
+            <form method="get" asp-action="Index">
+                <div class="row g-3 mb-4">
+                    <div class="col-6">
+                        <div class="fg">
+                            <label class="fg-label">From Date</label>
+                            <input type="date" name="startDate" class="fg-control" value="@ViewBag.StartDate" />
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="fg">
+                            <label class="fg-label">To Date</label>
+                            <input type="date" name="endDate" class="fg-control" value="@ViewBag.EndDate" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn-d btn-outline">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh Stats
+                    </button>
+                    <a href="#" id="downloadSalesExcel" class="btn-d btn-primary" style="background:var(--success);border-color:var(--success)">
+                        <i class="bi bi-file-earmark-spreadsheet"></i> Export Excel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Inventory Report Card -->
+    <div class="col-lg-6">
+        <div class="card-d card-p-lg h-100 d-flex flex-column">
+            <div class="s-title"><i class="bi bi-box-seam me-2" style="color:var(--primary)"></i>Inventory Valuation Statement</div>
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px">
+                Retrieve the live status of all system products, including item name, safety stock limits, and cumulative purchase valuation summaries.
+            </p>
+            
+            <div class="card-d card-p mb-4" style="background:var(--bg)">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span style="font-size:13px;color:var(--text-muted)">Live Asset Valuation:</span>
+                    <span style="font-size:20px;font-weight:800;color:var(--success)">₹@(((decimal)ViewBag.InventoryValuation).ToString("N2"))</span>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-auto">
+                <a asp-action="ExportInventoryExcel" class="btn-d btn-primary" style="background:var(--success);border-color:var(--success)">
+                    <i class="bi bi-file-earmark-spreadsheet"></i> Export Excel
+                </a>
+                <a asp-action="ExportInventoryPdf" target="_blank" class="btn-d btn-primary">
+                    <i class="bi bi-file-pdf"></i> Download PDF
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('downloadSalesExcel')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            var start = document.querySelector('input[name="startDate"]').value;
+            var end = document.querySelector('input[name="endDate"]').value;
+            window.location.href = '@Url.Action("ExportSalesExcel", "Report")?startDate=' + start + '&endDate=' + end;
+        });
+    </script>
+}

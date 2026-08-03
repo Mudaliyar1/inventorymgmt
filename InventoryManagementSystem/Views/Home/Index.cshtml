@@ -1,0 +1,370 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+    var istNow = DateTime.UtcNow.ToIst();
+    var greeting = istNow.Hour < 12 ? "Good morning" : istNow.Hour < 17 ? "Good afternoon" : "Good evening";
+    var userName = User.FindFirst("FullName")?.Value ?? User.Identity?.Name ?? "User";
+}
+
+<!-- Page Header -->
+<div class="ph">
+    <div>
+        <h1 class="ph-title">@greeting, @userName.Split(' ')[0] 👋</h1>
+        <p class="ph-sub">Here's what's happening with your inventory today.</p>
+    </div>
+    <div class="ph-actions">
+        <span style="font-size:12px;color:var(--text-muted)">
+            <i class="bi bi-clock me-1"></i>
+            Updated @DateTime.UtcNow.ToIstString("MMM d, HH:mm IST")
+        </span>
+    </div>
+</div>
+
+<!-- ── STAT CARDS ROW 1 ─────────────────────────────── -->
+<div class="row g-3 mb-4">
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div>
+                <div class="sc-label">Total Categories</div>
+                <div class="sc-value">@Model.TotalCategories</div>
+                <span class="sc-trend trend-flat">
+                    <i class="bi bi-dash"></i> Inventory groups
+                </span>
+            </div>
+            <div class="sc-icon ic-blue">
+                <i class="bi bi-tag-fill"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div>
+                <div class="sc-label">Total Products</div>
+                <div class="sc-value">@Model.TotalProducts</div>
+                <span class="sc-trend trend-flat">
+                    <i class="bi bi-box-seam"></i> Active SKUs
+                </span>
+            </div>
+            <div class="sc-icon ic-green">
+                <i class="bi bi-box-seam-fill"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card" style="@(Model.LowStockCount > 0 ? "border-color:var(--warning)" : "")">
+            <div>
+                <div class="sc-label">Low Stock</div>
+                <div class="sc-value" style="@(Model.LowStockCount > 0 ? "color:var(--warning)" : "")">@Model.LowStockCount</div>
+                <span class="sc-trend @(Model.LowStockCount > 0 ? "trend-down" : "trend-flat")">
+                    @if (Model.LowStockCount > 0)
+                    {
+                        <i class="bi bi-exclamation-triangle"></i><text> Needs attention</text>
+                    }
+                    else
+                    {
+                        <i class="bi bi-check-circle"></i><text> All healthy</text>
+                    }
+                </span>
+            </div>
+            <div class="sc-icon ic-amber">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card" style="@(Model.OutOfStockCount > 0 ? "border-color:var(--danger)" : "")">
+            <div>
+                <div class="sc-label">Out of Stock</div>
+                <div class="sc-value" style="@(Model.OutOfStockCount > 0 ? "color:var(--danger)" : "")">@Model.OutOfStockCount</div>
+                <span class="sc-trend @(Model.OutOfStockCount > 0 ? "trend-down" : "trend-flat")">
+                    @if (Model.OutOfStockCount > 0)
+                    {
+                        <i class="bi bi-x-circle"></i><text> Restock required</text>
+                    }
+                    else
+                    {
+                        <i class="bi bi-check-circle"></i><text> Fully stocked</text>
+                    }
+                </span>
+            </div>
+            <div class="sc-icon ic-red">
+                <i class="bi bi-x-octagon-fill"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── STAT CARDS ROW 2 (Financial) ─────────────────── -->
+<div class="row g-3 mb-4">
+    <div class="col-xl-4 col-md-6">
+        <div class="stat-card">
+            <div>
+                <div class="sc-label">Today's Sales</div>
+                <div class="sc-value" style="font-size:22px">₹@Model.TodaysSales.ToString("N2")</div>
+                <span class="sc-trend trend-flat">
+                    <i class="bi bi-calendar-day"></i> @DateTime.UtcNow.ToIstString("MMM d, yyyy IST")
+                </span>
+            </div>
+            <div class="sc-icon ic-sky">
+                <i class="bi bi-currency-rupee"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4 col-md-6">
+        <div class="stat-card">
+            <div>
+                <div class="sc-label">Monthly Revenue</div>
+                <div class="sc-value" style="font-size:22px">₹@Model.Revenue.ToString("N2")</div>
+                <span class="sc-trend trend-up">
+                    <i class="bi bi-arrow-up"></i> This month
+                </span>
+            </div>
+            <div class="sc-icon ic-blue">
+                <i class="bi bi-graph-up-arrow"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4 col-md-12">
+        <div class="stat-card">
+            <div>
+                <div class="sc-label">Estimated Profit</div>
+                <div class="sc-value" style="font-size:22px">₹@Model.Profit.ToString("N2")</div>
+                <span class="sc-trend trend-up">
+                    <i class="bi bi-wallet2"></i> Gross margin
+                </span>
+            </div>
+            <div class="sc-icon ic-green">
+                <i class="bi bi-piggy-bank-fill"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── CHARTS ROW ────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="chart-card">
+            <div class="chart-hdr">
+                <div>
+                    <div class="chart-title">Sales & Revenue Trend</div>
+                    <div class="chart-subtitle">Last 7 months overview</div>
+                </div>
+                <span class="badge-d badge-blue">Monthly</span>
+            </div>
+            <div class="chart-body">
+                <div style="height:240px;position:relative">
+                    <canvas id="salesChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="chart-card h-100">
+            <div class="chart-hdr">
+                <div>
+                    <div class="chart-title">Stock Status</div>
+                    <div class="chart-subtitle">Current inventory breakdown</div>
+                </div>
+            </div>
+            <div class="chart-body">
+                <div style="height:180px;position:relative">
+                    <canvas id="stockStatusChart"></canvas>
+                </div>
+                <div class="d-flex justify-content-center gap-4 mt-3">
+                    <div class="text-center">
+                        <div style="font-size:18px;font-weight:700;color:var(--success)">@Model.TotalProducts</div>
+                        <div style="font-size:11px;color:var(--text-muted)">Total</div>
+                    </div>
+                    <div class="text-center">
+                        <div style="font-size:18px;font-weight:700;color:var(--warning)">@Model.LowStockCount</div>
+                        <div style="font-size:11px;color:var(--text-muted)">Low Stock</div>
+                    </div>
+                    <div class="text-center">
+                        <div style="font-size:18px;font-weight:700;color:var(--danger)">@Model.OutOfStockCount</div>
+                        <div style="font-size:11px;color:var(--text-muted)">Out of Stock</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── QUICK ACTIONS ─────────────────────────────────── -->
+<div class="card-d card-p mb-4">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+        <span style="font-size:13px;font-weight:600;color:var(--text-secondary)">Quick Actions</span>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="@Url.Action("Create","Product")" class="btn-d btn-primary btn-sm-d">
+                <i class="bi bi-plus"></i> Add Product
+            </a>
+            <a href="@Url.Action("StockIn","Stock")" class="btn-d btn-outline btn-sm-d">
+                <i class="bi bi-arrow-down-circle"></i> Stock In
+            </a>
+            <a href="@Url.Action("StockOut","Stock")" class="btn-d btn-outline btn-sm-d">
+                <i class="bi bi-arrow-up-circle"></i> Stock Out
+            </a>
+            <a href="@Url.Action("Create","Sales")" class="btn-d btn-outline btn-sm-d">
+                <i class="bi bi-receipt-cutoff"></i> New Sale
+            </a>
+            <a href="@Url.Action("Index","Report")" class="btn-d btn-ghost btn-sm-d">
+                <i class="bi bi-bar-chart"></i> View Reports
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- ── RECENT ACTIVITY TABLE ──────────────────────────── -->
+<div class="tbl-wrap">
+    <div class="tbl-toolbar">
+        <div>
+            <span class="tbl-title">Recent Activity</span>
+            <span class="tbl-count">System audit log</span>
+        </div>
+        <div class="ms-auto">
+            <a href="#" class="btn-d btn-ghost btn-sm-d">
+                <i class="bi bi-arrow-right"></i> View all
+            </a>
+        </div>
+    </div>
+    <div class="tbl-scroll">
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Action</th>
+                    <th>User</th>
+                    <th class="d-none d-md-table-cell">IP Address</th>
+                    <th>Time</th>
+                    <th class="d-none d-lg-table-cell">Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.RecentActivities != null && Model.RecentActivities.Any())
+                {
+                    @foreach (var log in Model.RecentActivities)
+                    {
+                        var badgeClass = log.Action.Contains("Login") ? "badge-green"
+                                       : log.Action.Contains("Delete") ? "badge-red"
+                                       : log.Action.Contains("Password") ? "badge-amber"
+                                       : "badge-blue";
+                        <tr>
+                            <td>
+                                <span class="badge-d @badgeClass">@log.Action</span>
+                            </td>
+                            <td>
+                                <span class="td-strong">@@@log.ExecutedBy</span>
+                            </td>
+                            <td class="d-none d-md-table-cell">
+                                <span class="code-pill">@log.IpAddress</span>
+                            </td>
+                            <td style="color:var(--text-muted);white-space:nowrap">
+                                @log.Timestamp.ToIstString("MMM d, HH:mm IST")
+                            </td>
+                            <td class="d-none d-lg-table-cell" style="color:var(--text-secondary);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                                @log.Details
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="5">
+                            <div class="empty-s">
+                                <i class="bi bi-inbox empty-s-icon"></i>
+                                <div class="empty-s-title">No activity yet</div>
+                                <div class="empty-s-desc">Actions will appear here as users interact with the system.</div>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function(){
+  // Sales chart
+  const ctxSales = document.getElementById('salesChart');
+  if (ctxSales) {
+    new Chart(ctxSales, {
+      type: 'line',
+      data: {
+        labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul'],
+        datasets: [{
+          label: 'Revenue (₹)',
+          data: [120000,180000,290000,240000,320000,480000,@Model.Revenue],
+          borderColor: '#3B82F6',
+          backgroundColor: 'rgba(59,130,246,.08)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.4,
+          pointBackgroundColor: '#3B82F6',
+          pointRadius: 3,
+          pointHoverRadius: 5,
+        },{
+          label: 'Profit (₹)',
+          data: [35000,52000,81000,68000,92000,135000,@Model.Profit],
+          borderColor: '#22C55E',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          borderDash: [4,3],
+          fill: false,
+          tension: 0.4,
+          pointBackgroundColor: '#22C55E',
+          pointRadius: 3,
+          pointHoverRadius: 5,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { labels: { color: '#CBD5E1', font: { family: 'Inter', size: 12 }, boxWidth: 12, padding: 16 } },
+          tooltip: { backgroundColor: '#1E293B', borderColor: '#334155', borderWidth: 1, padding: 12, cornerRadius: 8, titleFont: { family: 'Inter' }, bodyFont: { family: 'Inter' } }
+        },
+        scales: {
+          x: { grid: { color: '#1E293B' }, ticks: { color: '#94A3B8', font: { family: 'Inter', size: 11 } }, border: { display: false } },
+          y: { grid: { color: '#1E293B' }, ticks: { color: '#94A3B8', font: { family: 'Inter', size: 11 }, callback: v => '₹'+(v/1000)+'k' }, border: { display: false } }
+        }
+      }
+    });
+  }
+
+  // Stock status donut
+  const ctxStock = document.getElementById('stockStatusChart');
+  if (ctxStock) {
+    const normal = Math.max(0, @Model.TotalProducts - @Model.LowStockCount - @Model.OutOfStockCount);
+    new Chart(ctxStock, {
+      type: 'doughnut',
+      data: {
+        labels: ['Healthy','Low Stock','Out of Stock'],
+        datasets: [{
+          data: [normal, @Model.LowStockCount, @Model.OutOfStockCount],
+          backgroundColor: ['#22C55E','#F59E0B','#EF4444'],
+          borderWidth: 0,
+          hoverOffset: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '72%',
+        plugins: {
+          legend: { display: false },
+          tooltip: { backgroundColor: '#1E293B', borderColor: '#334155', borderWidth: 1, padding: 10, cornerRadius: 8, titleFont: { family: 'Inter' }, bodyFont: { family: 'Inter' } }
+        }
+      }
+    });
+  }
+})();
+</script>
+}

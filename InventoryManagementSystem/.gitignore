@@ -1,0 +1,17 @@
+# Environment files containing secrets
+.env
+.env.local
+.env.development
+.env.production
+*.env
+
+# .NET build & IDE outputs
+bin/
+obj/
+*.user
+*.userosscache
+*.suo
+.vs/
+.idea/
+.vscode/
+appsettings.Local.json

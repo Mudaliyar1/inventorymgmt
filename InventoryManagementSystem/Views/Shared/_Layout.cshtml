@@ -1,0 +1,266 @@
+@using System.Security.Claims
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="SIMS – Smart Inventory Management System" />
+  <title>@ViewData["Title"] – SIMS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+
+<body
+  data-flash-msg="@TempData["ToastMessage"]"
+  data-flash-type="@TempData["ToastType"]"
+  style="background:#0F172A">
+
+@if (User.Identity?.IsAuthenticated == true)
+{
+  var ctrl     = ViewContext.RouteData.Values["controller"]?.ToString();
+  var act      = ViewContext.RouteData.Values["action"]?.ToString();
+  var fullName = User.FindFirst("FullName")?.Value ?? User.Identity.Name;
+  var uname    = User.Identity.Name;
+  var profPic  = User.FindFirst("ProfilePictureUrl")?.Value ?? "";
+  var isAdmin  = User.IsInRole("Admin");
+
+  <!-- Sidebar overlay (mobile) -->
+  <div id="sb-overlay" class="sb-overlay"></div>
+
+  <!-- ══════════════════════════════════════════
+       SIDEBAR
+  ══════════════════════════════════════════════ -->
+  <aside id="sidebar" aria-label="Main Navigation">
+
+    <!-- Brand -->
+    <a class="sb-brand" href="@Url.Action("Index","Home")">
+      <div class="sb-brand-icon"><i class="bi bi-box-seam-fill"></i></div>
+      <span class="sb-brand-name">SIMS</span>
+    </a>
+
+    <!-- Nav scroll area -->
+    <div class="sb-scroll">
+
+      <a href="@Url.Action("Index","Home")"
+         class="sb-link @(ctrl=="Home"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Dashboard" data-bs-placement="right">
+        <i class="bi bi-grid-1x2 sb-icon"></i>
+        <span class="sb-text">Dashboard</span>
+      </a>
+
+      <div class="sb-label">Inventory</div>
+
+      <a href="@Url.Action("Index","Category")"
+         class="sb-link @(ctrl=="Category"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Categories" data-bs-placement="right">
+        <i class="bi bi-tag sb-icon"></i>
+        <span class="sb-text">Categories</span>
+      </a>
+
+      <a href="@Url.Action("Index","Product")"
+         class="sb-link @(ctrl=="Product"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Products" data-bs-placement="right">
+        <i class="bi bi-box-seam sb-icon"></i>
+        <span class="sb-text">Products</span>
+      </a>
+
+      <a href="@Url.Action("StockIn","Stock")"
+         class="sb-link @(act=="StockIn"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Stock In" data-bs-placement="right">
+        <i class="bi bi-arrow-down-circle sb-icon"></i>
+        <span class="sb-text">Stock In</span>
+      </a>
+
+      <a href="@Url.Action("StockOut","Stock")"
+         class="sb-link @(act=="StockOut"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Stock Out" data-bs-placement="right">
+        <i class="bi bi-arrow-up-circle sb-icon"></i>
+        <span class="sb-text">Stock Out</span>
+      </a>
+
+      <a href="@Url.Action("History","Stock")"
+         class="sb-link @(act=="History"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Stock History" data-bs-placement="right">
+        <i class="bi bi-clock-history sb-icon"></i>
+        <span class="sb-text">Stock History</span>
+      </a>
+
+      <div class="sb-label">Transactions</div>
+
+      <a href="@Url.Action("Create","Sales")"
+         class="sb-link @(ctrl=="Sales"&&act=="Create"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="POS Billing" data-bs-placement="right">
+        <i class="bi bi-receipt-cutoff sb-icon"></i>
+        <span class="sb-text">POS Billing</span>
+      </a>
+
+      <a href="@Url.Action("Index","Sales")"
+         class="sb-link @(ctrl=="Sales"&&act=="Index"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Invoice Records" data-bs-placement="right">
+        <i class="bi bi-file-text sb-icon"></i>
+        <span class="sb-text">Invoice Records</span>
+      </a>
+
+      <a href="@Url.Action("Index","Report")"
+         class="sb-link @(ctrl=="Report"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Reports" data-bs-placement="right">
+        <i class="bi bi-bar-chart sb-icon"></i>
+        <span class="sb-text">Reports</span>
+      </a>
+
+      <div class="sb-label">System</div>
+
+      @if (isAdmin)
+      {
+        <a href="@Url.Action("Index","User")"
+           class="sb-link @(ctrl=="User"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="Users" data-bs-placement="right">
+          <i class="bi bi-people sb-icon"></i>
+          <span class="sb-text">Users</span>
+        </a>
+      }
+
+      <a href="@Url.Action("Profile","Account")"
+         class="sb-link @(act=="Profile"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="My Profile" data-bs-placement="right">
+        <i class="bi bi-person-circle sb-icon"></i>
+        <span class="sb-text">My Profile</span>
+      </a>
+
+      @if (isAdmin)
+      {
+        <a href="@Url.Action("Index","Settings")"
+           class="sb-link @(ctrl=="Settings"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="Settings" data-bs-placement="right">
+          <i class="bi bi-sliders sb-icon"></i>
+          <span class="sb-text">Settings</span>
+        </a>
+      }
+    </div><!-- /sb-scroll -->
+
+    <!-- Footer collapse -->
+    <div class="sb-footer">
+      <button id="sb-collapse-btn" class="sb-collapse-btn" aria-label="Toggle sidebar">
+        <i class="bi bi-layout-sidebar-reverse"></i>
+        <span>Collapse</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ══════════════════════════════════════════
+       MAIN
+  ══════════════════════════════════════════════ -->
+  <div id="main">
+
+    <!-- TOP NAVBAR -->
+    <header class="topbar">
+      <!-- Mobile hamburger -->
+      <button id="sb-mobile-btn" class="topbar-hamburger" aria-label="Open menu">
+        <i class="bi bi-list"></i>
+      </button>
+
+      <!-- Breadcrumb -->
+      <div class="topbar-breadcrumb">
+        <span>SIMS</span>
+        <i class="bi bi-chevron-right crumb-sep" style="font-size:10px"></i>
+        <span class="crumb-current">@(ViewData["Title"] ?? ctrl)</span>
+      </div>
+
+      <!-- Search -->
+      <div class="topbar-search">
+        <i class="bi bi-search topbar-search-icon"></i>
+        <input type="search" placeholder="Search…" autocomplete="off" aria-label="Search">
+      </div>
+
+      <!-- Right actions -->
+      <div class="topbar-actions">
+
+        <span id="topbar-date" class="topbar-date"></span>
+
+        <!-- Notifications -->
+        <div class="dropdown" style="position:relative">
+          <button class="topbar-btn" type="button"
+                  id="notifDropdownBtn"
+                  data-dd-toggle="dropdown"
+                  aria-expanded="false"
+                  aria-label="Notifications">
+            <i class="bi bi-bell"></i>
+            <span id="notif-badge" class="notif-dot" style="display:none"></span>
+          </button>
+          <div class="dropdown-menu dropdown-menu-end notif-panel p-0" aria-labelledby="notifDropdownBtn" style="border:none!important">
+            <div class="notif-header">
+              <h6>Notifications</h6>
+              <span style="font-size:11px;color:var(--text-muted)">Recent alerts</span>
+            </div>
+            <div id="notif-list">
+              <div class="empty-s" style="padding:24px">
+                <i class="bi bi-bell-slash empty-s-icon"></i>
+                <div class="empty-s-title">Loading…</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- User dropdown -->
+        <div class="dropdown" style="position:relative">
+          <button class="topbar-user" type="button"
+                  id="userDropdownBtn"
+                  data-dd-toggle="dropdown"
+                  aria-expanded="false"
+                  aria-label="User menu">
+            @if (!string.IsNullOrEmpty(profPic))
+            {
+              <img src="@profPic" alt="@fullName" class="topbar-avatar"
+                   onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            }
+            <div style="width:30px;height:30px;border-radius:50%;background:var(--primary-dim);display:@(string.IsNullOrEmpty(profPic)?"flex":"none");align-items:center;justify-content:center;color:var(--primary-text);font-size:14px;font-weight:700;flex-shrink:0">
+              @(fullName?.Length > 0 ? fullName[0].ToString().ToUpper() : "U")
+            </div>
+            <span class="topbar-username">@uname</span>
+            <i class="bi bi-chevron-down" style="font-size:10px;color:var(--text-muted)"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end dd-menu" aria-labelledby="userDropdownBtn" style="border:none!important">
+            <li class="px-2 pt-2 pb-2">
+              <div style="font-size:13px;font-weight:700;color:var(--text-primary)">@fullName</div>
+              <div style="font-size:11px;color:var(--text-muted)">@@@uname</div>
+            </li>
+            <li><hr class="dd-divider mx-1"></li>
+            <li><a class="dd-item" href="@Url.Action("Profile","Account")"><i class="bi bi-person"></i> My Profile</a></li>
+            @if (isAdmin)
+            {
+              <li><a class="dd-item" href="@Url.Action("Index","Settings")"><i class="bi bi-sliders"></i> Settings</a></li>
+            }
+            <li><hr class="dd-divider mx-1"></li>
+            <li><a class="dd-item dd-danger" href="@Url.Action("Logout","Account")"><i class="bi bi-box-arrow-right"></i> Sign Out</a></li>
+          </ul>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Body -->
+    <main class="page-body" role="main">
+      @RenderBody()
+    </main>
+
+  </div><!-- /main -->
+}
+else
+{
+  @RenderBody()
+}
+
+<!-- Toast stack -->
+<div id="toast-stack" class="toast-stack" aria-live="polite"></div>
+
+<!-- Scripts -->
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="~/js/app.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

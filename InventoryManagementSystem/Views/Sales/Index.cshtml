@@ -1,0 +1,116 @@
+@model IEnumerable<Sale>
+@{
+    ViewData["Title"] = "Sales Invoices";
+}
+
+<div class="ph">
+    <div>
+        <h1 class="ph-title">Sales Invoices</h1>
+        <p class="ph-sub">Track customer billing records and printable invoices.</p>
+    </div>
+    <div class="ph-actions">
+        <a href="@Url.Action("Create","Sales")" class="btn-d btn-primary">
+            <i class="bi bi-cart-plus"></i> New POS Invoice
+        </a>
+    </div>
+</div>
+
+<div class="tbl-wrap">
+    <div class="tbl-toolbar">
+        <div class="tbl-search">
+            <i class="bi bi-search tbl-search-icon"></i>
+            <input type="search" data-tbl-search="invoices-table" placeholder="Search invoices…">
+        </div>
+        <div class="ms-auto">
+            <span class="tbl-count">@(ViewBag.TotalItems ?? Model?.Count() ?? 0) invoices</span>
+        </div>
+    </div>
+
+    <div class="tbl-scroll">
+        <table class="tbl" id="invoices-table">
+            <thead>
+                <tr>
+                    <th>Invoice Number</th>
+                    <th>Customer</th>
+                    <th>Billing Date</th>
+                    <th>Items</th>
+                    <th>Grand Total</th>
+                    <th>Cashier</th>
+                    <th class="col-actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model != null && Model.Any())
+                {
+                    @foreach (var sale in Model)
+                    {
+                        <tr>
+                            <td>
+                                <span class="code-pill">@sale.InvoiceNumber</span>
+                            </td>
+                            <td>
+                                <div class="td-strong">@sale.CustomerName</div>
+                                <div style="font-size:11px;color:var(--text-muted)">@sale.CustomerPhone</div>
+                            </td>
+                            <td style="color:var(--text-muted);font-size:12px">@sale.Date.ToIstString("MMM d, yyyy HH:mm IST")</td>
+                            <td style="color:var(--text-secondary)">@sale.Items.Sum(i => i.Quantity)</td>
+                            <td style="font-weight:700;color:var(--success)">₹@sale.GrandTotal.ToString("N2")</td>
+                            <td style="color:var(--text-secondary);font-size:12px">@sale.CreatedBy</td>
+                            <td class="col-actions">
+                                <div class="d-flex align-items-center justify-content-end gap-1">
+                                    <a href="@Url.Action("Invoice","Sales",new{id=sale.Id})"
+                                       class="btn-d btn-ghost btn-sm-d" title="View Invoice">
+                                        <i class="bi bi-file-earmark-text"></i> Invoice
+                                    </a>
+                                    <a href="@Url.Action("DownloadInvoice","Sales",new{id=sale.Id})"
+                                       class="btn-d btn-outline btn-sm-d" title="Download PDF">
+                                        <i class="bi bi-file-pdf"></i> PDF
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="7">
+                            <div class="empty-s">
+                                <i class="bi bi-receipt empty-s-icon"></i>
+                                <div class="empty-s-title">No sales records found</div>
+                                <div class="empty-s-desc">Start creating invoices with the POS checkout terminal.</div>
+                                <a href="@Url.Action("Create","Sales")" class="btn-d btn-primary btn-sm-d">
+                                    <i class="bi bi-cart-plus"></i> New POS Invoice
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (ViewBag.TotalPages > 1)
+    {
+        <div class="d-flex align-items-center justify-content-between px-4 py-3 border-top" style="border-color:var(--border)!important">
+            <span style="font-size:12px;color:var(--text-muted)">
+                Page @ViewBag.CurrentPage of @ViewBag.TotalPages · @ViewBag.TotalItems records
+            </span>
+            <div class="pagi">
+                <a href="@Url.Action("Index","Sales",new{page=ViewBag.CurrentPage-1})"
+                   class="pg-btn @(ViewBag.CurrentPage<=1?"disabled":"")">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+                @for (int p = 1; p <= ViewBag.TotalPages; p++)
+                {
+                    <a href="@Url.Action("Index","Sales",new{page=p})"
+                       class="pg-btn @(p==ViewBag.CurrentPage?"active":"")">@p</a>
+                }
+                <a href="@Url.Action("Index","Sales",new{page=ViewBag.CurrentPage+1})"
+                   class="pg-btn @(ViewBag.CurrentPage>=ViewBag.TotalPages?"disabled":"")">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </div>
+        </div>
+    }
+</div>

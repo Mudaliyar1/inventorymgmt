@@ -1,0 +1,91 @@
+@model User
+@{
+    ViewData["Title"] = "Add Staff Account";
+}
+
+<div class="ph">
+    <div>
+        <h1 class="ph-title">Create User Account</h1>
+        <p class="ph-sub">Register a new system user with authorization levels.</p>
+    </div>
+    <div class="ph-actions">
+        <a href="@Url.Action("Index","User")" class="btn-d btn-outline">
+            <i class="bi bi-arrow-left"></i> Back to Staff List
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card-d card-p-lg">
+            <div class="s-title">User Account Details</div>
+            <form asp-action="Create" method="post">
+                <div asp-validation-summary="ModelOnly" class="alert-d alert-danger mb-4"></div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="FullName">Full Name <span class="req">*</span></label>
+                            <input asp-for="FullName" class="fg-control" placeholder="e.g. John Doe" required />
+                            <span asp-validation-for="FullName" class="fg-error"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="Username">Username <span class="req">*</span></label>
+                            <input asp-for="Username" class="fg-control" placeholder="e.g. johndoe" required />
+                            <span asp-validation-for="Username" class="fg-error"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="Email">Email Address <span class="req">*</span></label>
+                            <input asp-for="Email" type="email" class="fg-control" placeholder="e.g. john@sims.com" required />
+                            <span asp-validation-for="Email" class="fg-error"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="PhoneNumber">Phone Number</label>
+                            <input asp-for="PhoneNumber" class="fg-control" placeholder="e.g. 9876543210" />
+                            <span asp-validation-for="PhoneNumber" class="fg-error"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="Role">Access Privilege Role <span class="req">*</span></label>
+                            <select asp-for="Role" class="fg-control">
+                                <option value="Staff">Staff (Standard Privileges)</option>
+                                <option value="Admin">Admin (Full System Privileges)</option>
+                            </select>
+                            <span asp-validation-for="Role" class="fg-error"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label">Initial Login Password <span class="req">*</span></label>
+                            <input name="rawPassword" type="password" class="fg-control" placeholder="Min 6 characters" required />
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="s-divider">
+                <div class="d-flex align-items-center justify-content-end gap-3">
+                    <a href="@Url.Action("Index","User")" class="btn-d btn-outline">Cancel</a>
+                    <button type="submit" class="btn-d btn-primary">
+                        <i class="bi bi-check2"></i> Create Account
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,226 @@
+@model ProductListViewModel
+@{
+    ViewData["Title"] = "Products";
+}
+
+<!-- Page Header -->
+<div class="ph">
+    <div>
+        <h1 class="ph-title">Products</h1>
+        <p class="ph-sub">Manage your product catalog, pricing and safety stock limits.</p>
+    </div>
+    <div class="ph-actions">
+        <a href="@Url.Action("Create","Product")" class="btn-d btn-primary">
+            <i class="bi bi-plus-lg"></i> Add Product
+        </a>
+    </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="card-d card-p mb-4">
+    <form method="get" asp-action="Index" class="d-flex align-items-center gap-3 flex-wrap">
+        <div class="tbl-search" style="max-width:280px">
+            <i class="bi bi-search tbl-search-icon"></i>
+            <input type="text" name="search" value="@Model.Search"
+                   placeholder="Search name, SKU, barcode…"
+                   class="fg-control" style="height:36px;padding-left:32px">
+        </div>
+
+        <div style="min-width:160px">
+            <select name="categoryId" class="fg-control" style="height:36px" onchange="this.form.submit()">
+                <option value="">All Categories</option>
+                @foreach (var cat in Model.Categories)
+                {
+                    <option value="@cat.Id" selected="@(Model.SelectedCategoryId==cat.Id?"selected":null)">@cat.Name</option>
+                }
+            </select>
+        </div>
+
+        <div style="min-width:160px">
+            <select name="sortBy" class="fg-control" style="height:36px" onchange="this.form.submit()">
+                <option value="">Default Sort</option>
+                <option value="Name" selected="@(Model.SortBy=="Name"?"selected":null)">Name</option>
+                <option value="Code" selected="@(Model.SortBy=="Code"?"selected":null)">SKU</option>
+                <option value="PurchasePrice" selected="@(Model.SortBy=="PurchasePrice"?"selected":null)">Buy Price</option>
+                <option value="SellingPrice" selected="@(Model.SortBy=="SellingPrice"?"selected":null)">Sell Price</option>
+                <option value="CurrentStock" selected="@(Model.SortBy=="CurrentStock"?"selected":null)">Stock</option>
+            </select>
+        </div>
+
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-secondary);cursor:pointer;white-space:nowrap">
+            <input type="checkbox" name="isDescending" value="true"
+                   checked="@(Model.IsDescending?"checked":null)"
+                   onchange="this.form.submit()"
+                   style="width:14px;height:14px;cursor:pointer;accent-color:var(--primary)">
+            Descending
+        </label>
+
+        <button type="submit" class="btn-d btn-outline btn-sm-d">
+            <i class="bi bi-funnel"></i> Apply
+        </button>
+
+        @if (!string.IsNullOrEmpty(Model.Search) || !string.IsNullOrEmpty(Model.SelectedCategoryId))
+        {
+            <a href="@Url.Action("Index","Product")" class="btn-d btn-ghost btn-sm-d">
+                <i class="bi bi-x"></i> Clear
+            </a>
+        }
+    </form>
+</div>
+
+<!-- Products Table -->
+<div class="tbl-wrap">
+    <div class="tbl-toolbar">
+        <div>
+            <span class="tbl-title">All Products</span>
+            <span class="tbl-count">@Model.TotalItems total SKUs</span>
+        </div>
+    </div>
+
+    <div class="tbl-scroll">
+        <table class="tbl">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>SKU</th>
+                    <th class="d-none d-md-table-cell">Category</th>
+                    <th>Buy Price</th>
+                    <th>Sell Price</th>
+                    <th>Stock</th>
+                    <th>Status</th>
+                    <th class="col-actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Products != null && Model.Products.Any())
+                {
+                    @foreach (var p in Model.Products)
+                    {
+                        var stockClass = p.CurrentStock == 0 ? "badge-red"
+                                        : p.CurrentStock <= p.MinimumStock ? "badge-amber"
+                                        : "badge-green";
+                        var stockLabel = p.CurrentStock == 0 ? "Out of Stock"
+                                        : p.CurrentStock <= p.MinimumStock ? "Low Stock"
+                                        : "In Stock";
+
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-3">
+                                    @if (!string.IsNullOrEmpty(p.ImageUrl))
+                                    {
+                                        <img src="@p.ImageUrl" alt="@p.Name" class="prod-thumb">
+                                    }
+                                    else
+                                    {
+                                        <div class="prod-thumb-ph">
+                                            <i class="bi bi-box-seam"></i>
+                                        </div>
+                                    }
+                                    <div>
+                                        <div class="td-strong">@p.Name</div>
+                                        <div style="font-size:11px;color:var(--text-muted)">@p.Barcode</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="code-pill">@p.Code</span>
+                            </td>
+                            <td class="d-none d-md-table-cell" style="color:var(--text-secondary)">
+                                @{
+                                    var cat = Model.Categories?.FirstOrDefault(c => c.Id == p.CategoryId);
+                                }
+                                @(cat?.Name ?? "—")
+                            </td>
+                            <td style="font-weight:500">₹@p.PurchasePrice.ToString("N2")</td>
+                            <td style="font-weight:600;color:var(--primary-text)">₹@p.SellingPrice.ToString("N2")</td>
+                            <td>
+                                <div style="font-weight:600;font-size:13px;color:var(--text-primary)">@p.CurrentStock</div>
+                                <div style="font-size:11px;color:var(--text-muted)">min: @p.MinimumStock</div>
+                            </td>
+                            <td>
+                                <span class="badge-d @stockClass">@stockLabel</span>
+                                @if (p.Status == "Inactive")
+                                {
+                                    <span class="badge-d badge-gray" style="margin-top:2px;display:inline-flex">Inactive</span>
+                                }
+                            </td>
+                            <td class="col-actions">
+                                <div class="d-flex align-items-center justify-content-end gap-1">
+                                    <a href="@Url.Action("Details","Product",new{id=p.Id})"
+                                       class="btn-d btn-ghost btn-icon-d"
+                                       title="View Details">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="@Url.Action("Edit","Product",new{id=p.Id})"
+                                       class="btn-d btn-ghost btn-icon-d"
+                                       title="Edit Product">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <form method="post" asp-action="Delete" asp-route-id="@p.Id" style="margin:0">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit"
+                                                class="btn-d btn-ghost btn-icon-d"
+                                                style="color:var(--danger)"
+                                                title="Delete Product"
+                                                data-confirm="Delete '@p.Name'? This action cannot be undone.">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="8">
+                            <div class="empty-s">
+                                <i class="bi bi-box-seam empty-s-icon"></i>
+                                <div class="empty-s-title">No products found</div>
+                                <div class="empty-s-desc">
+                                    @if (!string.IsNullOrEmpty(Model.Search) || !string.IsNullOrEmpty(Model.SelectedCategoryId))
+                                    {
+                                        <text>Try adjusting your search or filters.</text>
+                                    }
+                                    else
+                                    {
+                                        <text>Get started by adding your first product.</text>
+                                    }
+                                </div>
+                                <a href="@Url.Action("Create","Product")" class="btn-d btn-primary btn-sm-d">
+                                    <i class="bi bi-plus-lg"></i> Add Product
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    @if (Model.TotalPages > 1)
+    {
+        <div class="d-flex align-items-center justify-content-between px-4 py-3 border-top" style="border-color:var(--border)!important">
+            <span style="font-size:12px;color:var(--text-muted)">
+                Showing @((Model.CurrentPage - 1) * Model.PageSize + 1)–@(Math.Min(Model.CurrentPage * Model.PageSize, Model.TotalItems)) of @Model.TotalItems
+            </span>
+            <div class="pagi">
+                <a href="@Url.Action("Index","Product",new{search=Model.Search,categoryId=Model.SelectedCategoryId,sortBy=Model.SortBy,isDescending=Model.IsDescending,page=Model.CurrentPage-1})"
+                   class="pg-btn @(Model.CurrentPage<=1?"disabled":"")">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+                @for (int p = Math.Max(1,Model.CurrentPage-2); p <= Math.Min(Model.TotalPages,Model.CurrentPage+2); p++)
+                {
+                    <a href="@Url.Action("Index","Product",new{search=Model.Search,categoryId=Model.SelectedCategoryId,sortBy=Model.SortBy,isDescending=Model.IsDescending,page=p})"
+                       class="pg-btn @(p==Model.CurrentPage?"active":"")">@p</a>
+                }
+                <a href="@Url.Action("Index","Product",new{search=Model.Search,categoryId=Model.SelectedCategoryId,sortBy=Model.SortBy,isDescending=Model.IsDescending,page=Model.CurrentPage+1})"
+                   class="pg-btn @(Model.CurrentPage>=Model.TotalPages?"disabled":"")">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </div>
+        </div>
+    }
+</div>

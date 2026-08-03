@@ -1,0 +1,127 @@
+@model IEnumerable<User>
+@{
+    ViewData["Title"] = "Staff Accounts";
+}
+
+<div class="ph">
+    <div>
+        <h1 class="ph-title">Staff Accounts</h1>
+        <p class="ph-sub">Manage system logins, security privileges, and account locks.</p>
+    </div>
+    <div class="ph-actions">
+        <a href="@Url.Action("Create","User")" class="btn-d btn-primary">
+            <i class="bi bi-person-plus"></i> Add Staff Account
+        </a>
+    </div>
+</div>
+
+<div class="tbl-wrap">
+    <div class="tbl-toolbar">
+        <div class="tbl-search">
+            <i class="bi bi-search tbl-search-icon"></i>
+            <input type="search" data-tbl-search="users-table" placeholder="Search staff…">
+        </div>
+        <div class="ms-auto">
+            <span class="tbl-count">@(Model?.Count() ?? 0) accounts</span>
+        </div>
+    </div>
+
+    <div class="tbl-scroll">
+        <table class="tbl" id="users-table">
+            <thead>
+                <tr>
+                    <th style="width:50px">Avatar</th>
+                    <th>User Details</th>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Lock Status</th>
+                    <th>Joined Date</th>
+                    <th class="col-actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model != null && Model.Any())
+                {
+                    @foreach (var u in Model)
+                    {
+                        <tr>
+                            <td>
+                                <img src="@(string.IsNullOrEmpty(u.ProfilePictureUrl) ? "/images/default-avatar.png" : u.ProfilePictureUrl)"
+                                     alt="User" class="prod-thumb" style="border-radius:50%">
+                            </td>
+                            <td>
+                                <div class="td-strong">@u.FullName</div>
+                                <div style="font-size:11px;color:var(--text-muted)">@u.Email</div>
+                            </td>
+                            <td>
+                                <span class="code-pill">@u.Username</span>
+                            </td>
+                            <td>
+                                @if (u.Role == Role.Admin)
+                                {
+                                    <span class="badge-d badge-red"><i class="bi bi-shield-lock"></i> Admin</span>
+                                }
+                                else
+                                {
+                                    <span class="badge-d badge-blue"><i class="bi bi-person"></i> Staff</span>
+                                }
+                            </td>
+                            <td>
+                                @if (u.IsLocked)
+                                {
+                                    <span class="badge-d badge-amber">Locked</span>
+                                }
+                                else
+                                {
+                                    <span class="badge-d badge-green">Active</span>
+                                }
+                            </td>
+                            <td style="color:var(--text-muted);font-size:12px;white-space:nowrap">
+                                @u.CreatedDate.ToIstString("MMM d, yyyy IST")
+                            </td>
+                            <td class="col-actions">
+                                <div class="d-flex align-items-center justify-content-end gap-1">
+                                    <a href="@Url.Action("Edit","User",new{id=u.Id})"
+                                       class="btn-d btn-ghost btn-icon-d" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="@Url.Action("ResetPassword","User",new{id=u.Id})"
+                                       class="btn-d btn-ghost btn-icon-d" title="Reset Password">
+                                        <i class="bi bi-key"></i>
+                                    </a>
+                                    <form method="post" asp-action="ToggleLock" asp-route-id="@u.Id" style="margin:0">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn-d btn-ghost btn-icon-d"
+                                                style="color:@(u.IsLocked ? "var(--success)" : "var(--warning)")"
+                                                title="@(u.IsLocked ? "Unlock Account" : "Lock Account")">
+                                            <i class="bi @(u.IsLocked ? "bi-unlock" : "bi-lock")"></i>
+                                        </button>
+                                    </form>
+                                    <form method="post" asp-action="Delete" asp-route-id="@u.Id" style="margin:0">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn-d btn-ghost btn-icon-d" style="color:var(--danger)"
+                                                title="Delete User"
+                                                data-confirm="Delete user account '@u.Username'?">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="7">
+                            <div class="empty-s">
+                                <i class="bi bi-people empty-s-icon"></i>
+                                <div class="empty-s-title">No staff accounts</div>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

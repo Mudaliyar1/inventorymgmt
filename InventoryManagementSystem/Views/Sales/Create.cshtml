@@ -1,0 +1,275 @@
+@model Sale
+@{
+    ViewData["Title"] = "POS Terminal";
+    List<Product> products = ViewBag.ProductsList as List<Product> ?? new List<Product>();
+}
+
+<div class="ph">
+    <div>
+        <h1 class="ph-title">POS Checkout Terminal</h1>
+        <p class="ph-sub">Perform instant customer checkouts, deduct stock levels, and issue invoices.</p>
+    </div>
+    <div class="ph-actions">
+        <a href="@Url.Action("Index","Sales")" class="btn-d btn-outline">
+            <i class="bi bi-file-text"></i> Invoice Records
+        </a>
+    </div>
+</div>
+
+<form asp-action="Create" method="post" id="posForm">
+    <div asp-validation-summary="ModelOnly" class="alert-d alert-danger mb-4"></div>
+
+    <div class="row g-4">
+        <!-- Left Column: Customer & Items -->
+        <div class="col-lg-8">
+            <!-- Customer Card -->
+            <div class="card-d card-p-lg mb-4">
+                <div class="s-title"><i class="bi bi-person-badge me-2" style="color:var(--primary)"></i>Customer Information</div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="CustomerName">Customer Name <span class="req">*</span></label>
+                            <input asp-for="CustomerName" class="fg-control" placeholder="Walk-in Customer" required />
+                            <span asp-validation-for="CustomerName" class="fg-error"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="CustomerPhone">Customer Contact</label>
+                            <input asp-for="CustomerPhone" class="fg-control" placeholder="e.g. 9876543210" />
+                            <span asp-validation-for="CustomerPhone" class="fg-error"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Items Card -->
+            <div class="card-d card-p-lg">
+                <div class="s-title"><i class="bi bi-cart-plus me-2" style="color:var(--success)"></i>Billing Lines</div>
+                
+                <div class="row g-3 align-items-end mb-4">
+                    <div class="col-md-6">
+                        <div class="fg mb-0">
+                            <label class="fg-label">Product Search</label>
+                            <select id="productSelect" class="fg-control">
+                                <option value="">— Choose Product SKU —</option>
+                                @foreach (var prod in products)
+                                {
+                                    <option value="@prod.Id" data-name="@prod.Name" data-code="@prod.Code" data-price="@prod.SellingPrice" data-stock="@prod.CurrentStock">
+                                        @prod.Name (SKU: @prod.Code - Price: ₹@prod.SellingPrice - Stock: @prod.CurrentStock)
+                                    </option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="fg mb-0">
+                            <label class="fg-label">Quantity</label>
+                            <input type="number" id="qtyInput" min="1" value="1" class="fg-control" />
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <button type="button" class="btn-d btn-primary w-100" onclick="addProductLine()">
+                            <i class="bi bi-plus-lg"></i> Add Item
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="tbl-wrap">
+                    <div class="tbl-scroll">
+                        <table class="tbl" id="posTable">
+                            <thead>
+                                <tr>
+                                    <th style="width:45px">#</th>
+                                    <th>Product</th>
+                                    <th style="width:110px">Price</th>
+                                    <th style="width:80px">Qty</th>
+                                    <th style="width:120px">Total</th>
+                                    <th class="col-actions" style="width:60px">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr id="emptyRow">
+                                    <td colspan="6">
+                                        <div class="empty-s" style="padding:24px">
+                                            <div class="empty-s-title">Cart is empty</div>
+                                            <div class="empty-s-desc">Select products above to build invoice cart.</div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Summary -->
+        <div class="col-lg-4">
+            <div class="card-d card-p-lg">
+                <div class="s-title"><i class="bi bi-receipt me-2" style="color:var(--primary)"></i>Checkout Summary</div>
+
+                <div class="d-flex justify-content-between mb-3">
+                    <span style="color:var(--text-secondary)">Sub-Total:</span>
+                    <span class="td-strong" id="summarySubtotal">₹0.00</span>
+                </div>
+
+                <div class="fg">
+                    <label class="fg-label" asp-for="Discount">Flat Discount (₹)</label>
+                    <div class="fg-prefix-wrap">
+                        <span class="fg-prefix">₹</span>
+                        <input asp-for="Discount" id="discountInput" class="fg-control" value="0.00" onchange="calculateSummary()" />
+                    </div>
+                    <span asp-validation-for="Discount" class="fg-error"></span>
+                </div>
+
+                <div class="fg">
+                    <label class="fg-label" asp-for="GstPercentage">GST Rate (%)</label>
+                    <select asp-for="GstPercentage" id="gstSelect" class="fg-control" onchange="calculateSummary()">
+                        <option value="18.0">GST - 18.0% (Standard)</option>
+                        <option value="12.0">GST - 12.0%</option>
+                        <option value="5.0">GST - 5.0%</option>
+                        <option value="0.0">GST - 0.0% (Exempt)</option>
+                    </select>
+                    <span asp-validation-for="GstPercentage" class="fg-error"></span>
+                </div>
+
+                <div class="d-flex justify-content-between mb-3">
+                    <span style="color:var(--text-secondary)">Tax GST Amount:</span>
+                    <span class="td-strong" id="summaryGst">₹0.00</span>
+                </div>
+
+                <hr class="s-divider my-3" />
+
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <span style="font-weight:700;color:var(--text-primary)">Grand Total:</span>
+                    <span style="font-size:24px;font-weight:800;color:var(--success)" id="summaryGrandtotal">₹0.00</span>
+                </div>
+
+                <button type="submit" class="btn-d btn-primary w-100" style="height:46px;font-size:15px">
+                    <i class="bi bi-credit-card-2-back"></i> Complete Order & Invoice
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        var itemIndex = 0;
+
+        function addProductLine() {
+            var select = document.getElementById('productSelect');
+            var productId = select.value;
+            if (!productId) {
+                alert('Please select a product SKU first.');
+                return;
+            }
+
+            var option = select.options[select.selectedIndex];
+            var name = option.getAttribute('data-name');
+            var code = option.getAttribute('data-code');
+            var price = parseFloat(option.getAttribute('data-price'));
+            var stock = parseInt(option.getAttribute('data-stock'));
+            var quantity = parseInt(document.getElementById('qtyInput').value);
+
+            if (isNaN(quantity) || quantity <= 0) {
+                alert('Please enter a valid quantity.');
+                return;
+            }
+
+            if (quantity > stock) {
+                alert('Requested quantity exceeds available stock (' + stock + ' units available).');
+                return;
+            }
+
+            var exists = false;
+            $('#posTable tbody tr').each(function() {
+                var existingId = $(this).find('input[name*="ProductId"]').val();
+                if (existingId === productId) {
+                    exists = true;
+                    return false;
+                }
+            });
+
+            if (exists) {
+                alert('Product is already added. Remove and adjust quantity if needed.');
+                return;
+            }
+
+            $('#emptyRow').hide();
+
+            var lineTotal = price * quantity;
+            var tbody = document.querySelector('#posTable tbody');
+            var row = document.createElement('tr');
+            row.className = 'pos-item-row';
+
+            row.innerHTML = `
+                <td class="row-num" style="color:var(--text-muted)"></td>
+                <td>
+                    <div class="td-strong">${name}</div>
+                    <span class="code-pill">${code}</span>
+                    <input type="hidden" name="Items[${itemIndex}].ProductId" value="${productId}" />
+                    <input type="hidden" name="Items[${itemIndex}].Quantity" value="${quantity}" />
+                </td>
+                <td style="color:var(--text-secondary)">₹${price.toFixed(2)}</td>
+                <td style="color:var(--text-primary);font-weight:600">${quantity}</td>
+                <td class="line-total td-strong" data-total="${lineTotal}">₹${lineTotal.toFixed(2)}</td>
+                <td class="col-actions">
+                    <button type="button" class="btn-d btn-ghost btn-icon-d" style="color:var(--danger)" onclick="removeProductLine(this)"><i class="bi bi-trash"></i></button>
+                </td>
+            `;
+
+            tbody.appendChild(row);
+            itemIndex++;
+
+            reindexItems();
+            calculateSummary();
+
+            select.value = "";
+            document.getElementById('qtyInput').value = 1;
+        }
+
+        function removeProductLine(btn) {
+            $(btn).closest('tr').remove();
+            reindexItems();
+            calculateSummary();
+
+            if ($('#posTable tbody tr.pos-item-row').length === 0) {
+                $('#emptyRow').show();
+            }
+        }
+
+        function reindexItems() {
+            itemIndex = 0;
+            $('#posTable tbody tr.pos-item-row').each(function(index, row) {
+                $(row).find('td.row-num').text(index + 1);
+                $(row).find('input[name*="ProductId"]').attr('name', `Items[${index}].ProductId`);
+                $(row).find('input[name*="Quantity"]').attr('name', `Items[${index}].Quantity`);
+                itemIndex = index + 1;
+            });
+        }
+
+        function calculateSummary() {
+            var subTotal = 0;
+            $('.line-total').each(function() {
+                subTotal += parseFloat($(this).attr('data-total'));
+            });
+
+            var discount = parseFloat(document.getElementById('discountInput').value) || 0;
+            if (discount < 0) discount = 0;
+            if (discount > subTotal) discount = subTotal;
+
+            var gstPercentage = parseFloat(document.getElementById('gstSelect').value) || 0;
+            var taxableAmount = subTotal - discount;
+            var gstAmount = taxableAmount * (gstPercentage / 100);
+            var grandTotal = taxableAmount + gstAmount;
+
+            document.getElementById('summarySubtotal').innerText = '₹' + subTotal.toFixed(2);
+            document.getElementById('summaryGst').innerText = '₹' + gstAmount.toFixed(2);
+            document.getElementById('summaryGrandtotal').innerText = '₹' + grandTotal.toFixed(2);
+        }
+    </script>
+}

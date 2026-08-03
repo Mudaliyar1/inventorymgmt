@@ -1,0 +1,202 @@
+@model IEnumerable<StockTransaction>
+@{
+    ViewData["Title"] = "Inventory Analytics";
+    Product? selectedProduct = ViewBag.SelectedProduct as Product;
+}
+
+<div class="ph">
+    <div>
+        <h1 class="ph-title">Stock Trend Analytics</h1>
+        <p class="ph-sub">Analyze inventory volume changes over time for specific products.</p>
+    </div>
+</div>
+
+<!-- Product Selection Card -->
+<div class="card-d card-p mb-4">
+    <form method="get" asp-action="Analytics" class="row align-items-end g-3">
+        <div class="col-md-8">
+            <label class="fg-label">Select Product to Plot Trend</label>
+            <select name="productId" asp-items="ViewBag.ProductsList" class="fg-control" onchange="this.form.submit()">
+                <option value="">— Choose Product SKU —</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <button type="submit" class="btn-d btn-primary w-100">
+                <i class="bi bi-graph-up-arrow"></i> Generate Trend Report
+            </button>
+        </div>
+    </form>
+</div>
+
+@if (selectedProduct != null)
+{
+    <!-- Chart Canvas Card -->
+    <div class="chart-card mb-4">
+        <div class="chart-hdr">
+            <div>
+                <div class="chart-title">Stock Level Trend: <span style="color:var(--primary-text)">@selectedProduct.Name</span> (@selectedProduct.Code)</div>
+                <div class="chart-subtitle">Current stock level: @selectedProduct.CurrentStock units</div>
+            </div>
+            <span class="badge-d badge-green">Live SKU</span>
+        </div>
+        <div class="chart-body">
+            <div style="height:320px;position:relative">
+                <canvas id="stockTrendChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Specific Logs Table -->
+    <div class="tbl-wrap">
+        <div class="tbl-toolbar">
+            <span class="tbl-title"><i class="bi bi-list-stars me-2" style="color:var(--primary)"></i>Recent Activity for @selectedProduct.Name</span>
+        </div>
+        
+        <div class="tbl-scroll">
+            <table class="tbl">
+                <thead>
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>Type</th>
+                        <th>Previous</th>
+                        <th>Change</th>
+                        <th>Current Stock</th>
+                        <th>Reason</th>
+                        <th class="col-actions">User</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        @foreach (var tx in Model.Reverse())
+                        {
+                            <tr>
+                                <td style="color:var(--text-muted);font-size:12px">@tx.Timestamp.ToIstString("yyyy-MM-dd HH:mm:ss IST")</td>
+                                <td>
+                                    @if (tx.Type == "Stock In")
+                                    {
+                                        <span class="badge-d badge-green">Stock In</span>
+                                    }
+                                    else if (tx.Type == "Stock Out")
+                                    {
+                                        <span class="badge-d badge-red">Stock Out</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge-d badge-sky">Adjustment</span>
+                                    }
+                                </td>
+                                <td style="color:var(--text-secondary)">@tx.PreviousStock</td>
+                                <td style="font-weight:700">
+                                    @if (tx.Type == "Stock In")
+                                    {
+                                        <span style="color:var(--success)">+@tx.Quantity</span>
+                                    }
+                                    else if (tx.Type == "Stock Out")
+                                    {
+                                        <span style="color:var(--danger)">-@tx.Quantity</span>
+                                    }
+                                    else
+                                    {
+                                        var diff = tx.CurrentStock - tx.PreviousStock;
+                                        if (diff >= 0)
+                                        {
+                                            <span style="color:var(--success)">+@diff</span>
+                                        }
+                                        else
+                                        {
+                                            <span style="color:var(--danger)">@diff</span>
+                                        }
+                                    }
+                                </td>
+                                <td class="td-strong">@tx.CurrentStock</td>
+                                <td style="color:var(--text-secondary);font-size:12px">@tx.Reason</td>
+                                <td class="col-actions" style="font-size:12px">@tx.ExecutedBy</td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="7">
+                                <div class="empty-s">
+                                    <div class="empty-s-title">No transaction logs for this product</div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card-d card-p text-center" style="padding:48px 24px">
+        <i class="bi bi-graph-up empty-s-icon"></i>
+        <div class="empty-s-title">Select a product above</div>
+        <div class="empty-s-desc">Choose an SKU to render inventory trend analytics and audit history.</div>
+    </div>
+}
+
+@if (selectedProduct != null)
+{
+    @section Scripts {
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                var ctx = document.getElementById('stockTrendChart').getContext('2d');
+                
+                var labels = [@Html.Raw(string.Join(",", (Model ?? Enumerable.Empty<StockTransaction>()).Select(t => $"'{t.Timestamp.ToIstString("MM-dd HH:mm")}'")))];
+                var stockData = [@string.Join(",", (Model ?? Enumerable.Empty<StockTransaction>()).Select(t => t.CurrentStock))];
+
+                if(labels.length === 0) {
+                    labels.push("Initial");
+                    stockData.push(@selectedProduct.CurrentStock);
+                }
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Stock Quantity',
+                            data: stockData,
+                            borderColor: '#3B82F6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 3,
+                            pointBackgroundColor: '#3B82F6',
+                            pointBorderColor: '#FFFFFF',
+                            pointHoverRadius: 6,
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: '#1E293B',
+                                titleColor: '#94A3B8',
+                                bodyColor: '#F8FAFC',
+                                borderColor: '#334155',
+                                borderWidth: 1
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: '#1E293B' },
+                                ticks: { color: '#94A3B8' }
+                            },
+                            y: {
+                                grid: { color: '#1E293B' },
+                                ticks: { color: '#94A3B8' }
+                            }
+                        }
+                    }
+                });
+            });
+        </script>
+    }
+}

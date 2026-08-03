@@ -1,0 +1,70 @@
+@model Category
+@using InventoryManagementSystem.Models
+@{
+    ViewData["Title"] = "Edit Category";
+}
+
+<div class="ph">
+    <div>
+        <h1 class="ph-title">Edit Category</h1>
+        <p class="ph-sub">Modify category settings and details.</p>
+    </div>
+    <div class="ph-actions">
+        <a href="@Url.Action("Index","Category")" class="btn-d btn-outline">
+            <i class="bi bi-arrow-left"></i> Back to Categories
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card-d card-p-lg">
+            <div class="s-title">Category Details</div>
+            <form asp-action="Edit" method="post">
+                <div asp-validation-summary="ModelOnly" class="alert-d alert-danger mb-4"></div>
+                <input type="hidden" asp-for="Id" />
+
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="Name">Category Name <span class="req">*</span></label>
+                            <input asp-for="Name" class="fg-control" placeholder="e.g. Electronics, Office Supplies" required>
+                            <span asp-validation-for="Name" class="fg-error"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="Status">Status</label>
+                            <select asp-for="Status" class="fg-control">
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="Description">Description</label>
+                            <textarea asp-for="Description" class="fg-control" rows="4"
+                                      placeholder="What kind of products belong in this category?"></textarea>
+                            <span asp-validation-for="Description" class="fg-error"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="s-divider">
+                <div class="d-flex align-items-center justify-content-end gap-3">
+                    <a href="@Url.Action("Index","Category")" class="btn-d btn-outline">Cancel</a>
+                    <button type="submit" class="btn-d btn-primary">
+                        <i class="bi bi-check2"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<partial name="_ValidationScriptsPartial" />
+}

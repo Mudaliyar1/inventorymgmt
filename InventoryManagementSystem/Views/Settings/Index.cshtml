@@ -1,0 +1,90 @@
+@model Settings
+@{
+    ViewData["Title"] = "Global Settings";
+}
+
+<div class="ph">
+    <div>
+        <h1 class="ph-title">Global Configurations</h1>
+        <p class="ph-sub">Manage company identity details, currency formats, and tax rules.</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card-d card-p-lg">
+            <form asp-action="Save" method="post">
+                <input type="hidden" asp-for="Id" />
+                <div asp-validation-summary="ModelOnly" class="alert-d alert-danger mb-4"></div>
+
+                <div class="s-title"><i class="bi bi-building me-2" style="color:var(--primary)"></i>Company Identity</div>
+                <div class="row g-3 mb-4">
+                    <div class="col-12">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="CompanyName">Company Name <span class="req">*</span></label>
+                            <input asp-for="CompanyName" class="fg-control" required />
+                            <span asp-validation-for="CompanyName" class="fg-error"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="CompanyEmail">Corporate Email Address <span class="req">*</span></label>
+                            <input asp-for="CompanyEmail" type="email" class="fg-control" required />
+                            <span asp-validation-for="CompanyEmail" class="fg-error"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="CompanyPhone">Corporate Contact Number <span class="req">*</span></label>
+                            <input asp-for="CompanyPhone" class="fg-control" required />
+                            <span asp-validation-for="CompanyPhone" class="fg-error"></span>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="Address">Office Address <span class="req">*</span></label>
+                            <textarea asp-for="Address" class="fg-control" rows="3" required></textarea>
+                            <span asp-validation-for="Address" class="fg-error"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="s-title"><i class="bi bi-gear me-2" style="color:var(--success)"></i>Global Configs & Taxes</div>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="CurrencySymbol">Currency Symbol <span class="req">*</span></label>
+                            <input asp-for="CurrencySymbol" class="fg-control" placeholder="₹, $, €" required />
+                            <span asp-validation-for="CurrencySymbol" class="fg-error"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="GstRate">Default GST Rate (%) <span class="req">*</span></label>
+                            <input asp-for="GstRate" type="number" step="0.1" class="fg-control" required />
+                            <span asp-validation-for="GstRate" class="fg-error"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="LowStockThreshold">Default Low Stock Alert <span class="req">*</span></label>
+                            <input asp-for="LowStockThreshold" type="number" class="fg-control" required />
+                            <span asp-validation-for="LowStockThreshold" class="fg-error"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="s-divider">
+                <div class="d-flex align-items-center justify-content-end gap-3">
+                    <button type="submit" class="btn-d btn-primary">
+                        <i class="bi bi-check2"></i> Save Configuration
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
