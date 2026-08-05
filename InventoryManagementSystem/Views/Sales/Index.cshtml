@@ -202,6 +202,10 @@
                                        class="btn-d btn-ghost btn-sm-d" title="View Invoice">
                                         <i class="bi bi-file-earmark-text"></i> Invoice
                                     </a>
+                                    <a href="@Url.Action("Edit","Sales",new{id=sale.Id})"
+                                       class="btn-d btn-outline btn-sm-d" title="Edit Bill & Items">
+                                        <i class="bi bi-pencil-square"></i> Edit
+                                    </a>
                                     <a href="@Url.Action("DownloadInvoice","Sales",new{id=sale.Id})"
                                        class="btn-d btn-outline btn-sm-d" title="Download PDF">
                                         <i class="bi bi-file-pdf"></i> PDF

@@ -23,6 +23,16 @@ namespace InventoryManagementSystem.Interfaces
             int page,
             int pageSize);
 
+        Task<Sale?> UpdateSaleAsync(
+            string saleId,
+            string customerName,
+            string customerPhone,
+            string paymentStatus,
+            decimal discount,
+            decimal amountPaid,
+            List<SaleItem> newItems,
+            string updatedBy);
+
         Task<bool> DeleteSaleAsync(string id);
         Task<long> DeleteSalesAsync(IEnumerable<string> ids);
 

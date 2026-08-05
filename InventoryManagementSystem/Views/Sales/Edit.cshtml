@@ -1,0 +1,303 @@
+@model Sale
+@{
+    ViewData["Title"] = "Edit Invoice - " + Model.InvoiceNumber;
+    var allProducts = ViewBag.AllProducts as List<Product> ?? new List<Product>();
+}
+
+<div class="ph">
+    <div>
+        <h1 class="ph-title"><i class="bi bi-pencil-square text-primary me-2"></i>Edit Invoice: @Model.InvoiceNumber</h1>
+        <p class="ph-sub">Billed to: <strong>@Model.CustomerName</strong> · Date: @Model.Date.ToIstString("MMM d, yyyy HH:mm IST") · Created By: <code>@Model.CreatedBy</code></p>
+    </div>
+    <div class="ph-actions">
+        <a href="@Url.Action("Invoice","Sales",new{id=Model.Id})" class="btn-d btn-outline">
+            <i class="bi bi-file-earmark-text"></i> View Invoice
+        </a>
+        <a href="@Url.Action("Index","Sales")" class="btn-d btn-outline">
+            <i class="bi bi-arrow-left"></i> Invoices List
+        </a>
+    </div>
+</div>
+
+<form asp-action="Edit" method="post" id="edit-invoice-form">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" value="@Model.Id" />
+
+    <div asp-validation-summary="ModelOnly" class="alert-d alert-danger mb-4"></div>
+
+    <div class="row g-4">
+        <!-- Customer & Payment Details Panel -->
+        <div class="col-lg-4">
+            <div class="card-d card-p-lg mb-4">
+                <div class="s-title"><i class="bi bi-person-vcard me-2" style="color:var(--primary)"></i>Customer Information</div>
+
+                <div class="fg">
+                    <label class="fg-label">Customer Name *</label>
+                    <input type="text" name="customerName" value="@Model.CustomerName" class="fg-control" required placeholder="e.g. Ramesh Kumar" />
+                </div>
+
+                <div class="fg mb-0">
+                    <label class="fg-label">Customer Phone</label>
+                    <input type="text" name="customerPhone" value="@Model.CustomerPhone" class="fg-control" placeholder="e.g. +91 98765 43210" />
+                </div>
+            </div>
+
+            <div class="card-d card-p-lg mb-4">
+                <div class="s-title"><i class="bi bi-wallet2 me-2" style="color:var(--success)"></i>Payment & Billing Details</div>
+
+                <div class="fg">
+                    <label class="fg-label">Payment Status *</label>
+                    <select name="paymentStatus" id="paymentStatus" class="fg-control" onchange="calculateInvoiceTotals()">
+                        <option value="Paid" selected="@(Model.PaymentStatus == "Paid")">Paid (Full Payment)</option>
+                        <option value="Partial" selected="@(Model.PaymentStatus == "Partial")">Partially Paid</option>
+                        <option value="Unpaid" selected="@(Model.PaymentStatus == "Unpaid")">Unpaid (Full Due)</option>
+                        <option value="Draft" selected="@(Model.PaymentStatus == "Draft")">Draft Invoice</option>
+                    </select>
+                </div>
+
+                <div class="fg">
+                    <label class="fg-label">Discount Amount (₹)</label>
+                    <input type="number" name="discount" id="discountInput" value="@Model.Discount" step="0.01" min="0" class="fg-control" oninput="calculateInvoiceTotals()" />
+                </div>
+
+                <div class="fg mb-0">
+                    <label class="fg-label">Amount Paid (₹)</label>
+                    <input type="number" name="amountPaid" id="amountPaidInput" value="@Model.AmountPaid" step="0.01" min="0" class="fg-control" oninput="calculateInvoiceTotals()" />
+                </div>
+            </div>
+
+            <!-- Bill Financial Summary Card -->
+            <div class="card-d card-p-lg" style="background:var(--bg);border:1px solid var(--border)">
+                <div class="s-title mb-3"><i class="bi bi-receipt me-2" style="color:var(--info)"></i>Invoice Calculation Summary</div>
+
+                <div class="d-flex justify-content-between py-2 border-bottom" style="border-color:var(--border)!important">
+                    <span style="color:var(--text-muted);font-size:13px">Sub Total:</span>
+                    <span style="font-weight:700;color:var(--text-primary);font-size:13px" id="summarySubTotal">₹0.00</span>
+                </div>
+
+                <div class="d-flex justify-content-between py-2 border-bottom" style="border-color:var(--border)!important">
+                    <span style="color:var(--text-muted);font-size:13px">Discount:</span>
+                    <span style="font-weight:700;color:var(--warning);font-size:13px" id="summaryDiscount">- ₹0.00</span>
+                </div>
+
+                <div class="d-flex justify-content-between py-2 border-bottom" style="border-color:var(--border)!important">
+                    <span style="color:var(--text-muted);font-size:13px">GST Rate (@Model.GstPercentage%):</span>
+                    <span style="font-weight:700;color:var(--info);font-size:13px" id="summaryGst">₹0.00</span>
+                </div>
+
+                <div class="d-flex justify-content-between py-2 border-bottom" style="border-color:var(--border)!important">
+                    <span style="font-weight:800;color:var(--text-primary);font-size:15px">Grand Total:</span>
+                    <span style="font-weight:800;color:var(--success);font-size:16px" id="summaryGrandTotal">₹0.00</span>
+                </div>
+
+                <div class="d-flex justify-content-between py-2 border-bottom" style="border-color:var(--border)!important">
+                    <span style="color:var(--text-muted);font-size:13px">Amount Paid:</span>
+                    <span style="font-weight:700;color:var(--success);font-size:13px" id="summaryPaid">₹0.00</span>
+                </div>
+
+                <div class="d-flex justify-content-between pt-2">
+                    <span style="font-weight:700;color:var(--danger);font-size:14px">Remaining Due:</span>
+                    <span style="font-weight:800;color:var(--danger);font-size:15px" id="summaryDue">₹0.00</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Line Items & Add Product Panel -->
+        <div class="col-lg-8">
+            <div class="card-d card-p-lg mb-4">
+                <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                    <div class="s-title mb-0"><i class="bi bi-box-seam me-2" style="color:var(--primary)"></i>Invoice Line Items</div>
+
+                    <!-- Add Product Dropdown Bar -->
+                    <div class="d-flex align-items-center gap-2" style="max-width:400px;flex-grow:1">
+                        <select id="productPicker" class="fg-control fg-control-sm">
+                            <option value="">-- Select Product to Add --</option>
+                            @foreach (var p in allProducts)
+                            {
+                                <option value="@p.Id" data-name="@p.Name" data-code="@p.Code" data-price="@p.SellingPrice" data-stock="@p.CurrentStock">
+                                    @p.Name (@p.Code) - ₹@p.SellingPrice.ToString("N2") [Stock: @p.CurrentStock]
+                                </option>
+                            }
+                        </select>
+                        <button type="button" class="btn-d btn-primary btn-sm-d text-nowrap" onclick="addProductToInvoice()">
+                            <i class="bi bi-plus-circle me-1"></i> Add Product
+                        </button>
+                    </div>
+                </div>
+
+                <div class="tbl-scroll">
+                    <table class="tbl" id="invoice-items-table">
+                        <thead>
+                            <tr>
+                                <th>Product Details</th>
+                                <th style="width:140px">Unit Price (₹)</th>
+                                <th style="width:120px">Qty</th>
+                                <th style="width:130px;text-align:right">Total (₹)</th>
+                                <th style="width:50px;text-align:center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="items-tbody">
+                            @if (Model.Items != null && Model.Items.Any())
+                            {
+                                foreach (var item in Model.Items)
+                                {
+                                    <tr class="item-row" data-pid="@item.ProductId">
+                                        <td>
+                                            <input type="hidden" name="productIds" value="@item.ProductId" />
+                                            <div class="td-strong">@item.ProductName</div>
+                                            <span class="code-pill">@item.ProductCode</span>
+                                        </td>
+                                        <td>
+                                            <input type="number" name="prices" value="@item.SellingPrice" step="0.01" min="0"
+                                                   class="fg-control fg-control-sm item-price" oninput="calculateInvoiceTotals()" required />
+                                        </td>
+                                        <td>
+                                            <input type="number" name="quantities" value="@item.Quantity" min="1"
+                                                   class="fg-control fg-control-sm item-qty" oninput="calculateInvoiceTotals()" required />
+                                        </td>
+                                        <td style="text-align:right;font-weight:700;color:var(--text-primary)" class="item-line-total">
+                                            ₹@((item.Quantity * item.SellingPrice).ToString("N2"))
+                                        </td>
+                                        <td style="text-align:center">
+                                            <button type="button" class="btn-d btn-ghost btn-icon-d" style="color:var(--danger)"
+                                                    title="Remove item" onclick="removeLineItem(this)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <hr class="s-divider" />
+
+                <div class="d-flex align-items-center justify-content-end gap-2">
+                    <a href="@Url.Action("Index","Sales")" class="btn-d btn-outline">Cancel</a>
+                    <button type="submit" class="btn-d btn-primary">
+                        <i class="bi bi-check2-circle"></i> Save Invoice Changes
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+<script>
+    const gstRate = @Model.GstPercentage;
+
+    function addProductToInvoice() {
+        const picker = document.getElementById('productPicker');
+        const selectedOption = picker.options[picker.selectedIndex];
+
+        if (!selectedOption || !selectedOption.value) {
+            alert('Please select a product from the list.');
+            return;
+        }
+
+        const pid = selectedOption.value;
+        const name = selectedOption.dataset.name;
+        const code = selectedOption.dataset.code;
+        const price = parseFloat(selectedOption.dataset.price || '0');
+
+        // Check if product already exists in table
+        const existingRow = document.querySelector(`.item-row[data-pid="${pid}"]`);
+        if (existingRow) {
+            const qtyInput = existingRow.querySelector('.item-qty');
+            qtyInput.value = parseInt(qtyInput.value || '0', 10) + 1;
+            calculateInvoiceTotals();
+            picker.selectedIndex = 0;
+            return;
+        }
+
+        const tbody = document.getElementById('items-tbody');
+        const tr = document.createElement('tr');
+        tr.className = 'item-row';
+        tr.dataset.pid = pid;
+
+        tr.innerHTML = `
+            <td>
+                <input type="hidden" name="productIds" value="${pid}" />
+                <div class="td-strong">${name}</div>
+                <span class="code-pill">${code}</span>
+            </td>
+            <td>
+                <input type="number" name="prices" value="${price.toFixed(2)}" step="0.01" min="0"
+                       class="fg-control fg-control-sm item-price" oninput="calculateInvoiceTotals()" required />
+            </td>
+            <td>
+                <input type="number" name="quantities" value="1" min="1"
+                       class="fg-control fg-control-sm item-qty" oninput="calculateInvoiceTotals()" required />
+            </td>
+            <td style="text-align:right;font-weight:700;color:var(--text-primary)" class="item-line-total">
+                ₹${price.toFixed(2)}
+            </td>
+            <td style="text-align:center">
+                <button type="button" class="btn-d btn-ghost btn-icon-d" style="color:var(--danger)"
+                        title="Remove item" onclick="removeLineItem(this)">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        `;
+
+        tbody.appendChild(tr);
+        picker.selectedIndex = 0;
+        calculateInvoiceTotals();
+    }
+
+    function removeLineItem(btn) {
+        const row = btn.closest('tr');
+        if (row) {
+            row.remove();
+            calculateInvoiceTotals();
+        }
+    }
+
+    function calculateInvoiceTotals() {
+        const rows = document.querySelectorAll('.item-row');
+        let subtotal = 0;
+
+        rows.forEach(row => {
+            const price = parseFloat(row.querySelector('.item-price').value || '0');
+            const qty = parseInt(row.querySelector('.item-qty').value || '0', 10);
+            const lineTotal = price * qty;
+            subtotal += lineTotal;
+
+            row.querySelector('.item-line-total').textContent = '₹' + lineTotal.toFixed(2);
+        });
+
+        const discount = parseFloat(document.getElementById('discountInput').value || '0');
+        const status = document.getElementById('paymentStatus').value;
+
+        const taxable = Math.max(0, subtotal - discount);
+        const gstAmount = Math.round(taxable * (gstRate / 100) * 100) / 100;
+        const grandTotal = taxable + gstAmount;
+
+        const paidInput = document.getElementById('amountPaidInput');
+        let amountPaid = parseFloat(paidInput.value || '0');
+
+        if (status === 'Paid') {
+            amountPaid = grandTotal;
+            paidInput.value = grandTotal.toFixed(2);
+        } else if (status === 'Unpaid' || status === 'Draft') {
+            amountPaid = 0;
+            paidInput.value = '0.00';
+        }
+
+        const dueAmount = Math.max(0, grandTotal - amountPaid);
+
+        document.getElementById('summarySubTotal').textContent = '₹' + subtotal.toFixed(2);
+        document.getElementById('summaryDiscount').textContent = '- ₹' + discount.toFixed(2);
+        document.getElementById('summaryGst').textContent = '₹' + gstAmount.toFixed(2);
+        document.getElementById('summaryGrandTotal').textContent = '₹' + grandTotal.toFixed(2);
+        document.getElementById('summaryPaid').textContent = '₹' + amountPaid.toFixed(2);
+        document.getElementById('summaryDue').textContent = '₹' + dueAmount.toFixed(2);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        calculateInvoiceTotals();
+    });
+</script>
+}

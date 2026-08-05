@@ -172,10 +172,105 @@ namespace InventoryManagementSystem.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> DownloadInvoice(string id)
+        public async Task<IActionResult> Edit(string id)
         {
+            if (string.IsNullOrWhiteSpace(id)) return NotFound();
+
             var sale = await _salesService.GetSaleByIdAsync(id);
             if (sale == null) return NotFound();
+
+            var products = await _productService.GetAllProductsAsync();
+            ViewBag.AllProducts = products.Where(p => p.Status == "Active").ToList();
+
+            return View(sale);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(
+            string id,
+            string customerName,
+            string customerPhone,
+            string paymentStatus,
+            decimal discount,
+            decimal amountPaid,
+            List<string> productIds,
+            List<int> quantities,
+            List<decimal> prices)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return NotFound();
+
+            var existingSale = await _salesService.GetSaleByIdAsync(id);
+            if (existingSale == null) return NotFound();
+
+            if (productIds == null || productIds.Count == 0)
+            {
+                ModelState.AddModelError(string.Empty, "An invoice must contain at least one product line item.");
+                var products = await _productService.GetAllProductsAsync();
+                ViewBag.AllProducts = products.Where(p => p.Status == "Active").ToList();
+                return View(existingSale);
+            }
+
+            var newItems = new List<SaleItem>();
+            for (int i = 0; i < productIds.Count; i++)
+            {
+                var pid = productIds[i];
+                var qty = (i < quantities.Count && quantities[i] > 0) ? quantities[i] : 1;
+                var price = (i < prices.Count && prices[i] >= 0) ? prices[i] : 0m;
+
+                var prod = await _productService.GetProductByIdAsync(pid);
+                if (prod != null)
+                {
+                    newItems.Add(new SaleItem
+                    {
+                        ProductId = prod.Id,
+                        ProductName = prod.Name,
+                        ProductCode = prod.Code,
+                        Quantity = qty,
+                        SellingPrice = price,
+                        Total = qty * price
+                    });
+                }
+            }
+
+            try
+            {
+                var currentUser = User.Identity?.Name ?? "System";
+                var updatedSale = await _salesService.UpdateSaleAsync(
+                    id, customerName, customerPhone, paymentStatus, discount, amountPaid, newItems, currentUser);
+
+                if (updatedSale != null)
+                {
+                    await _auditLogService.LogActivityAsync(
+                        "Invoice Modified", currentUser, $"Invoice: {updatedSale.InvoiceNumber}",
+                        $"Updated invoice details for customer {updatedSale.CustomerName}. Total: ₹{updatedSale.GrandTotal}");
+
+                    TempData["ToastMessage"] = $"Invoice {updatedSale.InvoiceNumber} updated successfully!";
+                    TempData["ToastType"] = "success";
+                    return RedirectToAction(nameof(Invoice), new { id = updatedSale.Id });
+                }
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError(string.Empty, ex.Message);
+            }
+
+            var allProds = await _productService.GetAllProductsAsync();
+            ViewBag.AllProducts = allProds.Where(p => p.Status == "Active").ToList();
+            return View(existingSale);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> DownloadInvoice(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return NotFound();
+
+            var sale = await _salesService.GetSaleByIdAsync(id);
+            if (sale == null) return NotFound();
+
+            Response.Headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+            Response.Headers["Pragma"] = "no-cache";
+            Response.Headers["Expires"] = "0";
 
             var pdfBytes = _salesService.GenerateInvoicePdf(sale);
             return File(pdfBytes, "application/pdf", $"Invoice_{sale.InvoiceNumber}.pdf");

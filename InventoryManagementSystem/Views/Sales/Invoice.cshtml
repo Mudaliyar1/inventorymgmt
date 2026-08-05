@@ -15,6 +15,9 @@
         <a href="@Url.Action("Index","Sales")" class="btn-d btn-outline btn-sm-d">
             <i class="bi bi-arrow-left"></i> Invoices List
         </a>
+        <a href="@Url.Action("Edit","Sales",new{id=Model.Id})" class="btn-d btn-outline btn-sm-d">
+            <i class="bi bi-pencil-square"></i> Edit Bill
+        </a>
         <button onclick="window.print()" class="btn-d btn-outline btn-sm-d">
             <i class="bi bi-printer"></i> Print Invoice
         </button>
