@@ -18,6 +18,7 @@ namespace InventoryManagementSystem.Repositories
             var filter = Builders<Notification>.Filter.Eq(n => n.IsRead, false);
             return await _collection.Find(filter)
                 .SortByDescending(n => n.Timestamp)
+                .Limit(10)
                 .ToListAsync();
         }
 

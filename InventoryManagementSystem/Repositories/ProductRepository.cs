@@ -56,6 +56,36 @@ namespace InventoryManagementSystem.Repositories
             return await _collection.CountDocumentsAsync(filter);
         }
 
+        public async Task<(int TotalProducts, int CurrentStockSum, int LowStockCount, int OutOfStockCount)> GetStockMetricsAsync()
+        {
+            var projection = Builders<Product>.Projection
+                .Include(p => p.CurrentStock)
+                .Include(p => p.MinimumStock)
+                .Include(p => p.Status);
+
+            var products = await _collection.Find(FilterDefinition<Product>.Empty)
+                .Project<Product>(projection)
+                .ToListAsync();
+
+            int totalProducts = products.Count;
+            int currentStockSum = 0;
+            int lowStockCount = 0;
+            int outOfStockCount = 0;
+
+            foreach (var p in products)
+            {
+                if (p == null) continue;
+                currentStockSum += p.CurrentStock;
+                if (p.Status == "Active" || string.IsNullOrEmpty(p.Status))
+                {
+                    if (p.CurrentStock == 0) outOfStockCount++;
+                    else if (p.CurrentStock <= p.MinimumStock) lowStockCount++;
+                }
+            }
+
+            return (totalProducts, currentStockSum, lowStockCount, outOfStockCount);
+        }
+
         private FilterDefinition<Product> BuildFilter(string? search, string? categoryId)
         {
             var filter = Builders<Product>.Filter.Empty;

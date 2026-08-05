@@ -25,5 +25,8 @@ namespace InventoryManagementSystem.Interfaces
             string? executedBy,
             int page,
             int pageSize);
+
+        Task<bool> DeleteTransactionAsync(string id);
+        Task<long> DeleteTransactionsAsync(IEnumerable<string> ids);
     }
 }

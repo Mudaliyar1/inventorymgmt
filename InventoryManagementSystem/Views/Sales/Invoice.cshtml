@@ -1,6 +1,9 @@
 @model Sale
 @{
     ViewData["Title"] = "Tax Invoice - " + Model.InvoiceNumber;
+    var settings = ViewBag.Settings as Settings ?? new Settings();
+    var gstin = !string.IsNullOrEmpty(Model.CompanyGstin) ? Model.CompanyGstin : settings.GstinNumber;
+    var companyName = !string.IsNullOrEmpty(settings.CompanyName) ? settings.CompanyName : "SMART INVENTORY SYSTEM";
 }
 
 <div class="ph d-print-none">
@@ -26,9 +29,10 @@
     <!-- Header -->
     <div class="d-flex justify-content-between pb-4 mb-4 border-bottom" style="border-color:var(--border)!important">
         <div>
-            <h3 style="font-weight:800;color:var(--primary);margin-bottom:4px">SMART INVENTORY</h3>
-            <div style="font-size:12px;color:var(--text-muted)">SIMS Enterprise Solutions</div>
-            <div style="font-size:12px;color:var(--text-muted)">Tax GSTIN: 27AAAAA0000A1Z5</div>
+            <h3 style="font-weight:800;color:var(--primary);margin-bottom:4px">@companyName.ToUpper()</h3>
+            <div style="font-size:12px;color:var(--text-muted)">@settings.Address</div>
+            <div style="font-size:12px;color:var(--text-muted)">Phone: @settings.CompanyPhone · Email: @settings.CompanyEmail</div>
+            <div style="font-size:12px;font-weight:700;color:var(--primary-text);margin-top:2px">Tax GSTIN: @gstin</div>
         </div>
         <div class="text-end">
             <h2 style="font-weight:800;color:var(--text-primary);margin-bottom:0">TAX INVOICE</h2>
@@ -48,9 +52,26 @@
             }
         </div>
         <div class="col-6 text-end">
-            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">STATUS & CASHIER:</div>
-            <span class="badge-d badge-green mb-1">PAID</span>
-            <div style="font-size:12px;color:var(--text-secondary)">Billing Cashier: @Model.CreatedBy</div>
+            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">PAYMENT STATUS & CASHIER:</div>
+            <div>
+                @if (Model.PaymentStatus == "Paid")
+                {
+                    <span class="badge-d badge-green mb-1"><i class="bi bi-check-circle-fill me-1"></i> PAID</span>
+                }
+                else if (Model.PaymentStatus == "Partial")
+                {
+                    <span class="badge-d badge-amber mb-1"><i class="bi bi-exclamation-circle-fill me-1"></i> PARTIAL / DUE</span>
+                }
+                else if (Model.PaymentStatus == "Draft")
+                {
+                    <span class="badge-d badge-gray mb-1"><i class="bi bi-file-earmark me-1"></i> DRAFT</span>
+                }
+                else
+                {
+                    <span class="badge-d badge-red mb-1"><i class="bi bi-x-circle-fill me-1"></i> UNPAID</span>
+                }
+            </div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">Billed By: @Model.CreatedBy</div>
         </div>
     </div>
 
@@ -89,7 +110,7 @@
 
     <!-- Summary -->
     <div class="row justify-content-end">
-        <div class="col-md-5">
+        <div class="col-md-6">
             <div class="d-flex justify-content-between mb-2">
                 <span style="color:var(--text-secondary)">Sub-Total:</span>
                 <span class="td-strong">₹@Model.SubTotal.ToString("N2")</span>
@@ -106,16 +127,36 @@
                 <span class="td-strong">₹@Model.GstAmount.ToString("N2")</span>
             </div>
             <hr class="s-divider my-2" />
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex justify-content-between align-items-center mb-2">
                 <span style="font-weight:700;color:var(--text-primary)">Grand Total:</span>
-                <span style="font-size:22px;font-weight:800;color:var(--primary-text)">₹@Model.GrandTotal.ToString("N2")</span>
+                <span style="font-size:20px;font-weight:800;color:var(--primary-text)">₹@Model.GrandTotal.ToString("N2")</span>
             </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-2" style="color:var(--success)">
+                <span style="font-weight:600">Amount Paid:</span>
+                <span style="font-size:16px;font-weight:700">₹@Model.AmountPaid.ToString("N2")</span>
+            </div>
+
+            @if (Model.DueAmount > 0)
+            {
+                <div class="d-flex justify-content-between align-items-center p-2 rounded" style="background:var(--danger-dim);color:var(--danger)">
+                    <span style="font-weight:700">Remaining Due Amount:</span>
+                    <span style="font-size:18px;font-weight:800">₹@Model.DueAmount.ToString("N2")</span>
+                </div>
+            }
+            else
+            {
+                <div class="d-flex justify-content-between align-items-center p-2 rounded" style="background:var(--success-dim);color:var(--success)">
+                    <span style="font-weight:600"><i class="bi bi-check-circle me-1"></i> Balance Due:</span>
+                    <span style="font-weight:700">₹0.00 (Fully Paid)</span>
+                </div>
+            }
         </div>
     </div>
 
     <div class="text-center border-top pt-4 mt-5" style="border-color:var(--border)!important">
         <p style="font-size:13px;color:var(--text-muted);margin-bottom:4px">Thank you for shopping with us!</p>
-        <p style="font-size:11px;color:var(--text-disabled);margin:0">This is a computer-generated tax invoice and requires no physical signature.</p>
+        <p style="font-size:11px;color:var(--text-disabled);margin:0">This is a computer-generated tax invoice and requires no physical signature. GSTIN: @gstin</p>
     </div>
 </div>
 

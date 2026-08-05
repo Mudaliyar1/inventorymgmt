@@ -13,17 +13,20 @@ namespace InventoryManagementSystem.Services
         private readonly IStockTransactionRepository _transactionRepository;
         private readonly INotificationRepository _notificationRepository;
         private readonly IEmailService _emailService;
+        private readonly IUserRepository _userRepository;
 
         public StockService(
             IProductRepository productRepository,
             IStockTransactionRepository transactionRepository,
             INotificationRepository notificationRepository,
-            IEmailService emailService)
+            IEmailService emailService,
+            IUserRepository userRepository)
         {
             _productRepository = productRepository;
             _transactionRepository = transactionRepository;
             _notificationRepository = notificationRepository;
             _emailService = emailService;
+            _userRepository = userRepository;
         }
 
         public async Task<bool> StockInAsync(string productId, int quantity, string reason, string executedBy)
@@ -63,16 +66,37 @@ namespace InventoryManagementSystem.Services
             product.UpdatedDate = DateTime.UtcNow;
             await _productRepository.UpdateAsync(product.Id, product);
 
-            // Record transaction log
+            // Look up employee details for stock attribution
+            string empId = "EMP-0000";
+            string empName = executedBy;
+            string username = executedBy;
+
+            if (!string.IsNullOrWhiteSpace(executedBy))
+            {
+                var userObj = await _userRepository.GetByUsernameAsync(executedBy);
+                if (userObj != null)
+                {
+                    username = userObj.Username;
+                    empName = userObj.FullName;
+                    empId = !string.IsNullOrEmpty(userObj.EmployeeId) ? userObj.EmployeeId : $"EMP-{(userObj.Id.Length > 6 ? userObj.Id[..6] : userObj.Id)}";
+                }
+            }
+
+            // Record transaction log with full employee attribution
             var transaction = new StockTransaction
             {
                 ProductId = productId,
+                ProductName = product.Name,
+                ProductCode = product.Code,
+                EmployeeId = empId,
+                EmployeeName = empName,
+                Username = username,
                 Quantity = global::System.Math.Abs(quantity),
                 Type = type,
                 Reason = reason,
                 PreviousStock = previousStock,
                 CurrentStock = currentStock,
-                ExecutedBy = executedBy,
+                ExecutedBy = $"{empName} ({username})",
                 Timestamp = DateTime.UtcNow
             };
             await _transactionRepository.CreateAsync(transaction);
@@ -168,6 +192,19 @@ namespace InventoryManagementSystem.Services
 
             return await _transactionRepository.GetFilteredTransactionsAsync(
                 searchTerm, type, productId, matchingProductIds, startDate, endDate, executedBy, page, pageSize);
+        }
+
+        public async Task<bool> DeleteTransactionAsync(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return false;
+            await _transactionRepository.DeleteAsync(id);
+            return true;
+        }
+
+        public async Task<long> DeleteTransactionsAsync(IEnumerable<string> ids)
+        {
+            if (ids == null || !ids.Any()) return 0;
+            return await _transactionRepository.DeleteManyAsync(ids);
         }
     }
 }

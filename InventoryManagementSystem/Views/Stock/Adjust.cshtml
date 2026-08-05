@@ -1,0 +1,165 @@
+@model StockTransactionViewModel
+@{
+    ViewData["Title"] = "Stock Adjustment";
+}
+
+<div class="ph">
+    <div>
+        <h1 class="ph-title">Stock Adjustment</h1>
+        <p class="ph-sub">Correct stock discrepancies or audit differences.</p>
+    </div>
+    <div class="ph-actions">
+        <a href="@Url.Action("History","Stock")" class="btn-d btn-outline">
+            <i class="bi bi-clock-history"></i> View History
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card-d card-p-lg">
+            <div class="s-title" style="display:flex;align-items:center;gap:8px">
+                <span class="badge-d badge-amber"><i class="bi bi-sliders"></i></span>
+                Adjust Stock Quantity
+            </div>
+
+            <form asp-action="Adjust" method="post">
+                <div asp-validation-summary="ModelOnly" class="alert-d alert-danger mb-4"></div>
+
+                <div class="fg">
+                    <label class="fg-label">Search or Select Product <span class="req">*</span></label>
+                    
+                    <!-- Search Product Input -->
+                    <div class="fg-icon-wrap mb-2" style="position:relative">
+                        <i class="bi bi-search fg-icon"></i>
+                        <input type="text" id="product-search-input" class="fg-control"
+                               placeholder="Type product name, SKU or barcode to search…" autocomplete="off">
+                        
+                        <!-- Search Results Dropdown -->
+                        <div id="product-search-results" class="dd-menu" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:1100;max-height:240px;overflow-y:auto;margin-top:4px">
+                        </div>
+                    </div>
+
+                    <!-- Direct Select Dropdown -->
+                    <select asp-for="ProductId" id="ProductId" asp-items="Model.Products" class="fg-control" required>
+                        <option value="">— Select a product SKU —</option>
+                    </select>
+                    <span asp-validation-for="ProductId" class="fg-error"></span>
+                </div>
+
+                <div class="fg">
+                    <label class="fg-label">Adjustment Type <span class="req">*</span></label>
+                    <select name="adjustDirection" class="fg-control" required>
+                        <option value="Increase">Add / Increase (+)</option>
+                        <option value="Decrease">Deduct / Decrease (-)</option>
+                    </select>
+                </div>
+
+                <div class="fg">
+                    <label class="fg-label" asp-for="Quantity">Quantity <span class="req">*</span></label>
+                    <input asp-for="Quantity" type="number" min="1" class="fg-control" placeholder="e.g. 5" required>
+                    <span asp-validation-for="Quantity" class="fg-error"></span>
+                </div>
+
+                <div class="fg">
+                    <label class="fg-label" asp-for="Reason">Adjustment Reason <span class="req">*</span></label>
+                    <select asp-for="Reason" class="fg-control" required>
+                        <option value="">— Select reason —</option>
+                        <option value="Physical Count Reconciliation">Physical Count Reconciliation</option>
+                        <option value="Damaged / Expired Inventory">Damaged / Expired Inventory</option>
+                        <option value="System Discrepancy Correction">System Discrepancy Correction</option>
+                        <option value="Sample / Promotional Usage">Sample / Promotional Usage</option>
+                        <option value="Supplier Return">Supplier Return</option>
+                        <option value="Other">Other</option>
+                    </select>
+                    <span asp-validation-for="Reason" class="fg-error"></span>
+                </div>
+
+                <hr class="s-divider">
+                <div class="d-flex align-items-center justify-content-end gap-3">
+                    <a href="@Url.Action("History","Stock")" class="btn-d btn-outline">Cancel</a>
+                    <button type="submit" class="btn-d btn-warning">
+                        <i class="bi bi-check-circle"></i> Save Adjustment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card-d card-p" style="background:var(--warning-dim);border-color:transparent">
+            <div style="font-size:13px;font-weight:700;color:var(--warning);margin-bottom:12px">
+                <i class="bi bi-exclamation-circle me-1"></i> Stock Adjustment Guidelines
+            </div>
+            <ul style="font-size:13px;color:var(--warning);opacity:.9;padding-left:16px;margin:0;line-height:2.2">
+                <li>Use Stock Adjustment for audit discrepancies, damage, or stock takes.</li>
+                <li>Select <strong>Increase</strong> to add units or <strong>Decrease</strong> to remove units.</li>
+                <li>Ensure mandatory adjustment reason is specified for audit compliance.</li>
+                <li>Every adjustment creates a permanent record in Stock History.</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<partial name="_ValidationScriptsPartial" />
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.getElementById('product-search-input');
+    const resultsContainer = document.getElementById('product-search-results');
+    const selectEl = document.getElementById('ProductId');
+
+    if (!searchInput || !selectEl) return;
+
+    const options = Array.from(selectEl.options).filter(o => o.value !== '');
+
+    selectEl.addEventListener('change', function () {
+        const selected = selectEl.options[selectEl.selectedIndex];
+        if (selected && selected.value) {
+            searchInput.value = selected.text;
+        } else {
+            searchInput.value = '';
+        }
+    });
+
+    searchInput.addEventListener('input', function () {
+        const query = this.value.trim().toLowerCase();
+        if (!query) {
+            resultsContainer.style.display = 'none';
+            return;
+        }
+
+        const matches = options.filter(o => o.text.toLowerCase().includes(query));
+
+        if (matches.length === 0) {
+            resultsContainer.innerHTML = '<div class="px-3 py-2 text-muted" style="font-size:12px">No matching products found</div>';
+        } else {
+            resultsContainer.innerHTML = matches.map(o => `
+                <div class="dd-item product-search-item" data-value="${o.value}" style="cursor:pointer;padding:8px 12px;font-size:13px">
+                    <i class="bi bi-box-seam me-2 text-primary"></i>
+                    <span>${o.text}</span>
+                </div>
+            `).join('');
+        }
+
+        resultsContainer.style.display = 'block';
+    });
+
+    resultsContainer.addEventListener('click', function (e) {
+        const item = e.target.closest('.product-search-item');
+        if (item) {
+            const val = item.getAttribute('data-value');
+            selectEl.value = val;
+            selectEl.dispatchEvent(new Event('change'));
+            resultsContainer.style.display = 'none';
+        }
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('#product-search-input') && !e.target.closest('#product-search-results')) {
+            resultsContainer.style.display = 'none';
+        }
+    });
+});
+</script>
+}

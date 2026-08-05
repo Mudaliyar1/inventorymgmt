@@ -1,0 +1,412 @@
+@model InventorySummaryViewModel
+@{
+    ViewData["Title"] = "Inventory Summary & Valuation";
+    bool hasActiveFilters = !string.IsNullOrEmpty(Model.SearchTerm) ||
+                            !string.IsNullOrEmpty(Model.CategoryId) ||
+                            !string.IsNullOrEmpty(Model.StockStatus) ||
+                            (Model.SortBy != "stock_desc");
+}
+
+<div class="ph">
+    <div>
+        <h1 class="ph-title">Inventory Summary & Valuation</h1>
+        <p class="ph-sub">Comprehensive overview of stock levels, warehouse valuation, and sales metrics.</p>
+    </div>
+    <div class="ph-actions">
+        <a href="@Url.Action("StockIn","Stock")" class="btn-d btn-outline btn-sm-d">
+            <i class="bi bi-arrow-down-circle text-success"></i> Stock In
+        </a>
+        <a href="@Url.Action("StockOut","Stock")" class="btn-d btn-outline btn-sm-d">
+            <i class="bi bi-arrow-up-circle text-danger"></i> Stock Out
+        </a>
+        <a href="@Url.Action("Adjust","Stock")" class="btn-d btn-outline btn-sm-d">
+            <i class="bi bi-sliders text-info"></i> Adjust Stock
+        </a>
+    </div>
+</div>
+
+<!-- ── OVERVIEW STAT CARDS ─────────────────────────────── -->
+<div class="row g-3 mb-4">
+    <!-- Cost Valuation Card -->
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div>
+                <div class="sc-label">Total Inventory Value (Cost)</div>
+                <div class="sc-value" style="font-size:22px">₹@Model.TotalCostValuation.ToString("N2")</div>
+                <span class="sc-trend trend-flat">
+                    <i class="bi bi-boxes me-1"></i> @Model.TotalStockQuantity.ToString("N0") total units
+                </span>
+            </div>
+            <div class="sc-icon ic-blue">
+                <i class="bi bi-wallet2"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Retail Valuation Card -->
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div>
+                <div class="sc-label">Total Retail Value (Est.)</div>
+                <div class="sc-value" style="font-size:22px">₹@Model.TotalRetailValuation.ToString("N2")</div>
+                <span class="sc-trend trend-up">
+                    <i class="bi bi-graph-up me-1"></i> ₹@Model.TotalPotentialProfit.ToString("N2") profit
+                </span>
+            </div>
+            <div class="sc-icon ic-green">
+                <i class="bi bi-cash-stack"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Potential Profit Margin Card -->
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div>
+                <div class="sc-label">Avg. Profit Margin</div>
+                <div class="sc-value" style="font-size:22px">@Model.MarginPercentage.ToString("F1")%</div>
+                <span class="sc-trend trend-up">
+                    <i class="bi bi-percent me-1"></i> Inventory markup
+                </span>
+            </div>
+            <div class="sc-icon ic-amber">
+                <i class="bi bi-pie-chart-fill"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stock Health Card -->
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div>
+                <div class="sc-label">Stock Status Health</div>
+                <div class="sc-value" style="font-size:18px;margin-top:4px">
+                    <span style="color:var(--success)">@Model.HealthyCount</span> /
+                    <span style="color:var(--warning)">@Model.LowStockCount</span> /
+                    <span style="color:var(--danger)">@Model.OutOfStockCount</span>
+                </div>
+                <span class="sc-trend trend-flat" style="font-size:11px">
+                    Healthy · Low Stock · Out
+                </span>
+            </div>
+            <div class="sc-icon ic-blue">
+                <i class="bi bi-activity"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Collapsible Detailed Filter Panel (Closed by Default) -->
+<div class="card-d mb-4">
+    <!-- Filter Toggle Header -->
+    <div class="card-p d-flex align-items-center justify-content-between flex-wrap gap-2"
+         onclick="toggleSummaryFilterPanel()" style="cursor:pointer;user-select:none">
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge-d badge-blue" style="font-size:14px;padding:6px 10px"><i class="bi bi-funnel-fill"></i></span>
+            <div>
+                <div style="font-size:14px;font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:6px">
+                    Filter & Sort Inventory Items
+                    @if (hasActiveFilters)
+                    {
+                        <span class="badge-d badge-blue">Active Filters</span>
+                    }
+                </div>
+                <div style="font-size:12px;color:var(--text-muted)">
+                    @(hasActiveFilters ? "Click to modify search, category, stock status & sorting criteria" : "Click to expand search, category, stock health & sorting filters")
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-2" onclick="event.stopPropagation()">
+            @if (hasActiveFilters)
+            {
+                <a href="@Url.Action("InventorySummary","Stock")" class="btn-d btn-ghost btn-sm-d">
+                    <i class="bi bi-x-circle me-1"></i> Clear Filters
+                </a>
+            }
+            <button type="button" class="btn-d btn-outline btn-sm-d" onclick="toggleSummaryFilterPanel()">
+                <i class="bi bi-sliders me-1"></i> <span id="summary-filter-toggle-text">@(hasActiveFilters ? "Hide Filters" : "Show Filters")</span>
+                <i class="bi bi-chevron-@(hasActiveFilters ? "up" : "down") ms-1" id="summary-filter-toggle-chevron"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Collapsible Filter Form Body -->
+    <div id="summary-filter-panel-body" class="card-p-lg border-top" style="display:@(hasActiveFilters ? "block" : "none");border-color:var(--border)!important">
+        <form method="get" asp-action="InventorySummary" id="summary-filter-form">
+            <div class="row g-3">
+                <!-- Search Term -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="fg mb-0">
+                        <label class="fg-label" style="font-size:12px">Search Product</label>
+                        <div class="fg-icon-wrap">
+                            <i class="bi bi-search fg-icon"></i>
+                            <input type="search" name="searchTerm" value="@Model.SearchTerm" class="fg-control" style="height:38px"
+                                   placeholder="Product name, SKU or barcode…">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Category -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="fg mb-0">
+                        <label class="fg-label" style="font-size:12px">Category</label>
+                        <select name="categoryId" asp-items="Model.Categories" class="fg-control" style="height:38px">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Stock Health Status -->
+                <div class="col-lg-2 col-md-6">
+                    <div class="fg mb-0">
+                        <label class="fg-label" style="font-size:12px">Stock Status</label>
+                        <select name="stockStatus" asp-items="Model.StockStatuses" class="fg-control" style="height:38px">
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Sort By -->
+                <div class="col-lg-2 col-md-6">
+                    <div class="fg mb-0">
+                        <label class="fg-label" style="font-size:12px">Sort By</label>
+                        <select name="sortBy" asp-items="Model.SortOptions" class="fg-control" style="height:38px">
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Rows Per Page -->
+                <div class="col-lg-2 col-md-6">
+                    <div class="fg mb-0">
+                        <label class="fg-label" style="font-size:12px">Rows Per Page</label>
+                        <select name="pageSize" class="fg-control" style="height:38px">
+                            <option value="15" selected="@(Model.PageSize == 15)">15 Rows</option>
+                            <option value="30" selected="@(Model.PageSize == 30)">30 Rows</option>
+                            <option value="50" selected="@(Model.PageSize == 50)">50 Rows</option>
+                            <option value="100" selected="@(Model.PageSize == 100)">100 Rows</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center justify-content-end gap-2 mt-4 pt-3 border-top" style="border-color:var(--border)!important">
+                <a href="@Url.Action("InventorySummary","Stock")" class="btn-d btn-outline btn-sm-d">Reset</a>
+                <button type="submit" class="btn-d btn-primary btn-sm-d">
+                    <i class="bi bi-search me-1"></i> Apply Filters
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Inventory Data Table -->
+<div class="card-d">
+    <div class="card-p d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div style="font-size:14px;font-weight:700;color:var(--text-primary)">
+            Stock Valuation Breakdown (<span style="color:var(--primary-text)">@Model.TotalItems</span>)
+        </div>
+    </div>
+
+    <div class="tbl-scroll">
+        <table class="tbl" id="inventory-summary-table">
+            <thead>
+                <tr>
+                    <th>Product & SKU</th>
+                    <th>Category</th>
+                    <th>Prices (Cost / Sell)</th>
+                    <th>Current Stock</th>
+                    <th>Stock Status</th>
+                    <th>Cost Valuation</th>
+                    <th>Retail Valuation</th>
+                    <th>Units Sold</th>
+                    <th style="text-align:right">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Items != null && Model.Items.Any())
+                {
+                    @foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    @if (!string.IsNullOrEmpty(item.ImageUrl))
+                                    {
+                                        <img src="@item.ImageUrl" alt="@item.ProductName" style="width:36px;height:36px;border-radius:var(--radius-sm);object-fit:cover">
+                                    }
+                                    else
+                                    {
+                                        <div style="width:36px;height:36px;border-radius:var(--radius-sm);background:var(--primary-dim);display:flex;align-items:center;justify-content:center;color:var(--primary-text);font-size:14px;font-weight:700">
+                                            @(item.ProductName.Length > 0 ? item.ProductName[0].ToString().ToUpper() : "P")
+                                        </div>
+                                    }
+                                    <div>
+                                        <div class="td-strong">@item.ProductName</div>
+                                        <div class="d-flex align-items-center gap-1">
+                                            <span class="code-pill">@item.ProductCode</span>
+                                            @if (!string.IsNullOrEmpty(item.Barcode))
+                                            {
+                                                <span style="font-size:11px;color:var(--text-muted)">• @item.Barcode</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge-d badge-gray">@item.CategoryName</span>
+                            </td>
+                            <td>
+                                <div style="font-size:13px;font-weight:600;color:var(--text-primary)">
+                                    ₹@item.SellingPrice.ToString("N2")
+                                </div>
+                                <div style="font-size:11px;color:var(--text-muted)">
+                                    Cost: ₹@item.PurchasePrice.ToString("N2")
+                                </div>
+                            </td>
+                            <td>
+                                <div style="font-size:14px;font-weight:700;color:var(--text-primary)">
+                                    @item.CurrentStock units
+                                </div>
+                                <div style="font-size:11px;color:var(--text-muted)">
+                                    Min Threshold: @item.MinimumStock
+                                </div>
+                            </td>
+                            <td>
+                                @if (item.StockStatus == "Healthy")
+                                {
+                                    <span class="badge-d badge-green"><i class="bi bi-check-circle-fill me-1"></i> Healthy</span>
+                                }
+                                else if (item.StockStatus == "Low Stock")
+                                {
+                                    <span class="badge-d badge-amber"><i class="bi bi-exclamation-triangle-fill me-1"></i> Low Stock</span>
+                                }
+                                else
+                                {
+                                    <span class="badge-d badge-red"><i class="bi bi-x-circle-fill me-1"></i> Out of Stock</span>
+                                }
+                            </td>
+                            <td style="font-weight:700;color:var(--text-primary)">
+                                ₹@item.CostValuation.ToString("N2")
+                            </td>
+                            <td style="font-weight:700;color:var(--success)">
+                                ₹@item.RetailValuation.ToString("N2")
+                            </td>
+                            <td>
+                                <div style="font-size:13px;font-weight:600;color:var(--text-primary)">
+                                    @item.TotalUnitsSold units
+                                </div>
+                                <div style="font-size:11px;color:var(--text-muted)">
+                                    Rev: ₹@item.TotalSalesRevenue.ToString("N2")
+                                </div>
+                            </td>
+                            <td style="text-align:right">
+                                <div class="d-flex align-items-center justify-content-end gap-1">
+                                    <a href="@Url.Action("StockIn","Stock")" class="btn-d btn-ghost btn-sm-d" title="Stock In">
+                                        <i class="bi bi-plus-circle text-success"></i>
+                                    </a>
+                                    <a href="@Url.Action("StockOut","Stock")" class="btn-d btn-ghost btn-sm-d" title="Stock Out">
+                                        <i class="bi bi-dash-circle text-danger"></i>
+                                    </a>
+                                    <a href="@Url.Action("Adjust","Stock")" class="btn-d btn-ghost btn-sm-d" title="Adjust">
+                                        <i class="bi bi-sliders text-info"></i>
+                                    </a>
+                                    <a href="@Url.Action("Edit","Product",new{id=item.ProductId})" class="btn-d btn-outline btn-sm-d" title="Edit Product">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="9">
+                            <div class="empty-s">
+                                <i class="bi bi-boxes empty-s-icon"></i>
+                                <div class="empty-s-title">No inventory items found</div>
+                                <div class="empty-s-desc">
+                                    @(hasActiveFilters ? "No products match your search or filter criteria. Try resetting filters." : "Your inventory products will appear here.")
+                                </div>
+                                @if (hasActiveFilters)
+                                {
+                                    <div class="mt-3">
+                                        <a href="@Url.Action("InventorySummary","Stock")" class="btn-d btn-ghost btn-sm-d">
+                                            <i class="bi bi-x-circle me-1"></i> Clear Filters
+                                        </a>
+                                    </div>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Server-Side Pagination Controls -->
+    @if (Model.TotalPages > 1)
+    {
+        <div class="d-flex align-items-center justify-content-between px-4 py-3 border-top" style="border-color:var(--border)!important">
+            <span style="font-size:12px;color:var(--text-muted)">
+                Showing Page <strong>@Model.CurrentPage</strong> of <strong>@Model.TotalPages</strong> · <strong>@Model.TotalItems</strong> total items
+            </span>
+            <div class="pagi">
+                <a href="@Url.Action("InventorySummary", "Stock", new {
+                    searchTerm = Model.SearchTerm,
+                    categoryId = Model.CategoryId,
+                    stockStatus = Model.StockStatus,
+                    sortBy = Model.SortBy,
+                    pageSize = Model.PageSize,
+                    page = Model.CurrentPage - 1
+                })" class="pg-btn @(Model.CurrentPage <= 1 ? "disabled" : "")">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+
+                @for (int p = Math.Max(1, Model.CurrentPage - 2); p <= Math.Min(Model.TotalPages, Model.CurrentPage + 2); p++)
+                {
+                    <a href="@Url.Action("InventorySummary", "Stock", new {
+                        searchTerm = Model.SearchTerm,
+                        categoryId = Model.CategoryId,
+                        stockStatus = Model.StockStatus,
+                        sortBy = Model.SortBy,
+                        pageSize = Model.PageSize,
+                        page = p
+                    })" class="pg-btn @(p == Model.CurrentPage ? "active" : "")">@p</a>
+                }
+
+                <a href="@Url.Action("InventorySummary", "Stock", new {
+                    searchTerm = Model.SearchTerm,
+                    categoryId = Model.CategoryId,
+                    stockStatus = Model.StockStatus,
+                    sortBy = Model.SortBy,
+                    pageSize = Model.PageSize,
+                    page = Model.CurrentPage + 1
+                })" class="pg-btn @(Model.CurrentPage >= Model.TotalPages ? "disabled" : "")">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </div>
+        </div>
+    }
+</div>
+
+@section Scripts {
+<script>
+function toggleSummaryFilterPanel() {
+    const panel = document.getElementById('summary-filter-panel-body');
+    const text = document.getElementById('summary-filter-toggle-text');
+    const chevron = document.getElementById('summary-filter-toggle-chevron');
+    if (!panel) return;
+
+    if (panel.style.display === 'none' || getComputedStyle(panel).display === 'none') {
+        panel.style.display = 'block';
+        if (text) text.textContent = 'Hide Filters';
+        if (chevron) { chevron.className = 'bi bi-chevron-up ms-1'; }
+    } else {
+        panel.style.display = 'none';
+        if (text) text.textContent = 'Show Filters';
+        if (chevron) { chevron.className = 'bi bi-chevron-down ms-1'; }
+    }
+}
+</script>
+}

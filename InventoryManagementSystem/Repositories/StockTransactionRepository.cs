@@ -121,5 +121,13 @@ namespace InventoryManagementSystem.Repositories
 
             return (items, totalCount);
         }
+
+        public async Task<long> DeleteManyAsync(IEnumerable<string> ids)
+        {
+            if (ids == null || !ids.Any()) return 0;
+            var filter = Builders<StockTransaction>.Filter.In(t => t.Id, ids);
+            var result = await _collection.DeleteManyAsync(filter);
+            return result.DeletedCount;
+        }
     }
 }

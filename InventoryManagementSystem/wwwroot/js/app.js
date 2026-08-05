@@ -172,11 +172,16 @@
     qsa('[data-tbl-search]').forEach(input => {
       const tbl = byId(input.getAttribute('data-tbl-search'));
       if (!tbl) return;
+      let timer = null;
       input.addEventListener('input', function () {
-        const q = this.value.toLowerCase();
-        tbl.querySelectorAll('tbody tr').forEach(row => {
-          row.style.display = !q || row.textContent.toLowerCase().includes(q) ? '' : 'none';
-        });
+        clearTimeout(timer);
+        const self = this;
+        timer = setTimeout(() => {
+          const q = self.value.toLowerCase();
+          tbl.querySelectorAll('tbody tr').forEach(row => {
+            row.style.display = !q || row.textContent.toLowerCase().includes(q) ? '' : 'none';
+          });
+        }, 150);
       });
     });
   }
@@ -203,6 +208,34 @@
     });
   }
 
+  /* ── Real-Time Permission & Session Polling ────────── */
+  function initRealtimePermissionSync() {
+    const currentVersion = parseInt(document.body.dataset.permVersion || '0', 10);
+
+    function checkLiveStatus() {
+      fetch('/api/account/live-status')
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return;
+
+          // Forced Logout if account locked or deleted
+          if (data.authenticated && (data.isLocked || data.isDeleted)) {
+            window.location.href = '/Account/Login';
+            return;
+          }
+
+          // Dynamic UI / Sidebar update if permission version changed
+          if (data.authenticated && data.version > 0 && currentVersion > 0 && data.version !== currentVersion) {
+            window.location.reload();
+          }
+        })
+        .catch(() => {});
+    }
+
+    // Poll every 8 seconds for live sync
+    setInterval(checkLiveStatus, 8000);
+  }
+
   /* ── Init ──────────────────────────────────────────── */
   document.addEventListener('DOMContentLoaded', () => {
     initSidebar();
@@ -213,6 +246,7 @@
     initTableSearch();
     initConfirm();
     initImgPreview();
+    initRealtimePermissionSync();
 
     // Flash message from server
     const msg  = document.body.dataset.flashMsg;

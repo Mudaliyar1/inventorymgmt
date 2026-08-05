@@ -32,6 +32,7 @@ namespace InventoryManagementSystem.Extensions
             {
                 var adminUser = new User
                 {
+                    EmployeeId = "EMP-1000",
                     Username = "admin",
                     Email = "admin@sims.com",
                     FullName = "System Administrator",

@@ -10,25 +10,19 @@ using System.Threading.Tasks;
 namespace InventoryManagementSystem.Controllers
 {
     [Authorize(Roles = Role.Admin)]
-    public class UserController : Controller
+    public class AdminController : Controller
     {
         private readonly IUserRepository _userRepository;
-        private readonly IAuthService _authService;
         private readonly IAuditLogService _auditLogService;
-        private readonly IPermissionDiscoveryService _permissionDiscovery;
         private readonly IPermissionService _permissionService;
 
-        public UserController(
+        public AdminController(
             IUserRepository userRepository,
-            IAuthService authService,
             IAuditLogService auditLogService,
-            IPermissionDiscoveryService permissionDiscovery,
             IPermissionService permissionService)
         {
             _userRepository = userRepository;
-            _authService = authService;
             _auditLogService = auditLogService;
-            _permissionDiscovery = permissionDiscovery;
             _permissionService = permissionService;
         }
 
@@ -36,24 +30,21 @@ namespace InventoryManagementSystem.Controllers
         public async Task<IActionResult> Index()
         {
             var allUsers = await _userRepository.GetAllAsync();
-            var employees = allUsers.Where(u => u.Role != Role.Admin).OrderByDescending(u => u.CreatedDate);
-            return View(employees);
+            var admins = allUsers.Where(u => u.Role == Role.Admin).OrderByDescending(u => u.CreatedDate);
+            return View(admins);
         }
 
         [HttpGet]
         public IActionResult Create()
         {
-            ViewBag.GroupedPermissions = _permissionDiscovery.GetGroupedPermissions();
-            var nextEmpId = $"EMP-{Random.Shared.Next(1000, 9999)}";
-            return View(new User { EmployeeId = nextEmpId, Role = Role.Staff });
+            var nextAdminId = $"ADM-{Random.Shared.Next(1000, 9999)}";
+            return View(new User { EmployeeId = nextAdminId, Role = Role.Admin });
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(User model, string rawPassword, List<string> selectedPermissions)
+        public async Task<IActionResult> Create(User model, string rawPassword)
         {
-            ViewBag.GroupedPermissions = _permissionDiscovery.GetGroupedPermissions();
-
             var existingByEmail = await _userRepository.GetByEmailAsync(model.Email);
             if (existingByEmail != null)
             {
@@ -78,26 +69,23 @@ namespace InventoryManagementSystem.Controllers
 
             if (string.IsNullOrWhiteSpace(model.EmployeeId))
             {
-                model.EmployeeId = $"EMP-{Random.Shared.Next(1000, 9999)}";
+                model.EmployeeId = $"ADM-{Random.Shared.Next(1000, 9999)}";
             }
 
-            model.Role = Role.Staff;
+            model.Role = Role.Admin;
             model.PasswordHash = BCrypt.Net.BCrypt.HashPassword(rawPassword);
-            model.Permissions = selectedPermissions ?? new List<string>();
+            model.Permissions = new List<string>();
             model.PermissionVersion = 1;
-            model.LastPermissionUpdated = DateTime.UtcNow;
             model.CreatedDate = DateTime.UtcNow;
             model.UpdatedDate = DateTime.UtcNow;
 
             await _userRepository.CreateAsync(model);
             await _auditLogService.LogEmployeeActivityAsync(
-                "Employee Added", "Employee Management", $"Employee: {model.FullName} ({model.Username})",
-                $"Created new employee account (ID: {model.EmployeeId}) with {model.Permissions.Count} granted permissions.",
-                previousData: "",
-                newData: $"ID: {model.EmployeeId}, Role: {model.Role}, Email: {model.Email}"
+                "Administrator Registered", "Administrator Management", $"Admin: {model.FullName} ({model.Username})",
+                $"Created new Super Administrator account (ID: {model.EmployeeId}) with full unrestricted system privileges."
             );
 
-            TempData["ToastMessage"] = $"Employee account ({model.EmployeeId}) created successfully!";
+            TempData["ToastMessage"] = $"Super Administrator account ({model.EmployeeId}) created successfully!";
             TempData["ToastType"] = "success";
             return RedirectToAction(nameof(Index));
         }
@@ -106,20 +94,16 @@ namespace InventoryManagementSystem.Controllers
         public async Task<IActionResult> Edit(string id)
         {
             var user = await _userRepository.GetByIdAsync(id);
-            if (user == null) return NotFound();
-
-            ViewBag.GroupedPermissions = _permissionDiscovery.GetGroupedPermissions();
+            if (user == null || user.Role != Role.Admin) return NotFound();
             return View(user);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(User model, List<string> selectedPermissions)
+        public async Task<IActionResult> Edit(User model)
         {
-            ViewBag.GroupedPermissions = _permissionDiscovery.GetGroupedPermissions();
-
             var existing = await _userRepository.GetByIdAsync(model.Id);
-            if (existing == null) return NotFound();
+            if (existing == null || existing.Role != Role.Admin) return NotFound();
 
             var existingByEmail = await _userRepository.GetByEmailAsync(model.Email);
             if (existingByEmail != null && existingByEmail.Id != model.Id)
@@ -132,31 +116,22 @@ namespace InventoryManagementSystem.Controllers
                 return View(model);
             }
 
-            var oldSummary = $"FullName: {existing.FullName}, Role: {existing.Role}, Active: {!existing.IsLocked}, Perms: {existing.Permissions?.Count ?? 0}";
-
             existing.FullName = model.FullName;
             existing.Email = model.Email;
             existing.PhoneNumber = model.PhoneNumber;
-            existing.Role = Role.Staff;
             existing.EmployeeId = !string.IsNullOrWhiteSpace(model.EmployeeId) ? model.EmployeeId : existing.EmployeeId;
-            existing.Permissions = selectedPermissions ?? new List<string>();
             existing.PermissionVersion++;
-            existing.LastPermissionUpdated = DateTime.UtcNow;
             existing.UpdatedDate = DateTime.UtcNow;
-
-            var newSummary = $"FullName: {existing.FullName}, Role: {existing.Role}, Active: {!existing.IsLocked}, Perms: {existing.Permissions.Count}";
 
             await _userRepository.UpdateAsync(existing.Id, existing);
             _permissionService.InvalidateUserCache(existing.Id);
 
             await _auditLogService.LogEmployeeActivityAsync(
-                "Employee Permissions & Details Updated", "Employee Management", $"Employee ID: {existing.EmployeeId} ({existing.Username})",
-                $"Updated details and permission assignments for employee {existing.FullName}.",
-                previousData: oldSummary,
-                newData: newSummary
+                "Administrator Details Updated", "Administrator Management", $"Admin: {existing.Username}",
+                $"Updated profile information for administrator {existing.FullName} ({existing.EmployeeId})."
             );
 
-            TempData["ToastMessage"] = $"Employee account ({existing.EmployeeId}) updated successfully!";
+            TempData["ToastMessage"] = $"Administrator account ({existing.EmployeeId}) updated successfully!";
             TempData["ToastType"] = "success";
             return RedirectToAction(nameof(Index));
         }
@@ -166,29 +141,28 @@ namespace InventoryManagementSystem.Controllers
         public async Task<IActionResult> ToggleLock(string id)
         {
             var user = await _userRepository.GetByIdAsync(id);
-            if (user == null) return NotFound();
+            if (user == null || user.Role != Role.Admin) return NotFound();
 
             if (user.Username.Equals(User.Identity?.Name, StringComparison.OrdinalIgnoreCase))
             {
-                TempData["ToastMessage"] = "You cannot deactivate your own Super Admin account!";
+                TempData["ToastMessage"] = "You cannot lock or deactivate your own active Administrator account!";
                 TempData["ToastType"] = "warning";
                 return RedirectToAction(nameof(Index));
             }
 
             user.IsLocked = !user.IsLocked;
             user.PermissionVersion++;
-            user.LastPermissionUpdated = DateTime.UtcNow;
             user.UpdatedDate = DateTime.UtcNow;
 
             await _userRepository.UpdateAsync(user.Id, user);
             _permissionService.InvalidateUserCache(user.Id);
 
             await _auditLogService.LogEmployeeActivityAsync(
-                user.IsLocked ? "Employee Deactivated" : "Employee Activated", "Employee Management", $"Employee: {user.Username}",
-                $"Account active status changed to: {(!user.IsLocked ? "Active" : "Deactivated/Locked")}"
+                user.IsLocked ? "Administrator Deactivated" : "Administrator Activated", "Administrator Management", $"Admin: {user.Username}",
+                $"Account active status set to: {(!user.IsLocked ? "Active" : "Locked/Deactivated")}"
             );
 
-            TempData["ToastMessage"] = user.IsLocked ? $"Employee {user.FullName} deactivated." : $"Employee {user.FullName} activated!";
+            TempData["ToastMessage"] = user.IsLocked ? $"Administrator {user.FullName} account locked." : $"Administrator {user.FullName} account unlocked.";
             TempData["ToastType"] = "info";
             return RedirectToAction(nameof(Index));
         }
@@ -197,7 +171,7 @@ namespace InventoryManagementSystem.Controllers
         public async Task<IActionResult> ResetPassword(string id)
         {
             var user = await _userRepository.GetByIdAsync(id);
-            if (user == null) return NotFound();
+            if (user == null || user.Role != Role.Admin) return NotFound();
             return View(user);
         }
 
@@ -206,7 +180,7 @@ namespace InventoryManagementSystem.Controllers
         public async Task<IActionResult> ResetPassword(string id, string newPassword, string confirmPassword)
         {
             var user = await _userRepository.GetByIdAsync(id);
-            if (user == null) return NotFound();
+            if (user == null || user.Role != Role.Admin) return NotFound();
 
             if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
             {
@@ -225,18 +199,17 @@ namespace InventoryManagementSystem.Controllers
 
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
             user.PermissionVersion++;
-            user.LastPermissionUpdated = DateTime.UtcNow;
             user.UpdatedDate = DateTime.UtcNow;
 
             await _userRepository.UpdateAsync(user.Id, user);
             _permissionService.InvalidateUserCache(user.Id);
 
             await _auditLogService.LogEmployeeActivityAsync(
-                "Employee Password Reset", "Employee Management", $"Employee: {user.Username}",
-                $"Administrator reset password for employee {user.FullName} ({user.EmployeeId})."
+                "Administrator Password Reset", "Administrator Management", $"Admin: {user.Username}",
+                $"Administrator password reset completed for {user.FullName} ({user.EmployeeId})."
             );
 
-            TempData["ToastMessage"] = $"Password for employee {user.FullName} updated successfully.";
+            TempData["ToastMessage"] = $"Password for administrator {user.FullName} updated successfully.";
             TempData["ToastType"] = "success";
             return RedirectToAction(nameof(Index));
         }
@@ -245,10 +218,10 @@ namespace InventoryManagementSystem.Controllers
         public async Task<IActionResult> Activity(string id)
         {
             var user = await _userRepository.GetByIdAsync(id);
-            if (user == null) return NotFound();
+            if (user == null || user.Role != Role.Admin) return NotFound();
 
             var logs = await _auditLogService.GetLogsByEmployeeAsync(user.Username, 100);
-            ViewBag.Employee = user;
+            ViewBag.AdminUser = user;
             return View(logs);
         }
 
@@ -257,11 +230,11 @@ namespace InventoryManagementSystem.Controllers
         public async Task<IActionResult> Delete(string id)
         {
             var user = await _userRepository.GetByIdAsync(id);
-            if (user == null) return NotFound();
+            if (user == null || user.Role != Role.Admin) return NotFound();
 
             if (user.Username.Equals(User.Identity?.Name, StringComparison.OrdinalIgnoreCase))
             {
-                TempData["ToastMessage"] = "You cannot delete your own active account!";
+                TempData["ToastMessage"] = "You cannot delete your own active Administrator account!";
                 TempData["ToastType"] = "danger";
                 return RedirectToAction(nameof(Index));
             }
@@ -270,11 +243,11 @@ namespace InventoryManagementSystem.Controllers
             _permissionService.InvalidateUserCache(id);
 
             await _auditLogService.LogEmployeeActivityAsync(
-                "Employee Deleted", "Employee Management", $"Employee: {user.Username}",
-                $"Deleted employee account {user.FullName} (ID: {user.EmployeeId})."
+                "Administrator Account Deleted", "Administrator Management", $"Admin: {user.Username}",
+                $"Deleted administrator account {user.FullName} (ID: {user.EmployeeId})."
             );
 
-            TempData["ToastMessage"] = $"Employee {user.FullName} deleted successfully.";
+            TempData["ToastMessage"] = $"Administrator {user.FullName} deleted successfully.";
             TempData["ToastType"] = "success";
             return RedirectToAction(nameof(Index));
         }
@@ -285,7 +258,7 @@ namespace InventoryManagementSystem.Controllers
         {
             if (ids == null || !ids.Any())
             {
-                return Json(new { success = false, message = "No employee accounts selected for deletion." });
+                return Json(new { success = false, message = "No administrator accounts selected for deletion." });
             }
 
             int deletedCount = 0;
@@ -294,7 +267,7 @@ namespace InventoryManagementSystem.Controllers
             foreach (var id in ids)
             {
                 var user = await _userRepository.GetByIdAsync(id);
-                if (user != null && !user.Username.Equals(currentUsername, StringComparison.OrdinalIgnoreCase))
+                if (user != null && user.Role == Role.Admin && !user.Username.Equals(currentUsername, StringComparison.OrdinalIgnoreCase))
                 {
                     await _userRepository.DeleteAsync(id);
                     _permissionService.InvalidateUserCache(id);
@@ -303,11 +276,11 @@ namespace InventoryManagementSystem.Controllers
             }
 
             await _auditLogService.LogEmployeeActivityAsync(
-                "Bulk Employees Deleted", "Employee Management", "Multiple Employees",
-                $"Bulk deleted {deletedCount} employee account(s)."
+                "Bulk Administrators Deleted", "Administrator Management", "Multiple Admins",
+                $"Bulk deleted {deletedCount} administrator account(s)."
             );
 
-            return Json(new { success = true, count = deletedCount, message = $"{deletedCount} employee account(s) deleted successfully." });
+            return Json(new { success = true, count = deletedCount, message = $"{deletedCount} administrator account(s) deleted successfully." });
         }
     }
 }

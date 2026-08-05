@@ -2,12 +2,13 @@
 @{
     ViewData["Title"] = "POS Terminal";
     List<Product> products = ViewBag.ProductsList as List<Product> ?? new List<Product>();
+    var settings = ViewBag.Settings as Settings ?? new Settings();
 }
 
 <div class="ph">
     <div>
         <h1 class="ph-title">POS Checkout Terminal</h1>
-        <p class="ph-sub">Perform instant customer checkouts, deduct stock levels, and issue invoices.</p>
+        <p class="ph-sub">Perform instant customer checkouts, record partial/due amounts, and issue invoices.</p>
     </div>
     <div class="ph-actions">
         <a href="@Url.Action("Index","Sales")" class="btn-d btn-outline">
@@ -105,7 +106,7 @@
             </div>
         </div>
 
-        <!-- Right Column: Summary -->
+        <!-- Right Column: Summary & Payment -->
         <div class="col-lg-4">
             <div class="card-d card-p-lg">
                 <div class="s-title"><i class="bi bi-receipt me-2" style="color:var(--primary)"></i>Checkout Summary</div>
@@ -119,7 +120,7 @@
                     <label class="fg-label" asp-for="Discount">Flat Discount (₹)</label>
                     <div class="fg-prefix-wrap">
                         <span class="fg-prefix">₹</span>
-                        <input asp-for="Discount" id="discountInput" class="fg-control" value="0.00" onchange="calculateSummary()" />
+                        <input asp-for="Discount" id="discountInput" class="fg-control" value="0.00" oninput="calculateSummary()" />
                     </div>
                     <span asp-validation-for="Discount" class="fg-error"></span>
                 </div>
@@ -127,10 +128,10 @@
                 <div class="fg">
                     <label class="fg-label" asp-for="GstPercentage">GST Rate (%)</label>
                     <select asp-for="GstPercentage" id="gstSelect" class="fg-control" onchange="calculateSummary()">
-                        <option value="18.0">GST - 18.0% (Standard)</option>
-                        <option value="12.0">GST - 12.0%</option>
-                        <option value="5.0">GST - 5.0%</option>
-                        <option value="0.0">GST - 0.0% (Exempt)</option>
+                        <option value="18.0" selected="@(Model.GstPercentage == 18.0m)">GST - 18.0% (Standard)</option>
+                        <option value="12.0" selected="@(Model.GstPercentage == 12.0m)">GST - 12.0%</option>
+                        <option value="5.0" selected="@(Model.GstPercentage == 5.0m)">GST - 5.0%</option>
+                        <option value="0.0" selected="@(Model.GstPercentage == 0.0m)">GST - 0.0% (Exempt)</option>
                     </select>
                     <span asp-validation-for="GstPercentage" class="fg-error"></span>
                 </div>
@@ -142,13 +143,45 @@
 
                 <hr class="s-divider my-3" />
 
-                <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
                     <span style="font-weight:700;color:var(--text-primary)">Grand Total:</span>
                     <span style="font-size:24px;font-weight:800;color:var(--success)" id="summaryGrandtotal">₹0.00</span>
                 </div>
 
+                <hr class="s-divider my-3" />
+
+                <div class="s-title"><i class="bi bi-wallet2 me-2" style="color:var(--warning)"></i>Payment & Due Info</div>
+
+                <!-- Payment Status -->
+                <div class="fg">
+                    <label class="fg-label" asp-for="PaymentStatus">Payment Status <span class="req">*</span></label>
+                    <select asp-for="PaymentStatus" id="paymentStatusSelect" class="fg-control" onchange="onPaymentStatusChange()">
+                        <option value="Paid" selected>Paid (Full Payment Received)</option>
+                        <option value="Partial">Partial / Credit (Partial Paid)</option>
+                        <option value="Unpaid">Unpaid (Full Due / Credit)</option>
+                        <option value="Draft">Draft Invoice</option>
+                    </select>
+                    <span asp-validation-for="PaymentStatus" class="fg-error"></span>
+                </div>
+
+                <!-- Amount Paid (₹) -->
+                <div class="fg" id="amountPaidGroup">
+                    <label class="fg-label" asp-for="AmountPaid">Amount Paid (₹)</label>
+                    <div class="fg-prefix-wrap">
+                        <span class="fg-prefix">₹</span>
+                        <input asp-for="AmountPaid" id="amountPaidInput" class="fg-control" value="0.00" oninput="calculateSummary()" />
+                    </div>
+                    <span asp-validation-for="AmountPaid" class="fg-error"></span>
+                </div>
+
+                <!-- Remaining / Due Amount (₹) -->
+                <div class="d-flex justify-content-between align-items-center mb-4 p-2 rounded" id="dueAmountBox" style="background:var(--danger-dim);border:1px solid var(--danger-dim)">
+                    <span style="font-weight:600;color:var(--danger);font-size:13px"><i class="bi bi-exclamation-circle me-1"></i>Due Amount:</span>
+                    <span style="font-size:16px;font-weight:700;color:var(--danger)" id="summaryDueAmount">₹0.00</span>
+                </div>
+
                 <button type="submit" class="btn-d btn-primary w-100" style="height:46px;font-size:15px">
-                    <i class="bi bi-credit-card-2-back"></i> Complete Order & Invoice
+                    <i class="bi bi-credit-card-2-back"></i> Complete Order & Issue Invoice
                 </button>
             </div>
         </div>
@@ -252,6 +285,10 @@
             });
         }
 
+        function onPaymentStatusChange() {
+            calculateSummary();
+        }
+
         function calculateSummary() {
             var subTotal = 0;
             $('.line-total').each(function() {
@@ -267,9 +304,38 @@
             var gstAmount = taxableAmount * (gstPercentage / 100);
             var grandTotal = taxableAmount + gstAmount;
 
+            var status = document.getElementById('paymentStatusSelect').value;
+            var paidInput = document.getElementById('amountPaidInput');
+
+            if (status === 'Paid') {
+                paidInput.value = grandTotal.toFixed(2);
+                paidInput.readOnly = true;
+            } else if (status === 'Unpaid' || status === 'Draft') {
+                paidInput.value = '0.00';
+                paidInput.readOnly = true;
+            } else { // Partial
+                paidInput.readOnly = false;
+            }
+
+            var amountPaid = parseFloat(paidInput.value) || 0;
+            if (amountPaid > grandTotal) amountPaid = grandTotal;
+
+            var dueAmount = grandTotal - amountPaid;
+            if (dueAmount < 0) dueAmount = 0;
+
             document.getElementById('summarySubtotal').innerText = '₹' + subTotal.toFixed(2);
             document.getElementById('summaryGst').innerText = '₹' + gstAmount.toFixed(2);
             document.getElementById('summaryGrandtotal').innerText = '₹' + grandTotal.toFixed(2);
+            document.getElementById('summaryDueAmount').innerText = '₹' + dueAmount.toFixed(2);
+
+            const dueBox = document.getElementById('dueAmountBox');
+            if (dueBox) {
+                dueBox.style.display = dueAmount > 0 ? 'flex' : 'none';
+            }
         }
+
+        $(document).ready(function() {
+            calculateSummary();
+        });
     </script>
 }

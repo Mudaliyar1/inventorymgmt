@@ -94,6 +94,31 @@ namespace InventoryManagementSystem.Services
             return await _saleRepository.GetTotalSalesCountAsync();
         }
 
+        public async Task<(IEnumerable<Sale> Items, long TotalCount)> GetFilteredSalesAsync(
+            string? searchTerm,
+            string? customerName,
+            DateTime? startDate,
+            DateTime? endDate,
+            string? cashier,
+            int page,
+            int pageSize)
+        {
+            return await _saleRepository.GetFilteredSalesAsync(searchTerm, customerName, startDate, endDate, cashier, page, pageSize);
+        }
+
+        public async Task<bool> DeleteSaleAsync(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return false;
+            await _saleRepository.DeleteAsync(id);
+            return true;
+        }
+
+        public async Task<long> DeleteSalesAsync(IEnumerable<string> ids)
+        {
+            if (ids == null || !ids.Any()) return 0;
+            return await _saleRepository.DeleteManyAsync(ids);
+        }
+
         public byte[] GenerateInvoicePdf(Sale sale)
         {
             return Document.Create(container =>
@@ -111,7 +136,7 @@ namespace InventoryManagementSystem.Services
                         {
                             col.Item().Text("SMART INVENTORY MANAGEMENT SYSTEM").FontSize(18).Bold().FontColor(Colors.Blue.Darken2);
                             col.Item().Text("SIMS Enterprise Solutions").FontSize(10).Italic().FontColor(Colors.Grey.Darken1);
-                            col.Item().Text("Tax GSTIN: 27AAAAA0000A1Z5").FontSize(9).FontColor(Colors.Grey.Darken2);
+                            col.Item().Text($"Tax GSTIN: {(string.IsNullOrEmpty(sale.CompanyGstin) ? "27AAAAA0000A1Z5" : sale.CompanyGstin)}").FontSize(9).FontColor(Colors.Grey.Darken2);
                         });
 
                         row.ConstantItem(150).Column(col =>
@@ -142,7 +167,8 @@ namespace InventoryManagementSystem.Services
                             row.ConstantItem(200).Column(c =>
                             {
                                 c.Item().Text("Payment Status:").Bold().FontColor(Colors.Grey.Darken3);
-                                c.Item().Text("PAID").FontSize(12).Bold().FontColor(Colors.Green.Darken2);
+                                var statusColor = sale.PaymentStatus == "Paid" ? Colors.Green.Darken2 : (sale.PaymentStatus == "Partial" ? Colors.Orange.Darken2 : Colors.Red.Darken2);
+                                c.Item().Text((sale.PaymentStatus ?? "Paid").ToUpper()).FontSize(12).Bold().FontColor(statusColor);
                                 c.Item().Text($"Cashier: {sale.CreatedBy}");
                             });
                         });
@@ -213,6 +239,15 @@ namespace InventoryManagementSystem.Services
 
                                 summaryTable.Cell().BorderTop(1).BorderColor(Colors.Grey.Lighten1).Padding(5).Text("Grand Total:").AlignRight().Bold();
                                 summaryTable.Cell().BorderTop(1).BorderColor(Colors.Grey.Lighten1).Padding(5).Text($"₹{sale.GrandTotal:F2}").AlignRight().Bold().FontSize(12).FontColor(Colors.Blue.Darken3);
+
+                                summaryTable.Cell().Padding(3).Text("Amount Paid:").AlignRight().FontColor(Colors.Green.Darken2);
+                                summaryTable.Cell().Padding(3).Text($"₹{sale.AmountPaid:F2}").AlignRight().Bold().FontColor(Colors.Green.Darken2);
+
+                                 if (sale.DueAmount > 0)
+                                {
+                                    summaryTable.Cell().Padding(3).Text("Due Amount:").AlignRight().FontColor(Colors.Red.Medium);
+                                    summaryTable.Cell().Padding(3).Text($"₹{sale.DueAmount:F2}").AlignRight().Bold().FontColor(Colors.Red.Medium);
+                                }
                             });
                         });
 

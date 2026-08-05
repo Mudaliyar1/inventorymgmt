@@ -17,6 +17,7 @@
 <body
   data-flash-msg="@TempData["ToastMessage"]"
   data-flash-type="@TempData["ToastType"]"
+  data-perm-version="@((User.Identity?.IsAuthenticated == true) ? (await PermissionService.GetLiveUserStateAsync(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "")).PermissionVersion : 1)"
   style="background:#0F172A">
 
 @if (User.Identity?.IsAuthenticated == true)
@@ -45,82 +46,129 @@
     <!-- Nav scroll area -->
     <div class="sb-scroll">
 
-      <a href="@Url.Action("Index","Home")"
-         class="sb-link @(ctrl=="Home"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Dashboard" data-bs-placement="right">
-        <i class="bi bi-grid-1x2 sb-icon"></i>
-        <span class="sb-text">Dashboard</span>
-      </a>
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Home", "Index"))
+      {
+        <a href="@Url.Action("Index","Home")"
+           class="sb-link @(ctrl=="Home"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="Dashboard" data-bs-placement="right">
+          <i class="bi bi-grid-1x2 sb-icon"></i>
+          <span class="sb-text">Dashboard</span>
+        </a>
+      }
 
       <div class="sb-label">Inventory</div>
 
-      <a href="@Url.Action("Index","Category")"
-         class="sb-link @(ctrl=="Category"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Categories" data-bs-placement="right">
-        <i class="bi bi-tag sb-icon"></i>
-        <span class="sb-text">Categories</span>
-      </a>
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Category", "Index"))
+      {
+        <a href="@Url.Action("Index","Category")"
+           class="sb-link @(ctrl=="Category"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="Categories" data-bs-placement="right">
+          <i class="bi bi-tag sb-icon"></i>
+          <span class="sb-text">Categories</span>
+        </a>
+      }
 
-      <a href="@Url.Action("Index","Product")"
-         class="sb-link @(ctrl=="Product"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Products" data-bs-placement="right">
-        <i class="bi bi-box-seam sb-icon"></i>
-        <span class="sb-text">Products</span>
-      </a>
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Product", "Index"))
+      {
+        <a href="@Url.Action("Index","Product")"
+           class="sb-link @(ctrl=="Product"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="Products" data-bs-placement="right">
+          <i class="bi bi-box-seam sb-icon"></i>
+          <span class="sb-text">Products</span>
+        </a>
+      }
 
-      <a href="@Url.Action("StockIn","Stock")"
-         class="sb-link @(act=="StockIn"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Stock In" data-bs-placement="right">
-        <i class="bi bi-arrow-down-circle sb-icon"></i>
-        <span class="sb-text">Stock In</span>
-      </a>
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Stock", "StockIn"))
+      {
+        <a href="@Url.Action("StockIn","Stock")"
+           class="sb-link @(act=="StockIn"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="Stock In" data-bs-placement="right">
+          <i class="bi bi-arrow-down-circle sb-icon"></i>
+          <span class="sb-text">Stock In</span>
+        </a>
+      }
 
-      <a href="@Url.Action("StockOut","Stock")"
-         class="sb-link @(act=="StockOut"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Stock Out" data-bs-placement="right">
-        <i class="bi bi-arrow-up-circle sb-icon"></i>
-        <span class="sb-text">Stock Out</span>
-      </a>
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Stock", "StockOut"))
+      {
+        <a href="@Url.Action("StockOut","Stock")"
+           class="sb-link @(act=="StockOut"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="Stock Out" data-bs-placement="right">
+          <i class="bi bi-arrow-up-circle sb-icon"></i>
+          <span class="sb-text">Stock Out</span>
+        </a>
+      }
 
-      <a href="@Url.Action("History","Stock")"
-         class="sb-link @(act=="History"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Stock History" data-bs-placement="right">
-        <i class="bi bi-clock-history sb-icon"></i>
-        <span class="sb-text">Stock History</span>
-      </a>
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Stock", "History"))
+      {
+        <a href="@Url.Action("History","Stock")"
+           class="sb-link @(act=="History"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="Stock History" data-bs-placement="right">
+          <i class="bi bi-clock-history sb-icon"></i>
+          <span class="sb-text">Stock History</span>
+        </a>
+      }
+
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Stock", "InventorySummary"))
+      {
+        <a href="@Url.Action("InventorySummary","Stock")"
+           class="sb-link @(act=="InventorySummary"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="Inventory Summary" data-bs-placement="right">
+          <i class="bi bi-boxes sb-icon"></i>
+          <span class="sb-text">Inventory Summary</span>
+        </a>
+      }
 
       <div class="sb-label">Transactions</div>
 
-      <a href="@Url.Action("Create","Sales")"
-         class="sb-link @(ctrl=="Sales"&&act=="Create"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="POS Billing" data-bs-placement="right">
-        <i class="bi bi-receipt-cutoff sb-icon"></i>
-        <span class="sb-text">POS Billing</span>
-      </a>
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Sales", "Create"))
+      {
+        <a href="@Url.Action("Create","Sales")"
+           class="sb-link @(ctrl=="Sales"&&act=="Create"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="POS Billing" data-bs-placement="right">
+          <i class="bi bi-receipt-cutoff sb-icon"></i>
+          <span class="sb-text">POS Billing</span>
+        </a>
+      }
 
-      <a href="@Url.Action("Index","Sales")"
-         class="sb-link @(ctrl=="Sales"&&act=="Index"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Invoice Records" data-bs-placement="right">
-        <i class="bi bi-file-text sb-icon"></i>
-        <span class="sb-text">Invoice Records</span>
-      </a>
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Sales", "Index"))
+      {
+        <a href="@Url.Action("Index","Sales")"
+           class="sb-link @(ctrl=="Sales"&&act=="Index"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="Invoice Records" data-bs-placement="right">
+          <i class="bi bi-file-text sb-icon"></i>
+          <span class="sb-text">Invoice Records</span>
+        </a>
+      }
 
-      <a href="@Url.Action("Index","Report")"
-         class="sb-link @(ctrl=="Report"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Reports" data-bs-placement="right">
-        <i class="bi bi-bar-chart sb-icon"></i>
-        <span class="sb-text">Reports</span>
-      </a>
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Report", "Index"))
+      {
+        <a href="@Url.Action("Index","Report")"
+           class="sb-link @(ctrl=="Report"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="Reports" data-bs-placement="right">
+          <i class="bi bi-bar-chart sb-icon"></i>
+          <span class="sb-text">Reports</span>
+        </a>
+      }
 
       <div class="sb-label">System</div>
 
-      @if (isAdmin)
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Admin", "Index"))
+      {
+        <a href="@Url.Action("Index","Admin")"
+           class="sb-link @(ctrl=="Admin"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="Administrators" data-bs-placement="right">
+          <i class="bi bi-shield-lock sb-icon"></i>
+          <span class="sb-text">Administrators</span>
+        </a>
+      }
+
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "User", "Index"))
       {
         <a href="@Url.Action("Index","User")"
            class="sb-link @(ctrl=="User"?"active":"")"
-           data-bs-toggle="tooltip" data-bs-title="Users" data-bs-placement="right">
+           data-bs-toggle="tooltip" data-bs-title="Employee Management" data-bs-placement="right">
           <i class="bi bi-people sb-icon"></i>
-          <span class="sb-text">Users</span>
+          <span class="sb-text">Employees</span>
         </a>
       }
 
@@ -131,7 +179,7 @@
         <span class="sb-text">My Profile</span>
       </a>
 
-      @if (isAdmin)
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Settings", "Index"))
       {
         <a href="@Url.Action("Index","Settings")"
            class="sb-link @(ctrl=="Settings"?"active":"")"

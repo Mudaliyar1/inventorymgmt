@@ -1,6 +1,8 @@
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Logging;
+using MongoDB.Driver;
 using InventoryManagementSystem.Configuration;
 using InventoryManagementSystem.Data;
 using InventoryManagementSystem.Interfaces;
@@ -8,6 +10,11 @@ using InventoryManagementSystem.Repositories;
 using InventoryManagementSystem.Services;
 using InventoryManagementSystem.Middleware;
 using InventoryManagementSystem.Extensions;
+using System;
+using System.IO;
+using System.Net;
+using System.Net.Sockets;
+using System.Threading.Tasks;
 
 // Load .env automatically (supports root workspace, current directory, and bin output dirs)
 try
@@ -21,7 +28,11 @@ catch (Exception ex)
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure resolution order: .env (EnvVars) -> UserSecrets -> appsettings.Development.json -> appsettings.json
+// Configure Logging Filter to reduce noisy Debug/Information chatter
+builder.Logging.AddFilter("Microsoft.AspNetCore", LogLevel.Warning);
+builder.Logging.AddFilter("Microsoft.Hosting.Lifetime", LogLevel.Information);
+
+// Configure resolution order: Environment Variables -> User Secrets -> appsettings.Development.json -> appsettings.json
 builder.Configuration
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
     .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true);
@@ -99,10 +110,18 @@ builder.Services.Configure<BrevoSettings>(options =>
 
 builder.Services.Configure<AppSettings>(builder.Configuration.GetSection("AppSettings"));
 
-// Add services to the container.
-builder.Services.AddControllersWithViews();
+// Add services to the container
+builder.Services.AddMemoryCache();
+builder.Services.AddControllersWithViews(options =>
+{
+    options.Filters.Add<InventoryManagementSystem.Filters.PermissionAuthorizeFilter>();
+});
 
-// Register database context
+// Register Singleton MongoClient for connection pooling
+builder.Services.AddSingleton<IMongoClient>(sp =>
+{
+    return new MongoClient(mongoSettings.ConnectionString);
+});
 builder.Services.AddSingleton<MongoDbContext>();
 
 // Register HttpContextAccessor
@@ -118,6 +137,8 @@ builder.Services.AddScoped<IStockTransactionRepository, StockTransactionReposito
 builder.Services.AddScoped<ISaleRepository, SaleRepository>();
 
 // Register Services
+builder.Services.AddSingleton<IPermissionDiscoveryService, PermissionDiscoveryService>();
+builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IImageService, CloudinaryImageService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
@@ -149,6 +170,26 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
+// Check Port Availability & Fallback Strategy
+int targetPort = 5094;
+if (!IsPortAvailable(targetPort))
+{
+    Console.ForegroundColor = ConsoleColor.Yellow;
+    Console.WriteLine($"[PORT FALLBACK NOTICE] Port {targetPort} is occupied by another process. Automatically finding fallback port...");
+    Console.ResetColor();
+
+    for (int p = 5095; p <= 5105; p++)
+    {
+        if (IsPortAvailable(p))
+        {
+            targetPort = p;
+            break;
+        }
+    }
+}
+
+builder.WebHost.UseUrls($"http://localhost:{targetPort}");
+
 var app = builder.Build();
 
 // Startup Configuration Validation
@@ -171,13 +212,13 @@ if (string.IsNullOrWhiteSpace(brevoSettings.Host) ||
     string.IsNullOrWhiteSpace(brevoSettings.Password) ||
     string.IsNullOrWhiteSpace(brevoSettings.FromEmail))
 {
-    app.Logger.LogWarning("Brevo SMTP configuration missing.");
+    app.Logger.LogWarning("Brevo SMTP configuration missing (Email notifications disabled).");
 }
 
-// Configure the HTTP request pipeline.
+// Configure the HTTP request pipeline
 app.UseMiddleware<ExceptionMiddleware>();
 
-// Explicitly register static physical file providers for wwwroot in both content root & execution directory
+// Static Files setup
 var wwwrootPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
 if (!Directory.Exists(wwwrootPath))
 {
@@ -192,8 +233,10 @@ if (Directory.Exists(wwwrootPath))
         RequestPath = ""
     });
 }
-
-app.UseStaticFiles();
+else
+{
+    app.UseStaticFiles();
+}
 
 if (!app.Environment.IsDevelopment())
 {
@@ -202,9 +245,7 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseRouting();
-
 app.UseSession();
-
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -212,14 +253,31 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
-// Seed database on startup
+// Initialize MongoDB Indexes & Seed Database on Startup
 try
 {
+    var mongoDbContext = app.Services.GetRequiredService<MongoDbContext>();
+    await mongoDbContext.InitializeIndexesAsync();
     await app.SeedDatabaseAsync();
 }
 catch (Exception ex)
 {
-    app.Logger.LogError("Database seeding failed: {Message}", ex.Message);
+    app.Logger.LogWarning("Database index initialization or seeding notice: {Message}", ex.Message);
 }
 
 app.Run();
+
+// Helper method to check if a TCP port is available for binding
+static bool IsPortAvailable(int port)
+{
+    try
+    {
+        using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        socket.Bind(new IPEndPoint(IPAddress.Loopback, port));
+        return true;
+    }
+    catch
+    {
+        return false;
+    }
+}

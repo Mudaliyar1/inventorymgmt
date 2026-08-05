@@ -1,0 +1,115 @@
+@model IEnumerable<AuditLog>
+@{
+    ViewData["Title"] = "Employee Activity Logs";
+    var user = ViewBag.Employee as User ?? new User();
+    var empId = !string.IsNullOrEmpty(user.EmployeeId) ? user.EmployeeId : $"EMP-{user.Id[..Math.Min(6, user.Id.Length)]}";
+}
+
+<div class="ph">
+    <div>
+        <h1 class="ph-title">Employee Activity Logs: @user.FullName</h1>
+        <p class="ph-sub">Employee ID: <strong>@empId</strong> · Username: <code>@user.Username</code> · Total Logged Actions: <strong>@(Model?.Count() ?? 0)</strong></p>
+    </div>
+    <div class="ph-actions">
+        <a href="@Url.Action("Edit","User",new{id=user.Id})" class="btn-d btn-outline">
+            <i class="bi bi-pencil-square"></i> Permissions
+        </a>
+        <a href="@Url.Action("Index","User")" class="btn-d btn-outline">
+            <i class="bi bi-arrow-left"></i> Employee List
+        </a>
+    </div>
+</div>
+
+<div class="tbl-wrap">
+    <div class="tbl-toolbar">
+        <div class="tbl-search">
+            <i class="bi bi-search tbl-search-icon"></i>
+            <input type="search" data-tbl-search="activity-table" placeholder="Search employee activity logs…">
+        </div>
+        <div class="ms-auto">
+            <span class="tbl-count">@(Model?.Count() ?? 0) records</span>
+        </div>
+    </div>
+
+    <div class="tbl-scroll">
+        <table class="tbl" id="activity-table">
+            <thead>
+                <tr>
+                    <th>Date & Time (IST)</th>
+                    <th>Action Performed</th>
+                    <th>Module</th>
+                    <th>Target / Reference</th>
+                    <th>Previous Data</th>
+                    <th>New Data</th>
+                    <th>IP Address</th>
+                    <th>Browser & Device</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model != null && Model.Any())
+                {
+                    @foreach (var log in Model)
+                    {
+                        <tr>
+                            <td style="color:var(--text-muted);font-size:12px;white-space:nowrap">
+                                <i class="bi bi-clock me-1"></i>@log.Timestamp.ToIstString("MMM d, yyyy HH:mm IST")
+                            </td>
+                            <td>
+                                <span class="badge-d badge-blue"><i class="bi bi-activity me-1"></i>@log.Action</span>
+                                @if (!string.IsNullOrEmpty(log.Details))
+                                {
+                                    <div style="font-size:11px;color:var(--text-muted);margin-top:2px">@log.Details</div>
+                                }
+                            </td>
+                            <td>
+                                <span class="badge-d badge-gray">@(!string.IsNullOrEmpty(log.Module) ? log.Module : "System")</span>
+                            </td>
+                            <td>
+                                <span class="code-pill">@(!string.IsNullOrEmpty(log.Target) ? log.Target : "N/A")</span>
+                            </td>
+                            <td style="font-size:12px;color:var(--text-secondary);max-width:200px">
+                                @if (!string.IsNullOrEmpty(log.PreviousData))
+                                {
+                                    <code>@log.PreviousData</code>
+                                }
+                                else
+                                {
+                                    <span style="color:var(--text-muted)">—</span>
+                                }
+                            </td>
+                            <td style="font-size:12px;color:var(--text-secondary);max-width:200px">
+                                @if (!string.IsNullOrEmpty(log.NewData))
+                                {
+                                    <code style="color:var(--success)">@log.NewData</code>
+                                }
+                                else
+                                {
+                                    <span style="color:var(--text-muted)">—</span>
+                                }
+                            </td>
+                            <td style="font-size:12px;color:var(--text-muted)">
+                                <i class="bi bi-globe me-1"></i>@log.IpAddress
+                            </td>
+                            <td style="font-size:12px">
+                                <div style="font-weight:600;color:var(--text-primary)"><i class="bi bi-laptop me-1"></i>@(!string.IsNullOrEmpty(log.Browser) ? log.Browser : "Web Browser")</div>
+                                <div style="font-size:11px;color:var(--text-muted)">@(!string.IsNullOrEmpty(log.Device) ? log.Device : "Desktop")</div>
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="8">
+                            <div class="empty-s">
+                                <i class="bi bi-clock-history empty-s-icon"></i>
+                                <div class="empty-s-title">No activity logs recorded yet</div>
+                                <div class="empty-s-desc">Actions performed by @user.FullName will be recorded here automatically.</div>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

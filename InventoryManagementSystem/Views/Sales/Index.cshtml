@@ -1,12 +1,21 @@
-@model IEnumerable<Sale>
+@model SalesListViewModel
 @{
     ViewData["Title"] = "Sales Invoices";
+    bool hasActiveFilters = !string.IsNullOrEmpty(Model.SearchTerm) ||
+                            !string.IsNullOrEmpty(Model.CustomerName) ||
+                            Model.StartDate.HasValue ||
+                            Model.EndDate.HasValue ||
+                            !string.IsNullOrEmpty(Model.Cashier);
 }
+
+<form id="anti-forgery-form" style="display:none">
+    @Html.AntiForgeryToken()
+</form>
 
 <div class="ph">
     <div>
         <h1 class="ph-title">Sales Invoices</h1>
-        <p class="ph-sub">Track customer billing records and printable invoices.</p>
+        <p class="ph-sub">Track customer billing records, printable invoices, and audit logs.</p>
     </div>
     <div class="ph-actions">
         <a href="@Url.Action("Create","Sales")" class="btn-d btn-primary">
@@ -15,14 +24,135 @@
     </div>
 </div>
 
-<div class="tbl-wrap">
-    <div class="tbl-toolbar">
-        <div class="tbl-search">
-            <i class="bi bi-search tbl-search-icon"></i>
-            <input type="search" data-tbl-search="invoices-table" placeholder="Search invoices…">
+<!-- Collapsible Detailed Filter Panel (Closed by Default) -->
+<div class="card-d mb-4">
+    <!-- Filter Toggle Header -->
+    <div class="card-p d-flex align-items-center justify-content-between flex-wrap gap-2"
+         onclick="toggleSalesFilterPanel()" style="cursor:pointer;user-select:none">
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge-d badge-blue" style="font-size:14px;padding:6px 10px"><i class="bi bi-funnel-fill"></i></span>
+            <div>
+                <div style="font-size:14px;font-weight:700;color:var(--text-primary);display:flex;align-items:center;gap:6px">
+                    Filter & Search Invoices
+                    @if (hasActiveFilters)
+                    {
+                        <span class="badge-d badge-blue">Active Filters</span>
+                    }
+                </div>
+                <div style="font-size:12px;color:var(--text-muted)">
+                    @(hasActiveFilters ? "Click to modify active invoice filter criteria" : "Click to expand search, customer, cashier & date/time filters")
+                </div>
+            </div>
         </div>
-        <div class="ms-auto">
-            <span class="tbl-count">@(ViewBag.TotalItems ?? Model?.Count() ?? 0) invoices</span>
+
+        <div class="d-flex align-items-center gap-2" onclick="event.stopPropagation()">
+            @if (hasActiveFilters)
+            {
+                <a href="@Url.Action("Index","Sales")" class="btn-d btn-ghost btn-sm-d">
+                    <i class="bi bi-x-circle me-1"></i> Clear Filters
+                </a>
+            }
+            <button type="button" class="btn-d btn-outline btn-sm-d" onclick="toggleSalesFilterPanel()">
+                <i class="bi bi-sliders me-1"></i> <span id="sales-filter-toggle-text">@(hasActiveFilters ? "Hide Filters" : "Show Filters")</span>
+                <i class="bi bi-chevron-@(hasActiveFilters ? "up" : "down") ms-1" id="sales-filter-toggle-chevron"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Collapsible Filter Form Body (Closed by default unless active filters applied) -->
+    <div id="sales-filter-panel-body" class="card-p-lg border-top" style="display:@(hasActiveFilters ? "block" : "none");border-color:var(--border)!important">
+        <form method="get" asp-action="Index" id="sales-filter-form">
+            <div class="row g-3">
+                <!-- Search Term -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="fg mb-0">
+                        <label class="fg-label" style="font-size:12px">Search Keyword</label>
+                        <div class="fg-icon-wrap">
+                            <i class="bi bi-search fg-icon"></i>
+                            <input type="search" name="searchTerm" value="@Model.SearchTerm" class="fg-control" style="height:38px"
+                                   placeholder="Invoice #, Customer name, Phone, Cashier…">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Customer Name / Phone -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="fg mb-0">
+                        <label class="fg-label" style="font-size:12px">Customer Name or Phone</label>
+                        <input type="text" name="customerName" value="@Model.CustomerName" class="fg-control" style="height:38px"
+                               placeholder="Filter by customer name or phone…">
+                    </div>
+                </div>
+
+                <!-- Cashier / User -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="fg mb-0">
+                        <label class="fg-label" style="font-size:12px">Cashier / Billed By</label>
+                        <input type="text" name="cashier" value="@Model.Cashier" class="fg-control" style="height:38px"
+                               placeholder="e.g. admin">
+                    </div>
+                </div>
+
+                <!-- Start Date & Time (IST) -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="fg mb-0">
+                        <label class="fg-label" style="font-size:12px">From Date & Time (IST)</label>
+                        <input type="datetime-local" name="startDate"
+                               value="@(Model.StartDate.HasValue ? Model.StartDate.Value.ToString("yyyy-MM-ddTHH:mm") : "")"
+                               class="fg-control" style="height:38px">
+                    </div>
+                </div>
+
+                <!-- End Date & Time (IST) -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="fg mb-0">
+                        <label class="fg-label" style="font-size:12px">To Date & Time (IST)</label>
+                        <input type="datetime-local" name="endDate"
+                               value="@(Model.EndDate.HasValue ? Model.EndDate.Value.ToString("yyyy-MM-ddTHH:mm") : "")"
+                               class="fg-control" style="height:38px">
+                    </div>
+                </div>
+
+                <!-- Rows Per Page -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="fg mb-0">
+                        <label class="fg-label" style="font-size:12px">Rows Per Page</label>
+                        <select name="pageSize" class="fg-control" style="height:38px">
+                            <option value="15" selected="@(Model.PageSize == 15)">15 Rows</option>
+                            <option value="30" selected="@(Model.PageSize == 30)">30 Rows</option>
+                            <option value="50" selected="@(Model.PageSize == 50)">50 Rows</option>
+                            <option value="100" selected="@(Model.PageSize == 100)">100 Rows</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center justify-content-end gap-2 mt-4 pt-3 border-top" style="border-color:var(--border)!important">
+                <a href="@Url.Action("Index","Sales")" class="btn-d btn-outline btn-sm-d">Reset</a>
+                <button type="submit" class="btn-d btn-primary btn-sm-d">
+                    <i class="bi bi-search me-1"></i> Apply Filters
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Bulk Actions Bar -->
+<div id="sales-bulk-action-bar" style="display:none;align-items:center;justify-content:space-between;background:var(--card-bg);border:1px solid var(--danger-dim);border-radius:var(--radius-md);padding:10px 16px;margin-bottom:16px">
+    <div style="font-size:13px;font-weight:600;color:var(--text-primary)">
+        <i class="bi bi-check2-square text-danger me-2"></i>
+        <span id="sales-selected-count">0</span> invoice records selected
+    </div>
+    <button type="button" class="btn-d btn-danger btn-sm-d" onclick="executeSalesBulkDelete()">
+        <i class="bi bi-trash me-1"></i> Delete Selected Invoices
+    </button>
+</div>
+
+<!-- Invoices Table Card -->
+<div class="card-d">
+    <div class="card-p d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div style="font-size:14px;font-weight:700;color:var(--text-primary)">
+            Invoice Records (<span style="color:var(--primary-text)">@Model.TotalItems</span>)
         </div>
     </div>
 
@@ -30,21 +160,27 @@
         <table class="tbl" id="invoices-table">
             <thead>
                 <tr>
+                    <th style="width:36px;text-align:center">
+                        <input type="checkbox" id="sales-select-all" onclick="toggleSalesSelectAll(this)">
+                    </th>
                     <th>Invoice Number</th>
                     <th>Customer</th>
-                    <th>Billing Date</th>
+                    <th>Billing Date (IST)</th>
                     <th>Items</th>
                     <th>Grand Total</th>
                     <th>Cashier</th>
-                    <th class="col-actions">Actions</th>
+                    <th class="col-actions" style="text-align:right">Actions</th>
                 </tr>
             </thead>
             <tbody>
-                @if (Model != null && Model.Any())
+                @if (Model.Sales != null && Model.Sales.Any())
                 {
-                    @foreach (var sale in Model)
+                    @foreach (var sale in Model.Sales)
                     {
                         <tr>
+                            <td style="text-align:center">
+                                <input type="checkbox" class="sale-row-check" value="@sale.Id" onchange="updateSalesBulkState()">
+                            </td>
                             <td>
                                 <span class="code-pill">@sale.InvoiceNumber</span>
                             </td>
@@ -52,10 +188,14 @@
                                 <div class="td-strong">@sale.CustomerName</div>
                                 <div style="font-size:11px;color:var(--text-muted)">@sale.CustomerPhone</div>
                             </td>
-                            <td style="color:var(--text-muted);font-size:12px">@sale.Date.ToIstString("MMM d, yyyy HH:mm IST")</td>
-                            <td style="color:var(--text-secondary)">@sale.Items.Sum(i => i.Quantity)</td>
+                            <td style="color:var(--text-muted);font-size:12px;white-space:nowrap">
+                                <i class="bi bi-clock me-1"></i>@sale.Date.ToIstString("MMM d, yyyy HH:mm IST")
+                            </td>
+                            <td style="color:var(--text-secondary)">@(sale.Items?.Sum(i => i.Quantity) ?? 0)</td>
                             <td style="font-weight:700;color:var(--success)">₹@sale.GrandTotal.ToString("N2")</td>
-                            <td style="color:var(--text-secondary);font-size:12px">@sale.CreatedBy</td>
+                            <td style="color:var(--text-secondary);font-size:12px">
+                                <i class="bi bi-person me-1"></i>@sale.CreatedBy
+                            </td>
                             <td class="col-actions">
                                 <div class="d-flex align-items-center justify-content-end gap-1">
                                     <a href="@Url.Action("Invoice","Sales",new{id=sale.Id})"
@@ -66,6 +206,16 @@
                                        class="btn-d btn-outline btn-sm-d" title="Download PDF">
                                         <i class="bi bi-file-pdf"></i> PDF
                                     </a>
+                                    @if (User.IsInRole("Admin") || PermissionService.HasPermission(User, "Sales", "Delete"))
+                                    {
+                                        <form asp-action="Delete" method="post" style="display:inline" onsubmit="return confirm('Are you sure you want to delete invoice @sale.InvoiceNumber?')">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@sale.Id" />
+                                            <button type="submit" class="btn-d btn-icon btn-danger-dim btn-sm" title="Delete Invoice">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    }
                                 </div>
                             </td>
                         </tr>
@@ -74,14 +224,27 @@
                 else
                 {
                     <tr>
-                        <td colspan="7">
+                        <td colspan="8">
                             <div class="empty-s">
                                 <i class="bi bi-receipt empty-s-icon"></i>
                                 <div class="empty-s-title">No sales records found</div>
-                                <div class="empty-s-desc">Start creating invoices with the POS checkout terminal.</div>
-                                <a href="@Url.Action("Create","Sales")" class="btn-d btn-primary btn-sm-d">
-                                    <i class="bi bi-cart-plus"></i> New POS Invoice
-                                </a>
+                                <div class="empty-s-desc">
+                                    @(hasActiveFilters ? "No invoice records match your current search and filter criteria. Try resetting filters." : "Start creating invoices with the POS checkout terminal.")
+                                </div>
+                                @if (hasActiveFilters)
+                                {
+                                    <div class="mt-3">
+                                        <a href="@Url.Action("Index","Sales")" class="btn-d btn-ghost btn-sm-d">
+                                            <i class="bi bi-x-circle me-1"></i> Clear Filters
+                                        </a>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <a href="@Url.Action("Create","Sales")" class="btn-d btn-primary btn-sm-d mt-3">
+                                        <i class="bi bi-cart-plus"></i> New POS Invoice
+                                    </a>
+                                }
                             </div>
                         </td>
                     </tr>
@@ -90,27 +253,123 @@
         </table>
     </div>
 
-    @if (ViewBag.TotalPages > 1)
+    <!-- Server-Side Pagination Controls -->
+    @if (Model.TotalPages > 1)
     {
         <div class="d-flex align-items-center justify-content-between px-4 py-3 border-top" style="border-color:var(--border)!important">
             <span style="font-size:12px;color:var(--text-muted)">
-                Page @ViewBag.CurrentPage of @ViewBag.TotalPages · @ViewBag.TotalItems records
+                Showing Page <strong>@Model.CurrentPage</strong> of <strong>@Model.TotalPages</strong> · <strong>@Model.TotalItems</strong> total invoices
             </span>
             <div class="pagi">
-                <a href="@Url.Action("Index","Sales",new{page=ViewBag.CurrentPage-1})"
-                   class="pg-btn @(ViewBag.CurrentPage<=1?"disabled":"")">
+                <a href="@Url.Action("Index", "Sales", new {
+                    searchTerm = Model.SearchTerm,
+                    customerName = Model.CustomerName,
+                    startDate = Model.StartDate?.ToString("yyyy-MM-ddTHH:mm"),
+                    endDate = Model.EndDate?.ToString("yyyy-MM-ddTHH:mm"),
+                    cashier = Model.Cashier,
+                    pageSize = Model.PageSize,
+                    page = Model.CurrentPage - 1
+                })" class="pg-btn @(Model.CurrentPage <= 1 ? "disabled" : "")">
                     <i class="bi bi-chevron-left"></i>
                 </a>
-                @for (int p = 1; p <= ViewBag.TotalPages; p++)
+
+                @for (int p = Math.Max(1, Model.CurrentPage - 2); p <= Math.Min(Model.TotalPages, Model.CurrentPage + 2); p++)
                 {
-                    <a href="@Url.Action("Index","Sales",new{page=p})"
-                       class="pg-btn @(p==ViewBag.CurrentPage?"active":"")">@p</a>
+                    <a href="@Url.Action("Index", "Sales", new {
+                        searchTerm = Model.SearchTerm,
+                        customerName = Model.CustomerName,
+                        startDate = Model.StartDate?.ToString("yyyy-MM-ddTHH:mm"),
+                        endDate = Model.EndDate?.ToString("yyyy-MM-ddTHH:mm"),
+                        cashier = Model.Cashier,
+                        pageSize = Model.PageSize,
+                        page = p
+                    })" class="pg-btn @(p == Model.CurrentPage ? "active" : "")">@p</a>
                 }
-                <a href="@Url.Action("Index","Sales",new{page=ViewBag.CurrentPage+1})"
-                   class="pg-btn @(ViewBag.CurrentPage>=ViewBag.TotalPages?"disabled":"")">
+
+                <a href="@Url.Action("Index", "Sales", new {
+                    searchTerm = Model.SearchTerm,
+                    customerName = Model.CustomerName,
+                    startDate = Model.StartDate?.ToString("yyyy-MM-ddTHH:mm"),
+                    endDate = Model.EndDate?.ToString("yyyy-MM-ddTHH:mm"),
+                    cashier = Model.Cashier,
+                    pageSize = Model.PageSize,
+                    page = Model.CurrentPage + 1
+                })" class="pg-btn @(Model.CurrentPage >= Model.TotalPages ? "disabled" : "")">
                     <i class="bi bi-chevron-right"></i>
                 </a>
             </div>
         </div>
     }
 </div>
+
+@section Scripts {
+<partial name="_ValidationScriptsPartial" />
+<script>
+function toggleSalesFilterPanel() {
+    const panel = document.getElementById('sales-filter-panel-body');
+    const text = document.getElementById('sales-filter-toggle-text');
+    const chevron = document.getElementById('sales-filter-toggle-chevron');
+    if (!panel) return;
+
+    if (panel.style.display === 'none' || getComputedStyle(panel).display === 'none') {
+        panel.style.display = 'block';
+        if (text) text.textContent = 'Hide Filters';
+        if (chevron) { chevron.className = 'bi bi-chevron-up ms-1'; }
+    } else {
+        panel.style.display = 'none';
+        if (text) text.textContent = 'Show Filters';
+        if (chevron) { chevron.className = 'bi bi-chevron-down ms-1'; }
+    }
+}
+
+function toggleSalesSelectAll(master) {
+    const checkboxes = document.querySelectorAll('.sale-row-check');
+    checkboxes.forEach(c => c.checked = master.checked);
+    updateSalesBulkState();
+}
+
+function updateSalesBulkState() {
+    const checkboxes = Array.from(document.querySelectorAll('.sale-row-check'));
+    const selected = checkboxes.filter(c => c.checked);
+    const bar = document.getElementById('sales-bulk-action-bar');
+    const countEl = document.getElementById('sales-selected-count');
+    const selectAll = document.getElementById('sales-select-all');
+
+    if (countEl) countEl.textContent = selected.length;
+    if (bar) bar.style.display = selected.length > 0 ? 'flex' : 'none';
+    if (selectAll) selectAll.checked = checkboxes.length > 0 && selected.length === checkboxes.length;
+}
+
+async function executeSalesBulkDelete() {
+    const selected = Array.from(document.querySelectorAll('.sale-row-check:checked')).map(c => c.value);
+    if (selected.length === 0) return;
+
+    if (!confirm(`Are you sure you want to delete ${selected.length} selected sales invoices? This action cannot be undone.`)) {
+        return;
+    }
+
+    try {
+        const tokenInput = document.querySelector('#anti-forgery-form input[name="__RequestVerificationToken"]');
+        const token = tokenInput ? tokenInput.value : '';
+
+        const response = await fetch('/Sales/BulkDelete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': token
+            },
+            body: JSON.stringify(selected)
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert(data.message || 'Failed to delete selected invoices.');
+        }
+    } catch (err) {
+        alert('An error occurred while deleting invoice records.');
+    }
+}
+</script>
+}

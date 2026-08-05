@@ -1,0 +1,79 @@
+@model User
+@{
+    ViewData["Title"] = "Edit Administrator";
+}
+
+<div class="ph">
+    <div>
+        <h1 class="ph-title">Edit Administrator: @Model.FullName</h1>
+        <p class="ph-sub">Admin ID: <strong>@(!string.IsNullOrEmpty(Model.EmployeeId) ? Model.EmployeeId : $"ADM-{Model.Id[..Math.Min(6, Model.Id.Length)]}")</strong> · Username: <code>@Model.Username</code></p>
+    </div>
+    <div class="ph-actions">
+        <a href="@Url.Action("Activity","Admin",new{id=Model.Id})" class="btn-d btn-outline">
+            <i class="bi bi-clock-history"></i> Activity Logs
+        </a>
+        <a href="@Url.Action("ResetPassword","Admin",new{id=Model.Id})" class="btn-d btn-outline">
+            <i class="bi bi-key"></i> Reset Password
+        </a>
+        <a href="@Url.Action("Index","Admin")" class="btn-d btn-outline">
+            <i class="bi bi-arrow-left"></i> Administrator List
+        </a>
+    </div>
+</div>
+
+<form asp-action="Edit" method="post">
+    <input type="hidden" asp-for="Id" />
+    <input type="hidden" asp-for="Username" />
+    <input type="hidden" asp-for="Role" />
+
+    <div asp-validation-summary="ModelOnly" class="alert-d alert-danger mb-4"></div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-7">
+            <div class="card-d card-p-lg">
+                <div class="s-title"><i class="bi bi-pencil-square me-2" style="color:var(--primary)"></i>Edit Profile Details</div>
+
+                <div class="fg">
+                    <label class="fg-label" asp-for="EmployeeId">Admin ID <span class="req">*</span></label>
+                    <input asp-for="EmployeeId" class="fg-control" required />
+                    <span asp-validation-for="EmployeeId" class="fg-error"></span>
+                </div>
+
+                <div class="fg">
+                    <label class="fg-label">Username</label>
+                    <input type="text" value="@Model.Username" class="fg-control" disabled readonly />
+                </div>
+
+                <div class="fg">
+                    <label class="fg-label" asp-for="FullName">Full Name <span class="req">*</span></label>
+                    <input asp-for="FullName" class="fg-control" required />
+                    <span asp-validation-for="FullName" class="fg-error"></span>
+                </div>
+
+                <div class="fg">
+                    <label class="fg-label" asp-for="Email">Email Address <span class="req">*</span></label>
+                    <input asp-for="Email" type="email" class="fg-control" required />
+                    <span asp-validation-for="Email" class="fg-error"></span>
+                </div>
+
+                <div class="fg mb-4">
+                    <label class="fg-label" asp-for="PhoneNumber">Contact Phone</label>
+                    <input asp-for="PhoneNumber" class="fg-control" />
+                    <span asp-validation-for="PhoneNumber" class="fg-error"></span>
+                </div>
+
+                <hr class="s-divider" />
+                <div class="d-flex align-items-center justify-content-end gap-2">
+                    <a href="@Url.Action("Index","Admin")" class="btn-d btn-outline">Cancel</a>
+                    <button type="submit" class="btn-d btn-primary">
+                        <i class="bi bi-check2-circle"></i> Save Administrator Profile
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -4,6 +4,7 @@ using InventoryManagementSystem.Interfaces;
 using InventoryManagementSystem.Models;
 using InventoryManagementSystem.ViewModels;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -34,72 +35,71 @@ namespace InventoryManagementSystem.Controllers
 
         public async Task<IActionResult> Index()
         {
-            // Fetch live data from MongoDB
-            var categories = await _categoryRepository.GetAllAsync();
-            var products = (await _productRepository.GetAllAsync()).ToList();
-            var sales = (await _saleRepository.GetAllAsync()).ToList();
-
-            // Category and Product Metrics
-            int totalCategories = categories.Count();
-            int totalProducts = products.Count();
-            int currentStock = products.Sum(p => p.CurrentStock);
-            int lowStockCount = products.Count(p => p.Status == "Active" && p.CurrentStock <= p.MinimumStock);
-            int outOfStockCount = products.Count(p => p.Status == "Active" && p.CurrentStock == 0);
-
-            // Time windows
-            var todayUtc = DateTime.UtcNow.Date;
-            var firstOfMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
-
-            // Sales and Revenue calculations
-            decimal todaysSales = sales.Where(s => s.Date >= todayUtc).Sum(s => s.GrandTotal);
-            decimal monthlySales = sales.Where(s => s.Date >= firstOfMonth).Sum(s => s.GrandTotal);
-            decimal totalRevenue = monthlySales; // Revenue is defined as Monthly Sales on dashboard card
-
-            // Profit Calculation
-            decimal monthlyProfit = 0;
-            var monthlySalesList = sales.Where(s => s.Date >= firstOfMonth);
-            foreach (var sale in monthlySalesList)
+            try
             {
-                foreach (var item in sale.Items)
+                var todayUtc = DateTime.UtcNow.Date;
+                var firstOfMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
+
+                // Run all independent queries in parallel using Task.WhenAll
+                var categoryCountTask = _categoryRepository.CountAsync();
+                var stockMetricsTask = _productRepository.GetStockMetricsAsync();
+                var salesMetricsTask = _saleRepository.GetDashboardSalesMetricsAsync(todayUtc, firstOfMonth, new Dictionary<string, decimal>());
+                var recentLogsTask = _auditLogService.GetRecentActivityAsync(6);
+                var notificationsTask = _notificationRepository.GetUnreadNotificationsAsync();
+
+                await Task.WhenAll(
+                    categoryCountTask,
+                    stockMetricsTask,
+                    salesMetricsTask,
+                    recentLogsTask,
+                    notificationsTask
+                );
+
+                var totalCategories = (int)await categoryCountTask;
+                var stockMetrics = await stockMetricsTask;
+                var salesMetrics = await salesMetricsTask;
+                var recentLogs = (await recentLogsTask) ?? new List<AuditLog>();
+                var unreadNotifications = (await notificationsTask) ?? new List<Notification>();
+
+                var viewModel = new DashboardViewModel
                 {
-                    var product = products.FirstOrDefault(p => p.Id == item.ProductId);
-                    if (product != null)
-                    {
-                        monthlyProfit += (item.SellingPrice - product.PurchasePrice) * item.Quantity;
-                    }
-                    else
-                    {
-                        // Fallback estimate of 20% margin if product is deleted
-                        monthlyProfit += (item.SellingPrice * 0.20m) * item.Quantity;
-                    }
-                }
+                    TotalCategories = totalCategories,
+                    TotalProducts = stockMetrics.TotalProducts,
+                    CurrentStock = stockMetrics.CurrentStockSum,
+                    TodaysSales = salesMetrics.TodaysSales,
+                    MonthlySales = salesMetrics.MonthlySales,
+                    Revenue = salesMetrics.MonthlySales,
+                    Profit = salesMetrics.MonthlyProfit,
+                    LowStockCount = stockMetrics.LowStockCount,
+                    OutOfStockCount = stockMetrics.OutOfStockCount,
+                    RecentActivities = recentLogs,
+                    UnreadNotifications = unreadNotifications
+                };
+
+                return View(viewModel);
             }
-
-            var recentLogs = await _auditLogService.GetRecentActivityAsync(6);
-            var unreadNotifications = await _notificationRepository.GetUnreadNotificationsAsync();
-
-            var viewModel = new DashboardViewModel
+            catch (Exception)
             {
-                TotalCategories = totalCategories,
-                TotalProducts = totalProducts,
-                CurrentStock = currentStock,
-                TodaysSales = todaysSales,
-                MonthlySales = monthlySales,
-                Revenue = totalRevenue,
-                Profit = monthlyProfit,
-                LowStockCount = lowStockCount,
-                OutOfStockCount = outOfStockCount,
-                RecentActivities = recentLogs,
-                UnreadNotifications = unreadNotifications
-            };
-
-            return View(viewModel);
+                var fallbackModel = new DashboardViewModel
+                {
+                    RecentActivities = new List<AuditLog>(),
+                    UnreadNotifications = new List<Notification>()
+                };
+                return View(fallbackModel);
+            }
         }
 
         [AllowAnonymous]
-        public IActionResult Error()
+        public IActionResult Error(string? message)
         {
-            return View();
+            var requestId = System.Diagnostics.Activity.Current?.Id ?? HttpContext.TraceIdentifier;
+            var model = new ErrorViewModel
+            {
+                RequestId = requestId,
+                ExceptionMessage = message
+            };
+
+            return View("~/Views/Shared/Error.cshtml", model);
         }
     }
 }

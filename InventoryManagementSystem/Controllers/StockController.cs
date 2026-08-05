@@ -18,17 +18,20 @@ namespace InventoryManagementSystem.Controllers
         private readonly IProductService _productService;
         private readonly ICategoryService _categoryService;
         private readonly IAuditLogService _auditLogService;
+        private readonly ISaleRepository _saleRepository;
 
         public StockController(
             IStockService stockService,
             IProductService productService,
             ICategoryService categoryService,
-            IAuditLogService auditLogService)
+            IAuditLogService auditLogService,
+            ISaleRepository saleRepository)
         {
             _stockService = stockService;
             _productService = productService;
             _categoryService = categoryService;
             _auditLogService = auditLogService;
+            _saleRepository = saleRepository;
         }
 
         [HttpGet]
@@ -164,11 +167,16 @@ namespace InventoryManagementSystem.Controllers
             if (pageSize < 5) pageSize = 15;
             if (page < 1) page = 1;
 
-            var (transactions, totalItems) = await _stockService.GetFilteredHistoryAsync(
+            var historyTask = _stockService.GetFilteredHistoryAsync(
                 searchTerm, type, categoryId, productId, startDate, endDate, executedBy, page, pageSize);
+            var productsTask = _productService.GetAllProductsAsync();
+            var categoriesTask = _categoryService.GetAllCategoriesAsync();
 
-            var products = await _productService.GetAllProductsAsync();
-            var categories = await _categoryService.GetAllCategoriesAsync();
+            await Task.WhenAll(historyTask, productsTask, categoriesTask);
+
+            var (transactions, totalItems) = await historyTask;
+            var products = await productsTask;
+            var categories = await categoriesTask;
 
             var categoryDict = categories.ToDictionary(c => c.Id, c => c.Name);
             var productCategories = products.ToDictionary(
@@ -257,6 +265,206 @@ namespace InventoryManagementSystem.Controllers
                 Value = p.Id,
                 Text = $"{p.Name} (SKU: {p.Code} - Qty: {p.CurrentStock})"
             }).ToList();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return BadRequest();
+
+            var success = await _stockService.DeleteTransactionAsync(id);
+            if (success)
+            {
+                await _auditLogService.LogActivityAsync("Transaction Deleted", User.Identity?.Name ?? "System", $"ID: {id}", "Single transaction record deleted");
+                TempData["ToastMessage"] = "Stock transaction entry deleted successfully!";
+                TempData["ToastType"] = "success";
+            }
+            else
+            {
+                TempData["ToastMessage"] = "Failed to delete transaction entry.";
+                TempData["ToastType"] = "danger";
+            }
+            return RedirectToAction(nameof(History));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> BulkDelete([FromBody] List<string> ids)
+        {
+            if (ids == null || !ids.Any())
+            {
+                return Json(new { success = false, message = "No transaction entries selected for deletion." });
+            }
+
+            var deletedCount = await _stockService.DeleteTransactionsAsync(ids);
+            if (deletedCount > 0)
+            {
+                await _auditLogService.LogActivityAsync("Bulk Transactions Deleted", User.Identity?.Name ?? "System", $"{deletedCount} entries", $"Deleted {deletedCount} stock history records");
+                return Json(new { success = true, count = deletedCount, message = $"{deletedCount} transaction entries deleted successfully!" });
+            }
+
+            return Json(new { success = false, message = "No records were deleted." });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> InventorySummary(
+            string? searchTerm,
+            string? categoryId,
+            string? stockStatus,
+            string? sortBy = "stock_desc",
+            int page = 1,
+            int pageSize = 15)
+        {
+            if (pageSize < 5) pageSize = 15;
+            if (page < 1) page = 1;
+
+            var products = (await _productService.GetAllProductsAsync()).ToList();
+            var categories = (await _categoryService.GetAllCategoriesAsync()).ToList();
+            var sales = (await _saleRepository.GetAllAsync()).ToList();
+
+            var categoryDict = categories.ToDictionary(c => c.Id, c => c.Name);
+
+            // Calculate total units sold and revenue per product
+            var productSalesMap = new Dictionary<string, (int SoldCount, decimal TotalRevenue)>();
+            foreach (var sale in sales)
+            {
+                if (sale?.Items == null) continue;
+                foreach (var item in sale.Items)
+                {
+                    if (item == null || string.IsNullOrEmpty(item.ProductId)) continue;
+                    if (!productSalesMap.ContainsKey(item.ProductId))
+                    {
+                        productSalesMap[item.ProductId] = (0, 0m);
+                    }
+                    var current = productSalesMap[item.ProductId];
+                    productSalesMap[item.ProductId] = (current.SoldCount + item.Quantity, current.TotalRevenue + item.Total);
+                }
+            }
+
+            // High-level overall metrics across all products
+            int totalProducts = products.Count;
+            int totalCategories = categories.Count;
+            int totalStockQty = products.Sum(p => p.CurrentStock);
+            decimal totalCostVal = products.Sum(p => p.CurrentStock * p.PurchasePrice);
+            decimal totalRetailVal = products.Sum(p => p.CurrentStock * p.SellingPrice);
+
+            int healthyCount = products.Count(p => p.Status == "Active" && p.CurrentStock > p.MinimumStock);
+            int lowStockCount = products.Count(p => p.Status == "Active" && p.CurrentStock > 0 && p.CurrentStock <= p.MinimumStock);
+            int outOfStockCount = products.Count(p => p.Status == "Active" && p.CurrentStock == 0);
+
+            // Transform into DTO items
+            var allItems = products.Select(p =>
+            {
+                var catName = !string.IsNullOrEmpty(p.CategoryId) && categoryDict.TryGetValue(p.CategoryId, out var cName) ? cName : "General";
+                var status = p.CurrentStock == 0 ? "Out of Stock" : (p.CurrentStock <= p.MinimumStock ? "Low Stock" : "Healthy");
+                var (sold, rev) = productSalesMap.TryGetValue(p.Id, out var salesTuple) ? salesTuple : (0, 0m);
+
+                return new InventoryItemSummaryViewModel
+                {
+                    ProductId = p.Id,
+                    ProductName = p.Name,
+                    ProductCode = p.Code,
+                    Barcode = p.Barcode,
+                    CategoryName = catName,
+                    ImageUrl = p.ImageUrl,
+                    PurchasePrice = p.PurchasePrice,
+                    SellingPrice = p.SellingPrice,
+                    CurrentStock = p.CurrentStock,
+                    MinimumStock = p.MinimumStock,
+                    StockStatus = status,
+                    TotalUnitsSold = sold,
+                    TotalSalesRevenue = rev
+                };
+            }).AsQueryable();
+
+            // Apply Filters
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var term = searchTerm.Trim().ToLower();
+                allItems = allItems.Where(i =>
+                    (!string.IsNullOrEmpty(i.ProductName) && i.ProductName.ToLower().Contains(term)) ||
+                    (!string.IsNullOrEmpty(i.ProductCode) && i.ProductCode.ToLower().Contains(term)) ||
+                    (!string.IsNullOrEmpty(i.Barcode) && i.Barcode.ToLower().Contains(term))
+                );
+            }
+
+            if (!string.IsNullOrWhiteSpace(categoryId))
+            {
+                var catName = categoryDict.TryGetValue(categoryId, out var cn) ? cn : "";
+                if (!string.IsNullOrEmpty(catName))
+                {
+                    allItems = allItems.Where(i => i.CategoryName == catName);
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(stockStatus))
+            {
+                allItems = allItems.Where(i => i.StockStatus.Equals(stockStatus, StringComparison.OrdinalIgnoreCase));
+            }
+
+            // Apply Sorting
+            allItems = sortBy switch
+            {
+                "stock_asc" => allItems.OrderBy(i => i.CurrentStock),
+                "val_desc" => allItems.OrderByDescending(i => i.CostValuation),
+                "val_asc" => allItems.OrderBy(i => i.CostValuation),
+                "sold_desc" => allItems.OrderByDescending(i => i.TotalUnitsSold),
+                "name_asc" => allItems.OrderBy(i => i.ProductName),
+                _ => allItems.OrderByDescending(i => i.CurrentStock)
+            };
+
+            var totalFilteredItems = allItems.Count();
+            var pagedItems = allItems.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+            int calcPages = (int)((totalFilteredItems + pageSize - 1) / pageSize);
+            int totalPages = calcPages < 1 ? 1 : calcPages;
+
+            var viewModel = new InventorySummaryViewModel
+            {
+                TotalProducts = totalProducts,
+                TotalCategories = totalCategories,
+                TotalStockQuantity = totalStockQty,
+                TotalCostValuation = totalCostVal,
+                TotalRetailValuation = totalRetailVal,
+                HealthyCount = healthyCount,
+                LowStockCount = lowStockCount,
+                OutOfStockCount = outOfStockCount,
+
+                SearchTerm = searchTerm,
+                CategoryId = categoryId,
+                StockStatus = stockStatus,
+                SortBy = sortBy,
+
+                Categories = categories.Select(c => new SelectListItem
+                {
+                    Value = c.Id,
+                    Text = c.Name,
+                    Selected = c.Id == categoryId
+                }),
+                StockStatuses = new List<SelectListItem>
+                {
+                    new SelectListItem { Value = "", Text = "All Stock Statuses" },
+                    new SelectListItem { Value = "Healthy", Text = "Healthy Stock", Selected = stockStatus == "Healthy" },
+                    new SelectListItem { Value = "Low Stock", Text = "Low Stock Alert", Selected = stockStatus == "Low Stock" },
+                    new SelectListItem { Value = "Out of Stock", Text = "Out of Stock", Selected = stockStatus == "Out of Stock" }
+                },
+                SortOptions = new List<SelectListItem>
+                {
+                    new SelectListItem { Value = "stock_desc", Text = "Stock: High to Low", Selected = sortBy == "stock_desc" },
+                    new SelectListItem { Value = "stock_asc", Text = "Stock: Low to High", Selected = sortBy == "stock_asc" },
+                    new SelectListItem { Value = "val_desc", Text = "Value: High to Low", Selected = sortBy == "val_desc" },
+                    new SelectListItem { Value = "val_asc", Text = "Value: Low to High", Selected = sortBy == "val_asc" },
+                    new SelectListItem { Value = "sold_desc", Text = "Sales: Most Sold", Selected = sortBy == "sold_desc" },
+                    new SelectListItem { Value = "name_asc", Text = "Name: A to Z", Selected = sortBy == "name_asc" }
+                },
+
+                Items = pagedItems,
+                CurrentPage = page,
+                PageSize = pageSize,
+                TotalItems = totalFilteredItems,
+                TotalPages = totalPages
+            };
+
+            return View(viewModel);
         }
     }
 }

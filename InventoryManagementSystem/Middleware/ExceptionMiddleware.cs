@@ -52,7 +52,8 @@ namespace InventoryManagementSystem.Middleware
             }
             else
             {
-                context.Response.Redirect("/Home/Error");
+                var encodedMsg = Uri.EscapeDataString(exception.Message);
+                context.Response.Redirect($"/Home/Error?message={encodedMsg}");
             }
         }
     }

@@ -1,0 +1,85 @@
+@model User
+@{
+    ViewData["Title"] = "Add Administrator";
+}
+
+<div class="ph">
+    <div>
+        <h1 class="ph-title">Add Super Administrator</h1>
+        <p class="ph-sub">Register a new Super Administrator with full unrestricted system privileges.</p>
+    </div>
+    <div class="ph-actions">
+        <a href="@Url.Action("Index","Admin")" class="btn-d btn-outline">
+            <i class="bi bi-arrow-left"></i> Administrator List
+        </a>
+    </div>
+</div>
+
+<form asp-action="Create" method="post">
+    <div asp-validation-summary="ModelOnly" class="alert-d alert-danger mb-4"></div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-7">
+            <div class="card-d card-p-lg">
+                <div class="s-title"><i class="bi bi-shield-lock me-2" style="color:var(--primary)"></i>Administrator Details</div>
+
+                <div class="fg">
+                    <label class="fg-label" asp-for="EmployeeId">Admin ID <span class="req">*</span></label>
+                    <input asp-for="EmployeeId" class="fg-control" readonly />
+                    <span asp-validation-for="EmployeeId" class="fg-error"></span>
+                </div>
+
+                <div class="fg">
+                    <label class="fg-label" asp-for="FullName">Full Name <span class="req">*</span></label>
+                    <input asp-for="FullName" class="fg-control" placeholder="e.g. Rajesh Kumar" required />
+                    <span asp-validation-for="FullName" class="fg-error"></span>
+                </div>
+
+                <div class="fg">
+                    <label class="fg-label" asp-for="Username">Username <span class="req">*</span></label>
+                    <input asp-for="Username" class="fg-control" placeholder="e.g. rajesh_admin" required />
+                    <span asp-validation-for="Username" class="fg-error"></span>
+                </div>
+
+                <div class="fg">
+                    <label class="fg-label" asp-for="Email">Email Address <span class="req">*</span></label>
+                    <input asp-for="Email" type="email" class="fg-control" placeholder="e.g. rajesh@sims.com" required />
+                    <span asp-validation-for="Email" class="fg-error"></span>
+                </div>
+
+                <div class="fg">
+                    <label class="fg-label" asp-for="PhoneNumber">Contact Phone</label>
+                    <input asp-for="PhoneNumber" class="fg-control" placeholder="e.g. +91 98765 43210" />
+                    <span asp-validation-for="PhoneNumber" class="fg-error"></span>
+                </div>
+
+                <div class="fg mb-4">
+                    <label class="fg-label">Login Password <span class="req">*</span></label>
+                    <input type="password" name="rawPassword" class="fg-control" placeholder="Minimum 6 characters" required />
+                </div>
+
+                <div class="p-3 rounded mb-4" style="background:var(--bg);border:1px solid var(--border)">
+                    <div class="d-flex align-items-center gap-3">
+                        <i class="bi bi-shield-check fs-3" style="color:var(--primary)"></i>
+                        <div>
+                            <div style="font-weight:700;color:var(--text-primary)">Super Administrator Access</div>
+                            <div style="font-size:12px;color:var(--text-muted)">Super Administrators automatically possess complete, uninhibited access to all modules, settings, and employee permissions.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="s-divider" />
+                <div class="d-flex align-items-center justify-content-end gap-2">
+                    <a href="@Url.Action("Index","Admin")" class="btn-d btn-outline">Cancel</a>
+                    <button type="submit" class="btn-d btn-primary">
+                        <i class="bi bi-check2-circle"></i> Save Administrator Account
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

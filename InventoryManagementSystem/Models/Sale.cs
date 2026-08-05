@@ -41,6 +41,18 @@ namespace InventoryManagementSystem.Models
         [BsonElement("CreatedBy")]
         public string CreatedBy { get; set; } = string.Empty; // Username
 
+        [BsonElement("PaymentStatus")]
+        public string PaymentStatus { get; set; } = "Paid"; // Paid, Unpaid, Partial, Draft
+
+        [BsonElement("AmountPaid")]
+        public decimal AmountPaid { get; set; }
+
+        [BsonElement("DueAmount")]
+        public decimal DueAmount { get; set; }
+
+        [BsonElement("CompanyGstin")]
+        public string CompanyGstin { get; set; } = "27AAAAA0000A1Z5";
+
         [BsonElement("Items")]
         public List<SaleItem> Items { get; set; } = new List<SaleItem>();
     }

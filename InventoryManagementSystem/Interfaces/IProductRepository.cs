@@ -10,5 +10,6 @@ namespace InventoryManagementSystem.Interfaces
         Task<Product?> GetByBarcodeAsync(string barcode);
         Task<IEnumerable<Product>> GetPagedProductsAsync(string? search, string? categoryId, string? sortBy, bool isDescending, int page, int pageSize);
         Task<long> GetFilteredCountAsync(string? search, string? categoryId);
+        Task<(int TotalProducts, int CurrentStockSum, int LowStockCount, int OutOfStockCount)> GetStockMetricsAsync();
     }
 }

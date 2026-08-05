@@ -38,7 +38,8 @@ namespace InventoryManagementSystem.Controllers
                     Address = "123 Business Hub, Mumbai, India",
                     CurrencySymbol = "₹",
                     GstRate = 18.0m,
-                    LowStockThreshold = 5
+                    LowStockThreshold = 5,
+                    GstinNumber = "27AAAAA0000A1Z5"
                 };
                 await _settingsCollection.InsertOneAsync(settings);
             }
@@ -62,7 +63,8 @@ namespace InventoryManagementSystem.Controllers
                 .Set(s => s.Address, model.Address)
                 .Set(s => s.CurrencySymbol, model.CurrencySymbol)
                 .Set(s => s.GstRate, model.GstRate)
-                .Set(s => s.LowStockThreshold, model.LowStockThreshold);
+                .Set(s => s.LowStockThreshold, model.LowStockThreshold)
+                .Set(s => s.GstinNumber, model.GstinNumber);
 
             await _settingsCollection.UpdateOneAsync(filter, update);
             await _auditLogService.LogActivityAsync("Settings Updated", User.Identity?.Name ?? "Admin", "System Config", "Updated global system configurations.");

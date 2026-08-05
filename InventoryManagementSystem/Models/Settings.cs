@@ -48,5 +48,8 @@ namespace InventoryManagementSystem.Models
 
         [BsonElement("LowStockThreshold")]
         public int LowStockThreshold { get; set; } = 5;
+
+        [BsonElement("GstinNumber")]
+        public string GstinNumber { get; set; } = "27AAAAA0000A1Z5";
     }
 }

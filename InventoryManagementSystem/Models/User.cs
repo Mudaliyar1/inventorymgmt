@@ -1,6 +1,7 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using System;
+using System.Collections.Generic;
 
 namespace InventoryManagementSystem.Models
 {
@@ -39,6 +40,24 @@ namespace InventoryManagementSystem.Models
 
         [BsonElement("ResetTokenExpiry")]
         public DateTime? ResetTokenExpiry { get; set; }
+
+        [BsonElement("EmployeeId")]
+        public string EmployeeId { get; set; } = string.Empty;
+
+        [BsonElement("Permissions")]
+        public List<string> Permissions { get; set; } = new List<string>();
+
+        [BsonElement("PermissionVersion")]
+        public int PermissionVersion { get; set; } = 1;
+
+        [BsonElement("LastPermissionUpdated")]
+        public DateTime? LastPermissionUpdated { get; set; }
+
+        [BsonElement("LastLogin")]
+        public DateTime? LastLogin { get; set; }
+
+        [BsonElement("LastActivity")]
+        public DateTime? LastActivity { get; set; }
 
         [BsonElement("CreatedDate")]
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;

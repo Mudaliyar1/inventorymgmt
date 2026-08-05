@@ -1,8 +1,10 @@
-namespace InventoryManagementSystem.Models;
-
-public class ErrorViewModel
+namespace InventoryManagementSystem.Models
 {
-    public string? RequestId { get; set; }
-
-    public bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+    public class ErrorViewModel
+    {
+        public string? RequestId { get; set; }
+        public bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+        public string? ExceptionMessage { get; set; }
+        public string? StackTrace { get; set; }
+    }
 }

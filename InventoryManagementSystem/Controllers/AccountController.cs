@@ -19,19 +19,22 @@ namespace InventoryManagementSystem.Controllers
         private readonly IAuditLogService _auditLogService;
         private readonly IEmailService _emailService;
         private readonly IUserRepository _userRepository;
+        private readonly IPermissionService _permissionService;
 
         public AccountController(
             IAuthService authService,
             IImageService imageService,
             IAuditLogService auditLogService,
             IEmailService emailService,
-            IUserRepository userRepository)
+            IUserRepository userRepository,
+            IPermissionService permissionService)
         {
             _authService = authService;
             _imageService = imageService;
             _auditLogService = auditLogService;
             _emailService = emailService;
             _userRepository = userRepository;
+            _permissionService = permissionService;
         }
 
         [HttpGet]
@@ -69,8 +72,17 @@ namespace InventoryManagementSystem.Controllers
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.Role, user.Role),
                 new Claim("FullName", user.FullName),
+                new Claim("EmployeeId", !string.IsNullOrEmpty(user.EmployeeId) ? user.EmployeeId : "EMP-0000"),
                 new Claim("ProfilePictureUrl", string.IsNullOrEmpty(user.ProfilePictureUrl) ? "/images/default-avatar.png" : user.ProfilePictureUrl)
             };
+
+            if (user.Permissions != null)
+            {
+                foreach (var perm in user.Permissions)
+                {
+                    claims.Add(new Claim("Permission", perm));
+                }
+            }
 
             var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var authProperties = new AuthenticationProperties
@@ -290,6 +302,31 @@ namespace InventoryManagementSystem.Controllers
         public IActionResult AccessDenied()
         {
             return View();
+        }
+
+        [HttpGet("/api/account/live-status")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetLiveStatus()
+        {
+            if (User?.Identity == null || !User.Identity.IsAuthenticated)
+            {
+                return Ok(new { authenticated = false, isLocked = false, isDeleted = false, version = 0 });
+            }
+
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Ok(new { authenticated = false, isLocked = false, isDeleted = false, version = 0 });
+            }
+
+            var state = await _permissionService.GetLiveUserStateAsync(userId);
+            return Ok(new
+            {
+                authenticated = true,
+                isLocked = state.IsLocked,
+                isDeleted = !state.IsValid,
+                version = state.PermissionVersion
+            });
         }
     }
 }
