@@ -61,6 +61,11 @@ namespace InventoryManagementSystem.Controllers
             var user = await _authService.AuthenticateAsync(model.UsernameOrEmail, model.Password);
             if (user == null)
             {
+                await _auditLogService.LogExAsync(
+                    "Failed Login", "Authentication", model.UsernameOrEmail,
+                    $"Failed login attempt for identifier '{model.UsernameOrEmail}'. Invalid credentials or locked account.",
+                    "Failed", "Warning");
+
                 ModelState.AddModelError(string.Empty, "Invalid login attempt. Check credentials or account status.");
                 return View(model);
             }
@@ -96,7 +101,12 @@ namespace InventoryManagementSystem.Controllers
                 new ClaimsPrincipal(claimsIdentity),
                 authProperties);
 
-            await _auditLogService.LogActivityAsync("Login", user.Username, $"User ID: {user.Id}", "User successfully logged in.");
+            await _auditLogService.LogExAsync(
+                user.Role == Role.Admin ? "Admin Login" : "Employee Login",
+                "Authentication",
+                $"{user.FullName} (@{user.Username})",
+                $"User authenticated successfully with role '{user.Role}'.",
+                "Success", "Success", referenceId: user.Id);
 
             TempData["ToastMessage"] = $"Welcome back, {user.FullName}!";
             TempData["ToastType"] = "success";
@@ -115,7 +125,7 @@ namespace InventoryManagementSystem.Controllers
             if (User.Identity?.IsAuthenticated == true)
             {
                 var username = User.Identity.Name ?? "Unknown";
-                await _auditLogService.LogActivityAsync("Logout", username, username, "User logged out.");
+                await _auditLogService.LogExAsync("Employee Logout", "Authentication", username, "User terminated session and logged out.", "Success", "Information");
             }
 
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);

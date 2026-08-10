@@ -188,6 +188,16 @@
           <span class="sb-text">Settings</span>
         </a>
       }
+
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "SystemLog", "Index"))
+      {
+        <a href="@Url.Action("Index","SystemLog")"
+           class="sb-link @(ctrl=="SystemLog"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="System Activity Logs" data-bs-placement="right">
+          <i class="bi bi-journal-text sb-icon"></i>
+          <span class="sb-text">System Logs</span>
+        </a>
+      }
     </div><!-- /sb-scroll -->
 
     <!-- Footer collapse -->

@@ -602,10 +602,11 @@ body, .modal-content, .dropdown-menu, .popover { background: var(--bg) !importan
 .tbl-title { font-size: 14px; font-weight: 700; color: var(--text-primary); }
 .tbl-count { font-size: 12px; color: var(--text-muted); margin-left: 6px; }
 
-.tbl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tbl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
 
 table.tbl {
   width: 100%;
+  min-width: 1000px;
   border-collapse: collapse;
 }
 

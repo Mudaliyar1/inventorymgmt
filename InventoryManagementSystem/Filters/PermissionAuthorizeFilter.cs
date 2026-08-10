@@ -92,6 +92,17 @@ namespace InventoryManagementSystem.Filters
 
             if (!hasAccess)
             {
+                var auditLogService = context.HttpContext.RequestServices.GetService<IAuditLogService>();
+                if (auditLogService != null)
+                {
+                    var username = user.Identity?.Name ?? "Unknown";
+                    await auditLogService.LogSecurityEventAsync(
+                        "Unauthorized Access Attempt",
+                        $"Employee @{username} attempted unauthorized action '{actionName}' on module '{controllerName}'",
+                        "Failed",
+                        "Warning");
+                }
+
                 // Short-circuit with 403 Access Denied view
                 context.HttpContext.Response.StatusCode = 403;
                 context.Result = new ViewResult

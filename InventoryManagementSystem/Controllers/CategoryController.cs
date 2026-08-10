@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using InventoryManagementSystem.Interfaces;
 using InventoryManagementSystem.Models;
+using System;
 using System.Threading.Tasks;
 
 namespace InventoryManagementSystem.Controllers
@@ -34,18 +35,28 @@ namespace InventoryManagementSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Category model)
         {
+            model.Name = (model.Name ?? string.Empty).Trim();
+
             if (!ModelState.IsValid)
             {
                 return View(model);
             }
 
-            await _categoryService.CreateCategoryAsync(model);
-            await _auditLogService.LogActivityAsync("Category Added", User.Identity?.Name ?? "System", $"Category Name: {model.Name}", "Created new category.");
+            try
+            {
+                await _categoryService.CreateCategoryAsync(model);
+                await _auditLogService.LogExAsync("Category Added", "Categories", model.Name, $"Created new category '{model.Name}'.");
 
-            TempData["ToastMessage"] = "Category created successfully!";
-            TempData["ToastType"] = "success";
+                TempData["ToastMessage"] = "Category created successfully!";
+                TempData["ToastType"] = "success";
 
-            return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError("Name", ex.Message);
+                return View(model);
+            }
         }
 
         [HttpGet]
@@ -60,18 +71,28 @@ namespace InventoryManagementSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(Category model)
         {
+            model.Name = (model.Name ?? string.Empty).Trim();
+
             if (!ModelState.IsValid)
             {
                 return View(model);
             }
 
-            await _categoryService.UpdateCategoryAsync(model);
-            await _auditLogService.LogActivityAsync("Category Updated", User.Identity?.Name ?? "System", $"Category ID: {model.Id}", $"Updated category details for {model.Name}.");
+            try
+            {
+                await _categoryService.UpdateCategoryAsync(model);
+                await _auditLogService.LogExAsync("Category Updated", "Categories", model.Name, $"Updated category details for '{model.Name}'.");
 
-            TempData["ToastMessage"] = "Category updated successfully!";
-            TempData["ToastType"] = "success";
+                TempData["ToastMessage"] = "Category updated successfully!";
+                TempData["ToastType"] = "success";
 
-            return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError("Name", ex.Message);
+                return View(model);
+            }
         }
 
         [HttpPost]
@@ -82,7 +103,7 @@ namespace InventoryManagementSystem.Controllers
             if (category == null) return NotFound();
 
             await _categoryService.ToggleStatusAsync(id);
-            await _auditLogService.LogActivityAsync("Category Status Toggled", User.Identity?.Name ?? "System", $"Category ID: {id}", $"Toggled status of {category.Name}.");
+            await _auditLogService.LogExAsync("Category Status Toggled", "Categories", category.Name, $"Toggled status of category '{category.Name}'.");
 
             TempData["ToastMessage"] = "Category status updated!";
             TempData["ToastType"] = "info";
@@ -98,7 +119,7 @@ namespace InventoryManagementSystem.Controllers
             if (category == null) return NotFound();
 
             await _categoryService.DeleteCategoryAsync(id);
-            await _auditLogService.LogActivityAsync("Category Deleted", User.Identity?.Name ?? "System", $"Category: {category.Name}", $"Deleted category ID: {id}.");
+            await _auditLogService.LogExAsync("Category Deleted", "Categories", category.Name, $"Deleted category '{category.Name}'.", "Success", "Warning");
 
             TempData["ToastMessage"] = "Category deleted successfully.";
             TempData["ToastType"] = "success";

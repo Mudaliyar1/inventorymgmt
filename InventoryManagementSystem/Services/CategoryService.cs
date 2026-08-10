@@ -1,7 +1,9 @@
 using InventoryManagementSystem.Interfaces;
 using InventoryManagementSystem.Models;
+using MongoDB.Driver;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace InventoryManagementSystem.Services
@@ -32,13 +34,53 @@ namespace InventoryManagementSystem.Services
 
         public async Task CreateCategoryAsync(Category category)
         {
+            category.Name = (category.Name ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(category.Name))
+            {
+                throw new InvalidOperationException("Category Name is required.");
+            }
+
+            var existing = await _categoryRepository.FindAsync(c => c.Name.ToLower() == category.Name.ToLower());
+            if (existing.Any())
+            {
+                throw new InvalidOperationException($"A category with the name '{category.Name}' already exists.");
+            }
+
             category.CreatedDate = DateTime.UtcNow;
             category.UpdatedDate = DateTime.UtcNow;
-            await _categoryRepository.CreateAsync(category);
+
+            try
+            {
+                await _categoryRepository.CreateAsync(category);
+            }
+            catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey || ex.WriteError?.Code == 11000)
+            {
+                throw new InvalidOperationException($"A category with the name '{category.Name}' already exists.");
+            }
+            catch (MongoBulkWriteException ex) when (ex.WriteErrors.Any(e => e.Category == ServerErrorCategory.DuplicateKey || e.Code == 11000))
+            {
+                throw new InvalidOperationException($"A category with the name '{category.Name}' already exists.");
+            }
+            catch (MongoException ex) when (ex.Message.Contains("11000") || ex.Message.Contains("DuplicateKey") || ex.Message.Contains("dup key"))
+            {
+                throw new InvalidOperationException($"A category with the name '{category.Name}' already exists.");
+            }
         }
 
         public async Task UpdateCategoryAsync(Category category)
         {
+            category.Name = (category.Name ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(category.Name))
+            {
+                throw new InvalidOperationException("Category Name is required.");
+            }
+
+            var duplicate = await _categoryRepository.FindAsync(c => c.Id != category.Id && c.Name.ToLower() == category.Name.ToLower());
+            if (duplicate.Any())
+            {
+                throw new InvalidOperationException($"A category with the name '{category.Name}' already exists.");
+            }
+
             var existing = await _categoryRepository.GetByIdAsync(category.Id);
             if (existing != null)
             {
@@ -46,7 +88,23 @@ namespace InventoryManagementSystem.Services
                 existing.Description = category.Description;
                 existing.Status = category.Status;
                 existing.UpdatedDate = DateTime.UtcNow;
-                await _categoryRepository.UpdateAsync(existing.Id, existing);
+
+                try
+                {
+                    await _categoryRepository.UpdateAsync(existing.Id, existing);
+                }
+                catch (MongoWriteException ex) when (ex.WriteError?.Category == ServerErrorCategory.DuplicateKey || ex.WriteError?.Code == 11000)
+                {
+                    throw new InvalidOperationException($"A category with the name '{category.Name}' already exists.");
+                }
+                catch (MongoBulkWriteException ex) when (ex.WriteErrors.Any(e => e.Category == ServerErrorCategory.DuplicateKey || e.Code == 11000))
+                {
+                    throw new InvalidOperationException($"A category with the name '{category.Name}' already exists.");
+                }
+                catch (MongoException ex) when (ex.Message.Contains("11000") || ex.Message.Contains("DuplicateKey") || ex.Message.Contains("dup key"))
+                {
+                    throw new InvalidOperationException($"A category with the name '{category.Name}' already exists.");
+                }
             }
         }
 

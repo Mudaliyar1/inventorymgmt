@@ -139,22 +139,31 @@ namespace InventoryManagementSystem.Controllers
                 }
             }
 
-            await _productService.CreateProductAsync(product);
-            await _auditLogService.LogActivityAsync("Product Added", User.Identity?.Name ?? "System", $"Product: {product.Name}", $"Added SKU: {product.Code} with initial stock {product.CurrentStock}.");
-
-            // Save system notification
-            await _notificationRepository.CreateAsync(new Notification
+            try
             {
-                Type = "Success",
-                Title = "Product Added",
-                Message = $"Product '{product.Name}' has been added with {product.CurrentStock} units.",
-                Timestamp = DateTime.UtcNow
-            });
+                await _productService.CreateProductAsync(product);
+                await _auditLogService.LogActivityAsync("Product Added", User.Identity?.Name ?? "System", $"Product: {product.Name}", $"Added SKU: {product.Code} with initial stock {product.CurrentStock}.");
 
-            TempData["ToastMessage"] = "Product added successfully!";
-            TempData["ToastType"] = "success";
+                // Save system notification
+                await _notificationRepository.CreateAsync(new Notification
+                {
+                    Type = "Success",
+                    Title = "Product Added",
+                    Message = $"Product '{product.Name}' has been added with {product.CurrentStock} units.",
+                    Timestamp = DateTime.UtcNow
+                });
 
-            return RedirectToAction(nameof(Index));
+                TempData["ToastMessage"] = "Product added successfully!";
+                TempData["ToastType"] = "success";
+
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError(string.Empty, $"Failed to add product: {ex.Message}");
+                await PopulateCategoriesList(model);
+                return View(model);
+            }
         }
 
         [HttpGet]
@@ -251,14 +260,23 @@ namespace InventoryManagementSystem.Controllers
                 }
             }
 
-            await _productService.UpdateProductAsync(existingProduct);
-            Console.WriteLine($"[EDIT POST] UpdateProductAsync completed for ID={model.Id}");
-            await _auditLogService.LogActivityAsync("Product Updated", User.Identity?.Name ?? "System", $"Product ID: {model.Id}", $"Updated product details for {model.Name}.");
+            try
+            {
+                await _productService.UpdateProductAsync(existingProduct);
+                Console.WriteLine($"[EDIT POST] UpdateProductAsync completed for ID={model.Id}");
+                await _auditLogService.LogActivityAsync("Product Updated", User.Identity?.Name ?? "System", $"Product ID: {model.Id}", $"Updated product details for {model.Name}.");
 
-            TempData["ToastMessage"] = "Product updated successfully!";
-            TempData["ToastType"] = "success";
+                TempData["ToastMessage"] = "Product updated successfully!";
+                TempData["ToastType"] = "success";
 
-            return RedirectToAction(nameof(Index));
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError(string.Empty, $"Failed to update product: {ex.Message}");
+                await PopulateCategoriesList(model);
+                return View(model);
+            }
         }
 
         [HttpPost]

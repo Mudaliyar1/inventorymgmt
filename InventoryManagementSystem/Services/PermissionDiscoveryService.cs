@@ -103,6 +103,7 @@ namespace InventoryManagementSystem.Services
             "User" => "Employee Management",
             "Settings" => "Global System Settings",
             "Notifications" => "System Notifications",
+            "SystemLog" => "System Activity Logs",
             _ => SplitCamelCase(controllerName)
         };
 
@@ -118,6 +119,7 @@ namespace InventoryManagementSystem.Services
             "User" => "bi-people",
             "Settings" => "bi-sliders",
             "Notifications" => "bi-bell",
+            "SystemLog" => "bi-journal-text",
             _ => "bi-app-indicator"
         };
 
@@ -132,6 +134,7 @@ namespace InventoryManagementSystem.Services
             "Admin" => 7,
             "User" => 8,
             "Settings" => 9,
+            "SystemLog" => 10,
             _ => 99
         };
 
