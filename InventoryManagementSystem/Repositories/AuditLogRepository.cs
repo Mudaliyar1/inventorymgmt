@@ -246,6 +246,14 @@ namespace InventoryManagementSystem.Repositories
             return result.DeletedCount;
         }
 
+        public async Task<long> DeleteLogsByIdsAsync(IEnumerable<string> ids)
+        {
+            if (ids == null || !ids.Any()) return 0;
+            var filter = Builders<AuditLog>.Filter.In(x => x.Id, ids);
+            var result = await _collection.DeleteManyAsync(filter);
+            return result.DeletedCount;
+        }
+
         private static string GetModuleSearchPattern(string module) => module.ToLower() switch
         {
             "authentication" => "auth|login|logout",

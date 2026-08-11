@@ -40,6 +40,7 @@ namespace InventoryManagementSystem.Interfaces
         Task<AuditLogStats> GetLogStatsAsync();
         Task<long> DeleteLogsOlderThanAsync(int days);
         Task<long> ClearAllLogsAsync();
+        Task<long> DeleteLogsByIdsAsync(IEnumerable<string> ids);
         Task EnsureIndexesCreatedAsync();
     }
 }

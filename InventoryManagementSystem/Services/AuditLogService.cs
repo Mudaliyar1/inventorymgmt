@@ -181,6 +181,17 @@ namespace InventoryManagementSystem.Services
             return await _auditLogRepository.ClearAllLogsAsync();
         }
 
+        public async Task<bool> DeleteLogByIdAsync(string id)
+        {
+            await _auditLogRepository.DeleteAsync(id);
+            return true;
+        }
+
+        public async Task<long> DeleteLogsByIdsAsync(IEnumerable<string> ids)
+        {
+            return await _auditLogRepository.DeleteLogsByIdsAsync(ids);
+        }
+
         public byte[] ExportLogsCsv(IEnumerable<AuditLog> logs)
         {
             var sb = new StringBuilder();

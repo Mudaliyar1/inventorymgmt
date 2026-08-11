@@ -55,6 +55,8 @@ namespace InventoryManagementSystem.Interfaces
         Task<AuditLogStats> GetLogStatsAsync();
         Task<long> PurgeLogsOlderThanAsync(int days);
         Task<long> ClearAllLogsAsync();
+        Task<bool> DeleteLogByIdAsync(string id);
+        Task<long> DeleteLogsByIdsAsync(IEnumerable<string> ids);
 
         byte[] ExportLogsCsv(IEnumerable<AuditLog> logs);
         byte[] ExportLogsPdf(IEnumerable<AuditLog> logs);

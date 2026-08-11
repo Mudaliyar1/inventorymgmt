@@ -215,5 +215,61 @@ namespace InventoryManagementSystem.Controllers
 
             return Json(new { success = true, message = $"All {deletedCount:N0} system activity logs cleared successfully." });
         }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(string id)
+        {
+            var userRoleStr = User.FindFirst(ClaimTypes.Role)?.Value ?? "";
+            var isUserAdmin = User.IsInRole("Admin") || User.IsInRole("SuperAdmin") ||
+                string.Equals(userRoleStr, "Admin", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(userRoleStr, "SuperAdmin", StringComparison.OrdinalIgnoreCase);
+
+            if (!isUserAdmin)
+            {
+                return Json(new { success = false, message = "Permission denied. Only Administrators can delete log records." });
+            }
+
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                return Json(new { success = false, message = "Invalid log record ID." });
+            }
+
+            var success = await _auditLogService.DeleteLogByIdAsync(id);
+            if (success)
+            {
+                await _auditLogService.LogSecurityEventAsync("Audit Log Deleted", $"Administrator deleted single log record (ID: {id}).", "Warning", "Warning");
+            }
+
+            return Json(new { success = success, message = success ? "Log record deleted successfully." : "Failed to delete log record." });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> BulkDelete([FromBody] List<string> ids)
+        {
+            var userRoleStr = User.FindFirst(ClaimTypes.Role)?.Value ?? "";
+            var isUserAdmin = User.IsInRole("Admin") || User.IsInRole("SuperAdmin") ||
+                string.Equals(userRoleStr, "Admin", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(userRoleStr, "SuperAdmin", StringComparison.OrdinalIgnoreCase);
+
+            if (!isUserAdmin)
+            {
+                return Json(new { success = false, message = "Permission denied. Only Administrators can delete log records." });
+            }
+
+            if (ids == null || !ids.Any())
+            {
+                return Json(new { success = false, message = "No log records selected for deletion." });
+            }
+
+            var deletedCount = await _auditLogService.DeleteLogsByIdsAsync(ids);
+            if (deletedCount > 0)
+            {
+                await _auditLogService.LogSecurityEventAsync("Audit Logs Bulk Deleted", $"Administrator bulk deleted {deletedCount:N0} selected log records.", "Warning", "Warning");
+            }
+
+            return Json(new { success = true, message = $"Successfully deleted {deletedCount:N0} selected log records." });
+        }
     }
 }
