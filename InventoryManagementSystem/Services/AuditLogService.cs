@@ -11,6 +11,7 @@ using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
 using System.Linq;
+using System.Net;
 
 namespace InventoryManagementSystem.Services
 {
@@ -61,7 +62,7 @@ namespace InventoryManagementSystem.Services
             long executionTimeMs = 0)
         {
             var httpContext = _httpContextAccessor.HttpContext;
-            var ipAddress = httpContext?.Connection?.RemoteIpAddress?.ToString() ?? "127.0.0.1";
+            var ipAddress = GetClientIpAddress(httpContext);
             var userAgent = httpContext?.Request?.Headers["User-Agent"].ToString() ?? "Unknown";
             var requestUrl = httpContext?.Request?.Path.Value ?? "/";
             var httpMethod = httpContext?.Request?.Method ?? "GET";
@@ -306,6 +307,65 @@ namespace InventoryManagementSystem.Services
             }
 
             return (browser, os, device, deviceType);
+        }
+
+        private static string GetClientIpAddress(HttpContext? httpContext)
+        {
+            if (httpContext == null) return "127.0.0.1";
+
+            // 1. Cloudflare CDN Header (highest priority when behind Cloudflare)
+            var cfIp = httpContext.Request.Headers["CF-Connecting-IP"].FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(cfIp) && IPAddress.TryParse(cfIp.Trim(), out var parsedCfIp))
+            {
+                return parsedCfIp.ToString();
+            }
+
+            // 2. X-Real-IP Header (Nginx, Render, AWS, reverse proxies)
+            var xRealIp = httpContext.Request.Headers["X-Real-IP"].FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(xRealIp) && IPAddress.TryParse(xRealIp.Trim(), out var parsedRealIp))
+            {
+                return parsedRealIp.ToString();
+            }
+
+            // 3. X-Forwarded-For Header (Client IP is the first entry in comma-separated proxy chain)
+            var xForwardedFor = httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(xForwardedFor))
+            {
+                var firstIp = xForwardedFor.Split(',').Select(s => s.Trim()).FirstOrDefault(s => !string.IsNullOrWhiteSpace(s));
+                if (!string.IsNullOrWhiteSpace(firstIp))
+                {
+                    // Remove port number if attached (e.g. "103.21.12.4:54321")
+                    if (firstIp.Contains(':') && !firstIp.Contains("::"))
+                    {
+                        firstIp = firstIp.Split(':')[0];
+                    }
+
+                    if (IPAddress.TryParse(firstIp, out var parsedForwardedIp))
+                    {
+                        return parsedForwardedIp.ToString();
+                    }
+                }
+            }
+
+            // 4. Fallback to Direct Connection RemoteIpAddress
+            var remoteIp = httpContext.Connection?.RemoteIpAddress;
+            if (remoteIp != null)
+            {
+                // Handle IPv4 mapped to IPv6 (e.g. ::ffff:192.168.1.5 -> 192.168.1.5)
+                if (remoteIp.IsIPv4MappedToIPv6)
+                {
+                    return remoteIp.MapToIPv4().ToString();
+                }
+
+                if (IPAddress.IsLoopback(remoteIp))
+                {
+                    return "127.0.0.1";
+                }
+
+                return remoteIp.ToString();
+            }
+
+            return "127.0.0.1";
         }
     }
 }
