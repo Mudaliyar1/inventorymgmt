@@ -1,5 +1,6 @@
 using DotNetEnv;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
@@ -16,7 +17,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 
-// Load .env automatically (supports root workspace, current directory, and bin output dirs)
+// Load .env automatically if present (supports local development environments)
 try
 {
     Env.TraversePath().Load();
@@ -43,6 +44,17 @@ if (builder.Environment.IsDevelopment())
 }
 
 builder.Configuration.AddEnvironmentVariables();
+
+// Configure Forwarded Headers for Render SSL/TLS reverse proxy
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
+// Configure Response Compression for production performance
+builder.Services.AddResponseCompression();
 
 // Helper method to resolve settings with fallback priority
 string GetConfigValue(string envKey, string configKey, string defaultValue = "")
@@ -170,25 +182,34 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
-// Check Port Availability & Fallback Strategy
-int targetPort = 5094;
-if (!IsPortAvailable(targetPort))
+// Dynamic Port Assignment (Supports Render PORT env var & Local Dev Fallback)
+var portEnv = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(portEnv) && int.TryParse(portEnv, out int renderPort))
 {
-    Console.ForegroundColor = ConsoleColor.Yellow;
-    Console.WriteLine($"[PORT FALLBACK NOTICE] Port {targetPort} is occupied by another process. Automatically finding fallback port...");
-    Console.ResetColor();
-
-    for (int p = 5095; p <= 5105; p++)
+    Console.WriteLine($"[PORT CONFIG] Injected PORT environment variable detected: {renderPort}. Binding to http://0.0.0.0:{renderPort}");
+    builder.WebHost.UseUrls($"http://0.0.0.0:{renderPort}");
+}
+else
+{
+    int targetPort = 5094;
+    if (!IsPortAvailable(targetPort))
     {
-        if (IsPortAvailable(p))
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.WriteLine($"[PORT FALLBACK NOTICE] Port {targetPort} is occupied by another process. Automatically finding fallback port...");
+        Console.ResetColor();
+
+        for (int p = 5095; p <= 5105; p++)
         {
-            targetPort = p;
-            break;
+            if (IsPortAvailable(p))
+            {
+                targetPort = p;
+                break;
+            }
         }
     }
-}
 
-builder.WebHost.UseUrls($"http://localhost:{targetPort}");
+    builder.WebHost.UseUrls($"http://0.0.0.0:{targetPort}");
+}
 
 var app = builder.Build();
 
@@ -203,8 +224,7 @@ if (string.IsNullOrWhiteSpace(cloudinarySettings.CloudName) ||
     string.IsNullOrWhiteSpace(cloudinarySettings.ApiKey) ||
     string.IsNullOrWhiteSpace(cloudinarySettings.ApiSecret))
 {
-    app.Logger.LogError("Cloudinary configuration missing.");
-    throw new InvalidOperationException("Cloudinary configuration missing.");
+    app.Logger.LogWarning("Cloudinary configuration missing (Image upload functionality may be disabled).");
 }
 
 if (string.IsNullOrWhiteSpace(brevoSettings.Host) ||
@@ -215,10 +235,12 @@ if (string.IsNullOrWhiteSpace(brevoSettings.Host) ||
     app.Logger.LogWarning("Brevo SMTP configuration missing (Email notifications disabled).");
 }
 
-// Configure the HTTP request pipeline
+// Configure HTTP request pipeline & reverse proxy headers
+app.UseForwardedHeaders();
+app.UseResponseCompression();
 app.UseMiddleware<ExceptionMiddleware>();
 
-// Static Files setup
+// Static Files Setup
 var wwwrootPath = Path.Combine(builder.Environment.ContentRootPath, "wwwroot");
 if (!Directory.Exists(wwwrootPath))
 {
@@ -241,13 +263,20 @@ else
 if (!app.Environment.IsDevelopment())
 {
     app.UseHsts();
-    app.UseHttpsRedirection();
 }
 
 app.UseRouting();
 app.UseSession();
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Lightweight Health Check Endpoint for Render Zero-Downtime Monitoring
+app.MapGet("/health", () => Results.Ok(new
+{
+    status = "Healthy",
+    service = "SIMS Enterprise Inventory System",
+    timestamp = DateTime.UtcNow
+}));
 
 app.MapControllerRoute(
     name: "default",
@@ -267,13 +296,13 @@ catch (Exception ex)
 
 app.Run();
 
-// Helper method to check if a TCP port is available for binding
+// Helper method to check if a TCP port is available for binding on 0.0.0.0
 static bool IsPortAvailable(int port)
 {
     try
     {
         using var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        socket.Bind(new IPEndPoint(IPAddress.Loopback, port));
+        socket.Bind(new IPEndPoint(IPAddress.Any, port));
         return true;
     }
     catch
