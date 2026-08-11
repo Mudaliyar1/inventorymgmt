@@ -132,7 +132,9 @@ builder.Services.AddControllersWithViews(options =>
 // Register Singleton MongoClient for connection pooling
 builder.Services.AddSingleton<IMongoClient>(sp =>
 {
-    return new MongoClient(mongoSettings.ConnectionString);
+    var settings = MongoClientSettings.FromConnectionString(mongoSettings.ConnectionString);
+    settings.ServerSelectionTimeout = TimeSpan.FromSeconds(15);
+    return new MongoClient(settings);
 });
 builder.Services.AddSingleton<MongoDbContext>();
 

@@ -1,0 +1,39 @@
+# Build & Compiled Output
+bin/
+obj/
+publish/
+out/
+**/bin/
+**/obj/
+
+# IDE & Editor Artifacts
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosv
+*.sln.docstates
+*.cache
+
+# Source Control & Git
+.git/
+.gitignore
+
+# Node & Package Managers
+node_modules/
+npm-debug.log
+
+# Temporary Files & Logs
+logs/
+*.log
+.env
+.env.*
+!.env.example
+tmp/
+temp/
+scratch/
+
+# OS Specific Files
+.DS_Store
+Thumbs.db
