@@ -120,10 +120,19 @@ builder.Services.Configure<BrevoSettings>(options =>
     options.FromName = brevoSettings.FromName;
 });
 
+var brevoApiKey = GetConfigValue("BREVO_API_KEY", "BrevoApiSettings:ApiKey");
+builder.Services.Configure<BrevoApiSettings>(options =>
+{
+    options.ApiKey = brevoApiKey;
+    options.SenderEmail = !string.IsNullOrWhiteSpace(brevoSettings.FromEmail) ? brevoSettings.FromEmail : "noreply@sims.com";
+    options.SenderName = !string.IsNullOrWhiteSpace(brevoSettings.FromName) ? brevoSettings.FromName : "SIMS System";
+});
+
 builder.Services.Configure<AppSettings>(builder.Configuration.GetSection("AppSettings"));
 
 // Add services to the container
 builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient();
 builder.Services.AddControllersWithViews(options =>
 {
     options.Filters.Add<InventoryManagementSystem.Filters.PermissionAuthorizeFilter>();
@@ -149,10 +158,13 @@ builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IStockTransactionRepository, StockTransactionRepository>();
 builder.Services.AddScoped<ISaleRepository, SaleRepository>();
+builder.Services.AddScoped<IInventoryAlertRepository, InventoryAlertRepository>();
 
 // Register Services
 builder.Services.AddSingleton<IPermissionDiscoveryService, PermissionDiscoveryService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddHttpClient<IBrevoEmailService, BrevoEmailService>();
+builder.Services.AddScoped<IInventoryAlertService, InventoryAlertService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IImageService, CloudinaryImageService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();

@@ -14,19 +14,22 @@ namespace InventoryManagementSystem.Services
         private readonly INotificationRepository _notificationRepository;
         private readonly IEmailService _emailService;
         private readonly IUserRepository _userRepository;
+        private readonly IInventoryAlertService _inventoryAlertService;
 
         public StockService(
             IProductRepository productRepository,
             IStockTransactionRepository transactionRepository,
             INotificationRepository notificationRepository,
             IEmailService emailService,
-            IUserRepository userRepository)
+            IUserRepository userRepository,
+            IInventoryAlertService inventoryAlertService)
         {
             _productRepository = productRepository;
             _transactionRepository = transactionRepository;
             _notificationRepository = notificationRepository;
             _emailService = emailService;
             _userRepository = userRepository;
+            _inventoryAlertService = inventoryAlertService;
         }
 
         public async Task<bool> StockInAsync(string productId, int quantity, string reason, string executedBy)
@@ -65,6 +68,9 @@ namespace InventoryManagementSystem.Services
             product.CurrentStock = currentStock;
             product.UpdatedDate = DateTime.UtcNow;
             await _productRepository.UpdateAsync(product.Id, product);
+
+            // Trigger Brevo Email Inventory Alert System (Asynchronous, Non-blocking)
+            await _inventoryAlertService.CheckAndTriggerStockAlertsAsync(product, previousStock, currentStock);
 
             // Look up employee details for stock attribution
             string empId = "EMP-0000";

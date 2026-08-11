@@ -121,10 +121,33 @@ namespace InventoryManagementSystem.Controllers
             var existing = await _userRepository.GetByIdAsync(model.Id);
             if (existing == null) return NotFound();
 
-            var existingByEmail = await _userRepository.GetByEmailAsync(model.Email);
-            if (existingByEmail != null && existingByEmail.Id != model.Id)
+            if (string.IsNullOrWhiteSpace(model.FullName))
             {
-                ModelState.AddModelError(nameof(model.Email), "Email address is already in use by another user.");
+                ModelState.AddModelError(nameof(model.FullName), "Full Name is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(model.Email))
+            {
+                ModelState.AddModelError(nameof(model.Email), "Email address is required.");
+            }
+            else
+            {
+                var existingByEmail = await _userRepository.GetByEmailAsync(model.Email.Trim());
+                if (existingByEmail != null && existingByEmail.Id != model.Id)
+                {
+                    ModelState.AddModelError(nameof(model.Email), "Email address is already in use by another user.");
+                }
+            }
+
+            // Remove all model state errors except FullName and Email
+            var keysToRemove = ModelState.Keys
+                .Where(k => !k.Equals(nameof(model.FullName), StringComparison.OrdinalIgnoreCase) &&
+                            !k.Equals(nameof(model.Email), StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            foreach (var key in keysToRemove)
+            {
+                ModelState.Remove(key);
             }
 
             if (!ModelState.IsValid)

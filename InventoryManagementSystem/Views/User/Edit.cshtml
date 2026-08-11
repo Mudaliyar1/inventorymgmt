@@ -35,10 +35,10 @@
             <div class="card-d card-p-lg">
                 <div class="s-title"><i class="bi bi-person-badge me-2" style="color:var(--primary)"></i>Employee Identity</div>
 
+                <input type="hidden" asp-for="EmployeeId" />
                 <div class="fg">
-                    <label class="fg-label" asp-for="EmployeeId">Employee ID <span class="req">*</span></label>
-                    <input asp-for="EmployeeId" class="fg-control" required />
-                    <span asp-validation-for="EmployeeId" class="fg-error"></span>
+                    <label class="fg-label">Employee ID</label>
+                    <input type="text" value="@(string.IsNullOrEmpty(Model.EmployeeId) ? $"EMP-{Model.Id[..Math.Min(6, Model.Id.Length)]}" : Model.EmployeeId)" class="fg-control" readonly style="background-color: var(--bg-card-hover); cursor: not-allowed;" />
                 </div>
 
                 <div class="fg">

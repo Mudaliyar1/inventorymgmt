@@ -50,6 +50,9 @@ namespace InventoryManagementSystem.Models
         [BsonElement("Status")]
         public string Status { get; set; } = "Active"; // Active, Inactive
 
+        [BsonElement("LastAlertSentType")]
+        public string LastAlertSentType { get; set; } = "None"; // None, LowStock, OutOfStock
+
         [BsonElement("CreatedDate")]
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 

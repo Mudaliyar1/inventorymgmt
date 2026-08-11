@@ -1,0 +1,389 @@
+@using InventoryManagementSystem.Models
+@model IEnumerable<InventoryEmailLog>
+@{
+    ViewData["Title"] = "Email Inventory Alerts";
+    var settings = ViewBag.Settings as InventoryAlertSettings ?? new InventoryAlertSettings();
+    var stats = ViewBag.Stats as InventoryAlertDashboardStats ?? new InventoryAlertDashboardStats();
+}
+
+<form id="anti-forgery-form" style="display:none">
+    @Html.AntiForgeryToken()
+</form>
+
+<div class="ph">
+    <div>
+        <h1 class="ph-title"><i class="bi bi-envelope-at text-primary me-2"></i>Inventory Alert & Email Notification Dashboard</h1>
+        <p class="ph-sub">Real-time Brevo REST API notification engine for Low Stock, Out of Stock, and Stock Restored events.</p>
+    </div>
+    <div class="ph-actions">
+        <button type="button" class="btn-d btn-outline btn-sm-d" onclick="window.location.reload()">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
+        <button type="button" class="btn-d btn-primary btn-sm-d" data-bs-toggle="modal" data-bs-target="#testEmailModal">
+            <i class="bi bi-send-check"></i> Send Test Email
+        </button>
+    </div>
+</div>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show bg-success-subtle text-success border-success p-3 rounded mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>@TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<!-- Dashboard Stats Grid -->
+<div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-4">
+    <div class="col">
+        <div class="stat-card h-100">
+            <div>
+                <div class="sc-label">Total Emails Sent</div>
+                <div class="sc-value text-primary">@stats.TotalSent.ToString("N0")</div>
+                <div class="sc-trend trend-flat"><i class="bi bi-check-all me-1"></i>Brevo REST API</div>
+            </div>
+            <div class="sc-icon ic-blue"><i class="bi bi-envelope-check"></i></div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="stat-card h-100">
+            <div>
+                <div class="sc-label">Today's Alerts</div>
+                <div class="sc-value text-success">@stats.TodayAlerts.ToString("N0")</div>
+                <div class="sc-trend trend-up"><i class="bi bi-clock-history me-1"></i>Last 24 Hours</div>
+            </div>
+            <div class="sc-icon ic-green"><i class="bi bi-bell"></i></div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="stat-card h-100">
+            <div>
+                <div class="sc-label">Failed Emails</div>
+                <div class="sc-value text-danger">@stats.FailedEmails.ToString("N0")</div>
+                <div class="sc-trend trend-down"><i class="bi bi-exclamation-triangle me-1"></i>API Errors</div>
+            </div>
+            <div class="sc-icon ic-red"><i class="bi bi-shield-x"></i></div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="stat-card h-100">
+            <div>
+                <div class="sc-label">API Health & Status</div>
+                <div class="sc-value text-info">Active</div>
+                <div class="sc-trend trend-up"><i class="bi bi-cloud-check me-1"></i>HTTPS Endpoint</div>
+            </div>
+            <div class="sc-icon ic-sky"><i class="bi bi-cloud-arrow-up"></i></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Left Column: Settings Form -->
+    <div class="col-xl-7 col-lg-6">
+        <div class="card-d h-100 p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0 text-light"><i class="bi bi-sliders text-primary me-2"></i>Inventory Alert Policy Settings</h5>
+                <span class="badge bg-primary-subtle text-primary">MongoDB Atlas Policy</span>
+            </div>
+            <form method="post" action="/InventoryAlert/UpdateSettings">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Id" value="@settings.Id" />
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small mb-1">Primary Admin Email</label>
+                        <input type="email" name="AdminEmail" value="@settings.AdminEmail" class="form-control form-control-d" required placeholder="admin@sims.com" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small mb-1">Low Stock Threshold (Units)</label>
+                        <input type="number" name="LowStockThreshold" value="@settings.LowStockThreshold" min="1" class="form-control form-control-d" required />
+                    </div>
+
+                    <div class="col-12"><hr class="border-secondary my-2"></div>
+
+                    <div class="col-12">
+                        <label class="form-label text-light fw-bold small mb-2">Notification Event Triggers</label>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="form-check form-switch card-d p-3 m-0 d-flex align-items-center justify-content-between">
+                                    <label class="form-check-label text-light mb-0" for="swLowStock">
+                                        <i class="bi bi-exclamation-triangle text-warning me-1"></i> Low Stock
+                                    </label>
+                                    <input class="form-check-input ms-0" type="checkbox" name="EnableLowStockAlerts" value="true" id="swLowStock" @(settings.EnableLowStockAlerts ? "checked" : "") />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check form-switch card-d p-3 m-0 d-flex align-items-center justify-content-between">
+                                    <label class="form-check-label text-light mb-0" for="swOutOfStock">
+                                        <i class="bi bi-x-circle text-danger me-1"></i> Out of Stock
+                                    </label>
+                                    <input class="form-check-input ms-0" type="checkbox" name="EnableOutOfStockAlerts" value="true" id="swOutOfStock" @(settings.EnableOutOfStockAlerts ? "checked" : "") />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check form-switch card-d p-3 m-0 d-flex align-items-center justify-content-between">
+                                    <label class="form-check-label text-light mb-0" for="swRestored">
+                                        <i class="bi bi-check-circle text-success me-1"></i> Restored
+                                    </label>
+                                    <input class="form-check-input ms-0" type="checkbox" name="EnableStockRestoredAlerts" value="true" id="swRestored" @(settings.EnableStockRestoredAlerts ? "checked" : "") />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label text-muted small mb-1">Additional Alert Recipients (Comma Separated)</label>
+                        <textarea name="recipientsRaw" class="form-control form-control-d" rows="2" placeholder="manager@sims.com, warehouse@sims.com">@(settings.AlertRecipients != null ? string.Join(", ", settings.AlertRecipients) : "")</textarea>
+                    </div>
+
+                    <div class="col-12 d-flex justify-content-between align-items-center mt-3">
+                        <span class="text-muted small">Last Updated: @settings.UpdatedAt.ToLocalTime().ToString("g") by @settings.UpdatedBy</span>
+                        <button type="submit" class="btn-d btn-primary btn-sm-d"><i class="bi bi-save me-1"></i> Save Configuration</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right Column: API Information & Quick Tester -->
+    <div class="col-xl-5 col-lg-6">
+        <div class="card-d h-100 p-4 d-flex flex-column justify-content-between">
+            <div>
+                <h5 class="mb-3 text-light"><i class="bi bi-shield-check text-success me-2"></i>Brevo REST API v3 Integration</h5>
+                <div class="p-3 card-d bg-dark mb-3 border-secondary">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted small">Transport Method</span>
+                        <span class="badge bg-success-subtle text-success">HTTPS REST API</span>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="text-muted small">Security Scope</span>
+                        <span class="badge bg-primary-subtle text-primary">Environment Injected</span>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <span class="text-muted small">Fault Tolerance</span>
+                        <span class="badge bg-warning-subtle text-warning">3-Tier Exponential Backoff</span>
+                    </div>
+                </div>
+                <div class="alert alert-info-d bg-info-subtle text-info border-info p-3 rounded mb-0">
+                    <i class="bi bi-info-circle me-2"></i><strong>Duplicate Alert Protection:</strong> The system automatically tracks alert states per product to prevent continuous duplicate emails until stock transitions occur.
+                </div>
+            </div>
+            <div class="mt-4 pt-3 border-top border-secondary text-end">
+                <button type="button" class="btn-d btn-outline btn-sm-d w-100" data-bs-toggle="modal" data-bs-target="#testEmailModal">
+                    <i class="bi bi-send-check me-1"></i> Launch Interactive Brevo Test Email
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Email Logs Directory Table -->
+<div class="card-d mb-4">
+    <div class="p-3 border-bottom border-secondary d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h5 class="mb-0 text-light"><i class="bi bi-clock-history me-2 text-primary"></i>Alert Email Logs & Transmission Directory (@ViewBag.TotalCount)</h5>
+        
+        <form method="get" action="/InventoryAlert/Index" class="d-flex gap-2 align-items-center">
+            <input type="text" name="keyword" value="@ViewBag.Keyword" class="form-control form-control-d py-1 px-3" placeholder="Search product, recipient..." style="width: 220px;" />
+            <select name="alertType" class="form-select form-select-d py-1 px-2" style="width: 140px;">
+                <option value="">All Alerts</option>
+                <option value="LowStock" selected="@(ViewBag.AlertType == "LowStock")">Low Stock</option>
+                <option value="OutOfStock" selected="@(ViewBag.AlertType == "OutOfStock")">Out of Stock</option>
+                <option value="StockRestored" selected="@(ViewBag.AlertType == "StockRestored")">Restored</option>
+                <option value="TestEmail" selected="@(ViewBag.AlertType == "TestEmail")">Test Email</option>
+            </select>
+            <select name="status" class="form-select form-select-d py-1 px-2" style="width: 120px;">
+                <option value="">All Status</option>
+                <option value="Sent" selected="@(ViewBag.Status == "Sent")">Sent</option>
+                <option value="Failed" selected="@(ViewBag.Status == "Failed")">Failed</option>
+            </select>
+            <button type="submit" class="btn-d btn-primary btn-sm-d px-3 py-1"><i class="bi bi-funnel"></i></button>
+        </form>
+    </div>
+
+    <div class="table-responsive">
+        <table class="tbl mb-0">
+            <thead>
+                <tr>
+                    <th style="width: 170px;">TIMESTAMP (IST)</th>
+                    <th style="width: 140px;">ALERT TYPE</th>
+                    <th>PRODUCT & SKU</th>
+                    <th>RECIPIENT EMAIL</th>
+                    <th style="width: 100px;">STATUS</th>
+                    <th>MESSAGE ID / RESPONSE</th>
+                    <th style="width: 100px;" class="text-end">ACTIONS</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model != null && Model.Any())
+                {
+                    foreach (var log in Model)
+                    {
+                        var alertBadge = log.AlertType switch
+                        {
+                            "OutOfStock" => "bg-danger-subtle text-danger border border-danger-subtle",
+                            "LowStock" => "bg-warning-subtle text-warning border border-warning-subtle",
+                            "StockRestored" => "bg-success-subtle text-success border border-success-subtle",
+                            "TestEmail" => "bg-info-subtle text-info border border-info-subtle",
+                            _ => "bg-secondary-subtle text-secondary"
+                        };
+
+                        var statusBadge = log.Status switch
+                        {
+                            "Sent" => "bg-success-subtle text-success border border-success-subtle",
+                            "Failed" => "bg-danger-subtle text-danger border border-danger-subtle",
+                            _ => "bg-warning-subtle text-warning border border-warning-subtle"
+                        };
+
+                        var istTime = TimeZoneInfo.ConvertTimeFromUtc(log.SentAt, TimeZoneInfo.FindSystemTimeZoneById("India Standard Time")).ToString("MMM dd, HH:mm:ss") + " IST";
+
+                        <tr>
+                            <td class="font-monospace small text-light">@istTime</td>
+                            <td><span class="badge @alertBadge">@log.AlertType</span></td>
+                            <td>
+                                <div class="fw-bold text-light">@log.ProductName</div>
+                                <div class="small text-muted font-monospace">SKU: @log.Sku &bull; Category: @log.CategoryName</div>
+                            </td>
+                            <td class="font-monospace text-primary small">@log.RecipientEmail</td>
+                            <td><span class="badge @statusBadge">@log.Status</span></td>
+                            <td class="small font-monospace text-muted text-truncate" style="max-width: 260px;" title="@(string.IsNullOrEmpty(log.ErrorMessage) ? log.MessageId : log.ErrorMessage)">
+                                @(string.IsNullOrEmpty(log.ErrorMessage) ? log.MessageId : log.ErrorMessage)
+                            </td>
+                            <td class="text-end">
+                                @if (log.Status == "Failed")
+                                {
+                                    <button type="button" class="btn-d btn-outline btn-sm-d px-2 py-1 text-warning" onclick="resendLogEmail('@log.Id')">
+                                        <i class="bi bi-arrow-repeat"></i> Retry
+                                    </button>
+                                }
+                                else
+                                {
+                                    <span class="text-success small"><i class="bi bi-check-all fs-6"></i> Delivered</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <div class="text-muted mb-2"><i class="bi bi-inbox fs-1"></i></div>
+                            <h5 class="text-muted fw-normal">No email notification logs found</h5>
+                            <p class="small text-muted mb-0">Use the Send Test Email button or adjust stock levels to generate alert records.</p>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Test Email Modal -->
+<div class="modal fade" id="testEmailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content card-d border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-light"><i class="bi bi-send-check text-primary me-2"></i>Send Brevo API Test Email</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-light">
+                <p class="text-muted small mb-3">Verify that your Brevo API key, sender configuration, and HTTPS transport pipe are active.</p>
+                <div class="mb-3">
+                    <label class="form-label-d text-light">Recipient Email Address</label>
+                    <input type="email" id="testEmailRecipient" class="form-control form-control-d" value="@settings.AdminEmail" placeholder="admin@sims.com" />
+                </div>
+                <div id="testEmailAlert" style="display:none;" class="alert p-3 rounded small mb-0"></div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn-d btn-outline btn-sm-d" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn-d btn-primary btn-sm-d" id="btnExecuteTestEmail" onclick="executeTestEmail()"><i class="bi bi-send me-1"></i> Send Test Email</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    async function executeTestEmail() {
+        const recipient = document.getElementById('testEmailRecipient').value.trim();
+        const alertBox = document.getElementById('testEmailAlert');
+        const btn = document.getElementById('btnExecuteTestEmail');
+
+        if (!recipient) {
+            alertBox.className = 'alert alert-danger-d bg-danger-subtle text-danger border-danger p-3 rounded small mb-0';
+            alertBox.innerHTML = 'Recipient email address is required.';
+            alertBox.style.display = 'block';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending...';
+        alertBox.style.display = 'none';
+
+        try {
+            const tokenInput = document.querySelector('#anti-forgery-form input[name="__RequestVerificationToken"]');
+            const token = tokenInput ? tokenInput.value : '';
+
+            const formData = new FormData();
+            formData.append('recipientEmail', recipient);
+            if (token) formData.append('__RequestVerificationToken', token);
+
+            const resp = await fetch('/InventoryAlert/SendTestEmail', {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': token,
+                    'X-CSRF-TOKEN': token
+                },
+                body: formData
+            });
+
+            const data = await resp.json();
+            if (data.success) {
+                alertBox.className = 'alert alert-success-d bg-success-subtle text-success border-success p-3 rounded small mb-0';
+                alertBox.innerHTML = '<i class="bi bi-check-circle me-1"></i> ' + data.message;
+                alertBox.style.display = 'block';
+                setTimeout(() => { window.location.reload(); }, 2000);
+            } else {
+                alertBox.className = 'alert alert-danger-d bg-danger-subtle text-danger border-danger p-3 rounded small mb-0';
+                alertBox.innerHTML = '<i class="bi bi-exclamation-triangle me-1"></i> ' + data.message;
+                alertBox.style.display = 'block';
+            }
+        } catch (e) {
+            alertBox.className = 'alert alert-danger-d bg-danger-subtle text-danger border-danger p-3 rounded small mb-0';
+            alertBox.innerHTML = 'An error occurred while calling the Brevo API service.';
+            alertBox.style.display = 'block';
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-send me-1"></i> Send Test Email';
+        }
+    }
+
+    async function resendLogEmail(logId) {
+        if (!confirm('Are you sure you want to resend this email alert?')) return;
+
+        try {
+            const tokenInput = document.querySelector('#anti-forgery-form input[name="__RequestVerificationToken"]');
+            const token = tokenInput ? tokenInput.value : '';
+
+            const formData = new FormData();
+            formData.append('logId', logId);
+            if (token) formData.append('__RequestVerificationToken', token);
+
+            const resp = await fetch('/InventoryAlert/ResendEmail', {
+                method: 'POST',
+                headers: {
+                    'RequestVerificationToken': token,
+                    'X-CSRF-TOKEN': token
+                },
+                body: formData
+            });
+
+            const data = await resp.json();
+            alert(data.message);
+            if (data.success) window.location.reload();
+        } catch (e) {
+            alert('An error occurred while resending the email.');
+        }
+    }
+</script>
+}

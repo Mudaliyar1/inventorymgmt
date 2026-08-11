@@ -198,6 +198,16 @@
           <span class="sb-text">System Logs</span>
         </a>
       }
+
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "InventoryAlert", "Index"))
+      {
+        <a href="@Url.Action("Index","InventoryAlert")"
+           class="sb-link @(ctrl=="InventoryAlert"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="Email Inventory Alerts" data-bs-placement="right">
+          <i class="bi bi-envelope-at sb-icon"></i>
+          <span class="sb-text">Email Alerts</span>
+        </a>
+      }
     </div><!-- /sb-scroll -->
 
     <!-- Footer collapse -->
