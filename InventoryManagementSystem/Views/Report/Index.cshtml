@@ -1,61 +1,103 @@
 @{
     ViewData["Title"] = "Reports Center";
+    var categories = ViewBag.Categories as IEnumerable<InventoryManagementSystem.Models.Category> ?? new List<InventoryManagementSystem.Models.Category>();
+    var products = ViewBag.Products as IEnumerable<InventoryManagementSystem.Models.Product> ?? new List<InventoryManagementSystem.Models.Product>();
+    var users = ViewBag.Users as IEnumerable<InventoryManagementSystem.Models.User> ?? new List<InventoryManagementSystem.Models.User>();
 }
 
-<div class="ph">
+<div class="ph d-flex justify-content-between align-items-center flex-wrap gap-3">
     <div>
-        <h1 class="ph-title">System Reports Center</h1>
-        <p class="ph-sub">Export spreadsheets and documents to review inventory valuation and commercial statistics.</p>
+        <h1 class="ph-title"><i class="bi bi-file-earmark-bar-graph me-2" style="color:var(--primary)"></i>Enterprise Reports Center</h1>
+        <p class="ph-sub">Generate, filter, preview, and download real-time business reports in Excel (.xlsx) &amp; PDF (.pdf).</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button id="exportExcelBtn" class="btn-d btn-primary" style="background:#16a34a;border-color:#16a34a">
+            <i class="bi bi-file-earmark-excel me-1"></i> Export Excel (.xlsx)
+        </button>
+        <button id="exportPdfBtn" class="btn-d btn-primary" style="background:#dc2626;border-color:#dc2626">
+            <i class="bi bi-file-earmark-pdf me-1"></i> Download PDF (.pdf)
+        </button>
     </div>
 </div>
 
-<!-- Quick Stats Grid -->
-<div class="row g-3 mb-4">
+<!-- 1. Report Type Selector Bar -->
+<div class="card-d card-p p-3 mb-4" style="background:rgba(255,255,255,0.02)">
+    <div class="text-muted small mb-2 fw-semibold"><i class="bi bi-collection-play me-1"></i>SELECT REPORT TYPE</div>
+    <div class="d-flex flex-wrap gap-2" id="reportTypeSelector">
+        <button type="button" class="btn-d btn-outline r-type-btn active" data-type="Sales">
+            <i class="bi bi-receipt me-1" style="color:var(--success)"></i> Sales Report
+        </button>
+        <button type="button" class="btn-d btn-outline r-type-btn" data-type="Inventory">
+            <i class="bi bi-box-seam me-1" style="color:var(--primary)"></i> Inventory Valuation
+        </button>
+        <button type="button" class="btn-d btn-outline r-type-btn" data-type="StockMovement">
+            <i class="bi bi-arrow-left-right me-1" style="color:var(--warning)"></i> Stock Movements
+        </button>
+        <button type="button" class="btn-d btn-outline r-type-btn" data-type="StockHistory">
+            <i class="bi bi-clock-history me-1" style="color:#0dcaf0"></i> Stock Audit History
+        </button>
+        <button type="button" class="btn-d btn-outline r-type-btn" data-type="EmployeeActivity">
+            <i class="bi bi-person-badge me-1" style="color:#a855f7"></i> Employee Activity
+        </button>
+        <button type="button" class="btn-d btn-outline r-type-btn" data-type="Alerts">
+            <i class="bi bi-exclamation-triangle me-1" style="color:#ef4444"></i> Low Stock Alerts
+        </button>
+        <button type="button" class="btn-d btn-outline r-type-btn" data-type="Category">
+            <i class="bi bi-tags me-1" style="color:#3b82f6"></i> Category Summary
+        </button>
+        <button type="button" class="btn-d btn-outline r-type-btn" data-type="ProductPerformance">
+            <i class="bi bi-graph-up-arrow me-1" style="color:#10b981"></i> Product Performance
+        </button>
+        <button type="button" class="btn-d btn-outline r-type-btn" data-type="ExecutiveSummary">
+            <i class="bi bi-briefcase me-1" style="color:#f59e0b"></i> Executive Summary
+        </button>
+    </div>
+</div>
+
+<!-- 2. Dynamic Summary Dashboard Cards -->
+<div class="row g-3 mb-4" id="summaryCardsContainer">
     <div class="col-xl-3 col-sm-6">
         <div class="stat-card">
             <div>
                 <div class="sc-label">Period Revenue</div>
-                <div class="sc-value" style="font-size:24px">₹@(((decimal)ViewBag.TotalRevenue).ToString("N2"))</div>
-                <span class="sc-trend trend-flat"><i class="bi bi-calendar"></i> Selected range</span>
+                <div class="sc-value" id="cardRevenue" style="font-size:22px">₹0.00</div>
+                <span class="sc-trend trend-flat"><i class="bi bi-calendar"></i> Filtered Sales</span>
             </div>
             <div class="sc-icon ic-green">
                 <i class="bi bi-currency-rupee"></i>
             </div>
         </div>
     </div>
-
     <div class="col-xl-3 col-sm-6">
         <div class="stat-card">
             <div>
-                <div class="sc-label">Total Sales</div>
-                <div class="sc-value" style="font-size:24px">@ViewBag.SalesCount <small style="font-size:13px;color:var(--text-muted)">Orders</small></div>
-                <span class="sc-trend trend-flat"><i class="bi bi-receipt"></i> Total checkout count</span>
+                <div class="sc-label">Total Invoices</div>
+                <div class="sc-value" id="cardOrders" style="font-size:22px">0</div>
+                <span class="sc-trend trend-flat"><i class="bi bi-receipt"></i> Completed Checkouts</span>
             </div>
             <div class="sc-icon ic-blue">
                 <i class="bi bi-receipt-cutoff"></i>
             </div>
         </div>
     </div>
-
     <div class="col-xl-3 col-sm-6">
         <div class="stat-card">
             <div>
-                <div class="sc-label">Avg Order Value</div>
-                <div class="sc-value" style="font-size:24px">₹@(((decimal)ViewBag.AvgInvoice).ToString("N2"))</div>
-                <span class="sc-trend trend-flat"><i class="bi bi-calculator"></i> Per transaction</span>
+                <div class="sc-label">Current Inventory Value</div>
+                <div class="sc-value" id="cardAssetValue" style="font-size:22px">₹0.00</div>
+                <span class="sc-trend trend-flat"><i class="bi bi-box"></i> Stock Cost Valuation</span>
             </div>
             <div class="sc-icon ic-sky">
-                <i class="bi bi-calculator"></i>
+                <i class="bi bi-box-seam"></i>
             </div>
         </div>
     </div>
-
     <div class="col-xl-3 col-sm-6">
-        <div class="stat-card" style="@(ViewBag.LowStockCount > 0 ? "border-color:var(--warning)" : "")">
+        <div class="stat-card" id="cardLowStockBorder">
             <div>
-                <div class="sc-label">Low Stock SKUs</div>
-                <div class="sc-value" style="font-size:24px;@(ViewBag.LowStockCount > 0 ? "color:var(--warning)" : "")">@ViewBag.LowStockCount</div>
-                <span class="sc-trend trend-flat"><i class="bi bi-exclamation-triangle"></i> Needs restock</span>
+                <div class="sc-label">Stock Alerts</div>
+                <div class="sc-value" id="cardLowStock" style="font-size:22px">0 Low / 0 Out</div>
+                <span class="sc-trend trend-flat"><i class="bi bi-exclamation-triangle"></i> Needs Restock</span>
             </div>
             <div class="sc-icon ic-amber">
                 <i class="bi bi-exclamation-triangle-fill"></i>
@@ -64,78 +106,503 @@
     </div>
 </div>
 
-<!-- Filters & Reports Generators Grid -->
-<div class="row g-4">
-    <!-- Sales Report Card -->
-    <div class="col-lg-6">
-        <div class="card-d card-p-lg h-100">
-            <div class="s-title"><i class="bi bi-cash-stack me-2" style="color:var(--success)"></i>Sales Report Generator</div>
-            <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px">
-                Filter and compile a detailed spreadsheet report containing items billing breakdown, taxes (GST), and discounts for any date interval.
-            </p>
-            
-            <form method="get" asp-action="Index">
-                <div class="row g-3 mb-4">
-                    <div class="col-6">
-                        <div class="fg">
-                            <label class="fg-label">From Date</label>
-                            <input type="date" name="startDate" class="fg-control" value="@ViewBag.StartDate" />
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="fg">
-                            <label class="fg-label">To Date</label>
-                            <input type="date" name="endDate" class="fg-control" value="@ViewBag.EndDate" />
-                        </div>
-                    </div>
-                </div>
-
-                <div class="d-flex gap-2">
-                    <button type="submit" class="btn-d btn-outline">
-                        <i class="bi bi-arrow-clockwise"></i> Refresh Stats
-                    </button>
-                    <a href="#" id="downloadSalesExcel" class="btn-d btn-primary" style="background:var(--success);border-color:var(--success)">
-                        <i class="bi bi-file-earmark-spreadsheet"></i> Export Excel
-                    </a>
-                </div>
-            </form>
+<!-- 3. Global Filters Panel -->
+<div class="card-d card-p-lg mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="s-title mb-0"><i class="bi bi-funnel me-2" style="color:var(--primary)"></i>Global Report Filters</div>
+        <!-- Date Preset Pills -->
+        <div class="d-flex flex-wrap gap-1" id="datePresetPills">
+            <button type="button" class="btn-d btn-outline btn-sm date-preset-btn" data-preset="Today">Today</button>
+            <button type="button" class="btn-d btn-outline btn-sm date-preset-btn" data-preset="Yesterday">Yesterday</button>
+            <button type="button" class="btn-d btn-outline btn-sm date-preset-btn" data-preset="ThisWeek">This Week</button>
+            <button type="button" class="btn-d btn-outline btn-sm date-preset-btn active" data-preset="ThisMonth">This Month</button>
+            <button type="button" class="btn-d btn-outline btn-sm date-preset-btn" data-preset="LastMonth">Last Month</button>
+            <button type="button" class="btn-d btn-outline btn-sm date-preset-btn" data-preset="ThisYear">This Year</button>
+            <button type="button" class="btn-d btn-outline btn-sm date-preset-btn" data-preset="Custom">Custom</button>
         </div>
     </div>
 
-    <!-- Inventory Report Card -->
-    <div class="col-lg-6">
-        <div class="card-d card-p-lg h-100 d-flex flex-column">
-            <div class="s-title"><i class="bi bi-box-seam me-2" style="color:var(--primary)"></i>Inventory Valuation Statement</div>
-            <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px">
-                Retrieve the live status of all system products, including item name, safety stock limits, and cumulative purchase valuation summaries.
-            </p>
-            
-            <div class="card-d card-p mb-4" style="background:var(--bg)">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span style="font-size:13px;color:var(--text-muted)">Live Asset Valuation:</span>
-                    <span style="font-size:20px;font-weight:800;color:var(--success)">₹@(((decimal)ViewBag.InventoryValuation).ToString("N2"))</span>
+    <form id="filterForm">
+        <input type="hidden" id="reportType" name="ReportType" value="@(ViewBag.InitialReportType ?? "Sales")" />
+        <input type="hidden" id="datePreset" name="DatePreset" value="@(ViewBag.InitialDatePreset ?? "ThisMonth")" />
+        <input type="hidden" id="currentPage" name="Page" value="1" />
+        <input type="hidden" id="sortBy" name="SortBy" value="" />
+
+        <div class="row g-3">
+            <!-- Custom Date Range -->
+            <div class="col-md-3 date-custom-container" style="display:none">
+                <div class="fg">
+                    <label class="fg-label">From Date</label>
+                    <input type="date" id="startDate" name="StartDate" class="fg-control" value="@ViewBag.InitialStartDate" />
+                </div>
+            </div>
+            <div class="col-md-3 date-custom-container" style="display:none">
+                <div class="fg">
+                    <label class="fg-label">To Date</label>
+                    <input type="date" id="endDate" name="EndDate" class="fg-control" value="@ViewBag.InitialEndDate" />
                 </div>
             </div>
 
-            <div class="d-flex gap-2 mt-auto">
-                <a asp-action="ExportInventoryExcel" class="btn-d btn-primary" style="background:var(--success);border-color:var(--success)">
-                    <i class="bi bi-file-earmark-spreadsheet"></i> Export Excel
-                </a>
-                <a asp-action="ExportInventoryPdf" target="_blank" class="btn-d btn-primary">
-                    <i class="bi bi-file-pdf"></i> Download PDF
-                </a>
+            <!-- Product Filter -->
+            <div class="col-md-3">
+                <div class="fg">
+                    <label class="fg-label">Product</label>
+                    <select id="productId" name="ProductId" class="fg-control">
+                        <option value="">All Products</option>
+                        @foreach (var p in products)
+                        {
+                            <option value="@p.Id">@p.Name (@p.Code)</option>
+                        }
+                    </select>
+                </div>
             </div>
+
+            <!-- Category Filter -->
+            <div class="col-md-3">
+                <div class="fg">
+                    <label class="fg-label">Category</label>
+                    <select id="categoryId" name="CategoryId" class="fg-control">
+                        <option value="">All Categories</option>
+                        @foreach (var c in categories)
+                        {
+                            <option value="@c.Id">@c.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <!-- Transaction Type -->
+            <div class="col-md-3">
+                <div class="fg">
+                    <label class="fg-label">Transaction / Movement Type</label>
+                    <select id="transactionType" name="TransactionType" class="fg-control">
+                        <option value="">All Movement Types</option>
+                        <option value="Stock In">Stock In</option>
+                        <option value="Stock Out">Stock Out</option>
+                        <option value="POS Sale">POS Sale</option>
+                        <option value="Adjustment">Adjustment</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- User / Employee Filter -->
+            <div class="col-md-3">
+                <div class="fg">
+                    <label class="fg-label">User / Employee</label>
+                    <select id="employeeId" name="EmployeeId" class="fg-control">
+                        <option value="">All Users</option>
+                        @foreach (var u in users)
+                        {
+                            <option value="@u.Username">@u.FullName (@u.Username)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <!-- Payment Status -->
+            <div class="col-md-3">
+                <div class="fg">
+                    <label class="fg-label">Payment Status</label>
+                    <select id="paymentStatus" name="PaymentStatus" class="fg-control">
+                        <option value="">All Payment Statuses</option>
+                        <option value="Paid">Paid</option>
+                        <option value="Unpaid">Unpaid</option>
+                        <option value="Partial">Partial</option>
+                        <option value="Draft">Draft</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Stock Status -->
+            <div class="col-md-3">
+                <div class="fg">
+                    <label class="fg-label">Stock Status</label>
+                    <select id="stockStatus" name="StockStatus" class="fg-control">
+                        <option value="All">All Stock Levels</option>
+                        <option value="InStock">In Stock (> Min)</option>
+                        <option value="LowStock">Low Stock (<= Min)</option>
+                        <option value="OutOfStock">Out of Stock (= 0)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Keyword Search -->
+            <div class="col-md-3">
+                <div class="fg">
+                    <label class="fg-label">Search Keyword</label>
+                    <input type="text" id="searchTerm" name="SearchTerm" class="fg-control" placeholder="Search SKU, Product, Invoice..." />
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top border-secondary border-opacity-25">
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn-d btn-primary">
+                    <i class="bi bi-funnel-fill me-1"></i> Apply Filters
+                </button>
+                <button type="button" id="resetFiltersBtn" class="btn-d btn-outline">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i> Reset Filters
+                </button>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="text-muted small">Items per page:</span>
+                <select id="pageSize" name="PageSize" class="fg-control form-select-sm" style="width:auto">
+                    <option value="10">10</option>
+                    <option value="20" selected>20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- 4. Live Data Preview Section & Table -->
+<div class="card-d card-p-lg">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <div>
+            <h3 class="s-title mb-0" id="previewTitle">Report Preview</h3>
+            <div class="text-muted small" id="previewSubtitle">Applied Filters: None</div>
+        </div>
+        <div class="badge bg-dark border border-secondary text-light px-3 py-2" id="previewCountBadge">
+            0 Records Found
+        </div>
+    </div>
+
+    <!-- Table Container -->
+    <div class="table-responsive" style="min-height:300px">
+        <table class="table table-dark table-hover align-middle mb-0" id="reportPreviewTable">
+            <thead>
+                <tr id="tableHeaderRow">
+                    <!-- Dynamic Headers injected here -->
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                <!-- Loading State by default -->
+                <tr>
+                    <td colspan="12" class="text-center py-5 text-muted">
+                        <div class="spinner-border text-primary me-2" role="status"></div> Loading report data...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination Controls Footer -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-4 pt-3 border-top border-secondary border-opacity-25">
+        <div class="text-muted small" id="paginationInfo">
+            Showing 0 to 0 of 0 records
+        </div>
+        <div class="d-flex gap-1" id="paginationButtons">
+            <!-- Dynamic Page Buttons -->
         </div>
     </div>
 </div>
 
 @section Scripts {
     <script>
-        document.getElementById('downloadSalesExcel')?.addEventListener('click', function(e) {
-            e.preventDefault();
-            var start = document.querySelector('input[name="startDate"]').value;
-            var end = document.querySelector('input[name="endDate"]').value;
-            window.location.href = '@Url.Action("ExportSalesExcel", "Report")?startDate=' + start + '&endDate=' + end;
+        document.addEventListener('DOMContentLoaded', function () {
+            // State
+            let currentReportType = '@(ViewBag.InitialReportType ?? "Sales")';
+            let currentDatePreset = '@(ViewBag.InitialDatePreset ?? "ThisMonth")';
+
+            // DOM Elements
+            const filterForm = document.getElementById('filterForm');
+            const reportTypeInput = document.getElementById('reportType');
+            const datePresetInput = document.getElementById('datePreset');
+            const currentPageInput = document.getElementById('currentPage');
+            const dateCustomContainers = document.querySelectorAll('.date-custom-container');
+
+            // 1. Report Type Pills Handler
+            document.querySelectorAll('.r-type-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    document.querySelectorAll('.r-type-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentReportType = this.dataset.type;
+                    reportTypeInput.value = currentReportType;
+                    currentPageInput.value = 1;
+                    fetchReportPreview();
+                });
+            });
+
+            // 2. Date Preset Pills Handler
+            document.querySelectorAll('.date-preset-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    document.querySelectorAll('.date-preset-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentDatePreset = this.dataset.preset;
+                    datePresetInput.value = currentDatePreset;
+
+                    if (currentDatePreset === 'Custom') {
+                        dateCustomContainers.forEach(el => el.style.display = 'block');
+                    } else {
+                        dateCustomContainers.forEach(el => el.style.display = 'none');
+                    }
+                    currentPageInput.value = 1;
+                    fetchReportPreview();
+                });
+            });
+
+            // Form Submit
+            filterForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                currentPageInput.value = 1;
+                fetchReportPreview();
+            });
+
+            // Reset Filters
+            document.getElementById('resetFiltersBtn').addEventListener('click', function () {
+                filterForm.reset();
+                reportTypeInput.value = 'Sales';
+                datePresetInput.value = 'ThisMonth';
+                currentPageInput.value = 1;
+
+                document.querySelectorAll('.r-type-btn').forEach(b => b.classList.remove('active'));
+                document.querySelector('.r-type-btn[data-type="Sales"]').classList.add('active');
+
+                document.querySelectorAll('.date-preset-btn').forEach(b => b.classList.remove('active'));
+                document.querySelector('.date-preset-btn[data-preset="ThisMonth"]').classList.add('active');
+
+                dateCustomContainers.forEach(el => el.style.display = 'none');
+                fetchReportPreview();
+            });
+
+            // Page Size Change
+            document.getElementById('pageSize').addEventListener('change', function () {
+                currentPageInput.value = 1;
+                fetchReportPreview();
+            });
+
+            // Export Excel
+            document.getElementById('exportExcelBtn').addEventListener('click', function () {
+                const params = new URLSearchParams(new FormData(filterForm)).toString();
+                window.location.href = '@Url.Action("ExportExcel", "Report")?' + params;
+            });
+
+            // Export PDF
+            document.getElementById('exportPdfBtn').addEventListener('click', function () {
+                const params = new URLSearchParams(new FormData(filterForm)).toString();
+                window.open('@Url.Action("ExportPdf", "Report")?' + params, '_blank');
+            });
+
+            // Fetch AJAX Preview Data
+            async function fetchReportPreview() {
+                const tbody = document.getElementById('tableBody');
+                tbody.innerHTML = `<tr><td colspan="12" class="text-center py-5 text-muted"><div class="spinner-border text-primary me-2"></div> Fetching latest database report data...</td></tr>`;
+
+                try {
+                    const params = new URLSearchParams(new FormData(filterForm)).toString();
+                    const resp = await fetch('@Url.Action("Preview", "Report")?' + params);
+                    const json = await resp.json();
+
+                    if (!json.success) {
+                        tbody.innerHTML = `<tr><td colspan="12" class="text-center py-4 text-danger"><i class="bi bi-exclamation-triangle me-2"></i> ${json.message}</td></tr>`;
+                        return;
+                    }
+
+                    renderReport(json.data);
+                } catch (err) {
+                    tbody.innerHTML = `<tr><td colspan="12" class="text-center py-4 text-danger"><i class="bi bi-exclamation-octagon me-2"></i> Error connecting to report server.</td></tr>`;
+                }
+            }
+
+            // Formatting Helpers
+            function fmtCurr(val) {
+                const n = Number(val) || 0;
+                return '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+            function fmtNum(val) {
+                const n = Number(val) || 0;
+                return n.toLocaleString('en-IN');
+            }
+
+            // Render Report Table & Summary Cards
+            function renderReport(data) {
+                // Update Titles & Subtitles
+                document.getElementById('previewTitle').innerText = data.reportTitle;
+                document.getElementById('previewSubtitle').innerText = `Filters: ${data.appliedFiltersText || 'All Records'}`;
+                document.getElementById('previewCountBadge').innerText = `${data.totalCount} Records Found`;
+
+                // Update Executive Dashboard Cards
+                const stats = data.summaryStats;
+                document.getElementById('cardRevenue').innerText = fmtCurr(stats.totalSalesRevenue);
+                document.getElementById('cardOrders').innerText = `${fmtNum(stats.totalOrders)} Orders`;
+                document.getElementById('cardAssetValue').innerText = fmtCurr(stats.currentInventoryValue);
+                document.getElementById('cardLowStock').innerText = `${fmtNum(stats.lowStockCount)} Low / ${fmtNum(stats.outOfStockCount)} Out`;
+
+                // Table Headers
+                const theadRow = document.getElementById('tableHeaderRow');
+                theadRow.innerHTML = data.headers.map(h => `<th class="text-nowrap">${h}</th>`).join('');
+
+                // Table Rows
+                const tbody = document.getElementById('tableBody');
+                if (!data.rows || data.rows.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="${data.headers.length}" class="text-center py-5 text-muted"><i class="bi bi-inbox fs-3 d-block mb-2"></i>No matching records found for the selected filters.</td></tr>`;
+                    renderPagination(data);
+                    return;
+                }
+
+                const rType = (data.reportType || '').toLowerCase();
+
+                tbody.innerHTML = data.rows.map((row, idx) => {
+                    const rowNum = (data.page - 1) * data.pageSize + idx + 1;
+
+                    if (rType === 'sales' || rType === 'executivesummary') {
+                        return `
+                            <tr>
+                                <td>${rowNum}</td>
+                                <td><span class="font-monospace text-primary fw-bold">${escapeHtml(row.primaryText)}</span></td>
+                                <td>${escapeHtml(row.dateString)}</td>
+                                <td>${escapeHtml(row.customerInfo)}</td>
+                                <td class="text-truncate" style="max-width:200px">${escapeHtml(row.secondaryText)}</td>
+                                <td>${fmtCurr(row.subTotal)}</td>
+                                <td>${fmtCurr(row.discount)}</td>
+                                <td>${fmtCurr(row.taxAmount)}</td>
+                                <td><span class="fw-bold text-success">${fmtCurr(row.grandTotal)}</span></td>
+                                <td><span class="badge ${row.badgeClass}">${escapeHtml(row.badgeText)}</span></td>
+                                <td>${escapeHtml(row.userExecutor)}</td>
+                            </tr>`;
+                    } else if (rType === 'inventory') {
+                        return `
+                            <tr>
+                                <td>${rowNum}</td>
+                                <td><span class="font-monospace text-primary">${escapeHtml(row.code)}</span></td>
+                                <td><span class="fw-bold text-light">${escapeHtml(row.name)}</span></td>
+                                <td><span class="badge bg-dark border border-secondary">${escapeHtml(row.categoryName)}</span></td>
+                                <td><span class="fw-bold fs-6 ${row.quantity === 0 ? 'text-danger' : (row.quantity <= row.previousStock ? 'text-warning' : 'text-success')}">${fmtNum(row.quantity)}</span></td>
+                                <td>${fmtNum(row.previousStock)}</td>
+                                <td><span class="badge ${row.badgeClass}">${escapeHtml(row.badgeText)}</span></td>
+                                <td>${fmtCurr(row.unitPrice)}</td>
+                                <td>${fmtCurr(row.salesValue)}</td>
+                                <td><span class="fw-bold text-info">${fmtCurr(row.costValue)}</span></td>
+                                <td>${fmtCurr(row.grandTotal)}</td>
+                                <td><span class="fw-bold text-success">${fmtCurr(row.profitValue)}</span></td>
+                            </tr>`;
+                    } else if (rType === 'stockmovement' || rType === 'stockhistory') {
+                        return `
+                            <tr>
+                                <td>${rowNum}</td>
+                                <td>${escapeHtml(row.dateString)}</td>
+                                <td><span class="fw-bold">${escapeHtml(row.name)}</span></td>
+                                <td><span class="font-monospace text-muted">${escapeHtml(row.code)}</span></td>
+                                <td><span class="badge ${row.badgeClass}">${escapeHtml(row.badgeText)}</span></td>
+                                <td><span class="fw-bold fs-6">${row.quantity > 0 ? '+' : ''}${fmtNum(row.quantity)}</span></td>
+                                <td>${fmtNum(row.previousStock)}</td>
+                                <td>${fmtNum(row.newStock)}</td>
+                                <td>${escapeHtml(row.reason)}</td>
+                                <td>${escapeHtml(row.userExecutor)}</td>
+                            </tr>`;
+                    } else if (rType === 'employeeactivity') {
+                        return `
+                            <tr>
+                                <td>${rowNum}</td>
+                                <td>${escapeHtml(row.dateString)}</td>
+                                <td><span class="fw-bold text-light">${escapeHtml(row.userExecutor)}</span></td>
+                                <td><span class="badge bg-dark border border-secondary">${escapeHtml(row.secondaryText)}</span></td>
+                                <td><span class="badge bg-primary">${escapeHtml(row.categoryName)}</span></td>
+                                <td><span class="fw-semibold text-info">${escapeHtml(row.name)}</span></td>
+                                <td class="text-truncate" style="max-width:250px">${escapeHtml(row.primaryText)}</td>
+                                <td><span class="font-monospace text-muted">${escapeHtml(row.code)}</span></td>
+                                <td><span class="badge ${row.badgeClass}">${escapeHtml(row.badgeText)}</span></td>
+                            </tr>`;
+                    } else if (rType === 'alerts') {
+                        return `
+                            <tr>
+                                <td>${rowNum}</td>
+                                <td><span class="font-monospace text-primary">${escapeHtml(row.code)}</span></td>
+                                <td><span class="fw-bold text-light">${escapeHtml(row.name)}</span></td>
+                                <td><span class="badge bg-dark border border-secondary">${escapeHtml(row.categoryName)}</span></td>
+                                <td><span class="fw-bold fs-6 ${row.quantity === 0 ? 'text-danger' : 'text-warning'}">${fmtNum(row.quantity)}</span></td>
+                                <td>${fmtNum(row.previousStock)}</td>
+                                <td><span class="badge ${row.badgeClass}">${escapeHtml(row.badgeText)}</span></td>
+                                <td>${fmtCurr(row.unitPrice)}</td>
+                                <td>${fmtCurr(row.salesValue)}</td>
+                                <td><span class="fw-bold text-danger">${fmtNum(row.newStock)}</span></td>
+                            </tr>`;
+                    } else if (rType === 'category') {
+                        return `
+                            <tr>
+                                <td>${rowNum}</td>
+                                <td><span class="fw-bold text-light">${escapeHtml(row.name)}</span></td>
+                                <td>${fmtNum(row.quantity)} Products</td>
+                                <td>${fmtNum(row.newStock)} Units</td>
+                                <td>${fmtCurr(row.costValue)}</td>
+                                <td>${fmtCurr(row.salesValue)}</td>
+                                <td><span class="fw-bold text-success">${fmtCurr(row.grandTotal)}</span></td>
+                                <td><span class="badge bg-warning text-dark">${fmtNum(row.previousStock)} Low</span></td>
+                                <td><span class="badge bg-danger">${fmtNum(row.discount)} Out</span></td>
+                            </tr>`;
+                    } else if (rType === 'productperformance') {
+                        return `
+                            <tr>
+                                <td>${rowNum}</td>
+                                <td><span class="font-monospace text-primary">${escapeHtml(row.code)}</span></td>
+                                <td><span class="fw-bold text-light">${escapeHtml(row.name)}</span></td>
+                                <td><span class="badge bg-dark border border-secondary">${escapeHtml(row.categoryName)}</span></td>
+                                <td><span class="fw-bold text-info">${fmtNum(row.quantity)}</span></td>
+                                <td><span class="fw-bold text-success">${fmtCurr(row.grandTotal)}</span></td>
+                                <td>${fmtCurr(row.discount)}</td>
+                                <td>${fmtNum(row.previousStock)}</td>
+                                <td>${fmtCurr(row.costValue)}</td>
+                                <td><span class="fw-bold text-primary">${fmtCurr(row.profitValue)}</span></td>
+                            </tr>`;
+                    } else {
+                        return `
+                            <tr>
+                                <td>${rowNum}</td>
+                                <td>${escapeHtml(row.code || row.primaryText)}</td>
+                                <td>${escapeHtml(row.name || row.customerInfo)}</td>
+                                <td>${escapeHtml(row.categoryName || row.secondaryText)}</td>
+                                <td>${fmtNum(row.quantity)}</td>
+                                <td>${fmtCurr(row.grandTotal || row.costValue)}</td>
+                                <td>${escapeHtml(row.badgeText || row.userExecutor)}</td>
+                            </tr>`;
+                    }
+                }).join('');
+
+                renderPagination(data);
+            }
+
+            // Render Pagination Buttons
+            function renderPagination(data) {
+                const startRec = data.totalCount === 0 ? 0 : (data.page - 1) * data.pageSize + 1;
+                const endRec = Math.min(data.totalCount, data.page * data.pageSize);
+                document.getElementById('paginationInfo').innerText = `Showing ${startRec} to ${endRec} of ${data.totalCount} records`;
+
+                const nav = document.getElementById('paginationButtons');
+                if (data.totalPages <= 1) {
+                    nav.innerHTML = '';
+                    return;
+                }
+
+                let html = '';
+                html += `<button type="button" class="btn-d btn-outline btn-sm ${data.page === 1 ? 'disabled' : ''}" onclick="goToPage(${data.page - 1})"><i class="bi bi-chevron-left"></i> Prev</button>`;
+
+                for (let p = 1; p <= data.totalPages; p++) {
+                    if (p === 1 || p === data.totalPages || (p >= data.page - 2 && p <= data.page + 2)) {
+                        html += `<button type="button" class="btn-d ${p === data.page ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="goToPage(${p})">${p}</button>`;
+                    } else if (p === data.page - 3 || p === data.page + 3) {
+                        html += `<span class="px-1 text-muted">...</span>`;
+                    }
+                }
+
+                html += `<button type="button" class="btn-d btn-outline btn-sm ${data.page === data.totalPages ? 'disabled' : ''}" onclick="goToPage(${data.page + 1})">Next <i class="bi bi-chevron-right"></i></button>`;
+                nav.innerHTML = html;
+            }
+
+            // Helper Pagination Function
+            window.goToPage = function (p) {
+                currentPageInput.value = p;
+                fetchReportPreview();
+            };
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            }
+
+            // Initial Fetch
+            fetchReportPreview();
         });
     </script>
 }

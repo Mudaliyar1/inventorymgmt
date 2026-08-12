@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using InventoryManagementSystem.Interfaces;
 using InventoryManagementSystem.Models;
+using InventoryManagementSystem.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,82 +17,130 @@ namespace InventoryManagementSystem.Controllers
         private readonly IProductService _productService;
         private readonly ICategoryService _categoryService;
         private readonly IReportService _reportService;
+        private readonly IUserRepository _userRepository;
 
         public ReportController(
             ISaleRepository saleRepository,
             IProductService productService,
             ICategoryService categoryService,
-            IReportService reportService)
+            IReportService reportService,
+            IUserRepository userRepository)
         {
             _saleRepository = saleRepository;
             _productService = productService;
             _categoryService = categoryService;
             _reportService = reportService;
+            _userRepository = userRepository;
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index(DateTime? startDate, DateTime? endDate)
+        public async Task<IActionResult> Index(
+            string reportType = "Sales",
+            string datePreset = "ThisMonth",
+            string? startDate = null,
+            string? endDate = null,
+            string? categoryId = null,
+            string? productId = null)
         {
-            var end = endDate ?? DateTime.UtcNow;
-            var start = startDate ?? DateTime.UtcNow.AddDays(-30);
-
-            // Get sales in range
-            var sales = await _saleRepository.GetSalesBetweenDatesAsync(start, end);
+            var categories = await _categoryService.GetAllCategoriesAsync();
             var products = await _productService.GetAllProductsAsync();
+            var users = await _userRepository.GetAllAsync();
 
-            // Aggregations
-            decimal totalRevenue = sales.Sum(s => s.GrandTotal);
-            int salesCount = sales.Count();
-            decimal avgInvoice = salesCount > 0 ? totalRevenue / salesCount : 0.0m;
+            ViewBag.Categories = categories;
+            ViewBag.Products = products;
+            ViewBag.Users = users;
 
-            decimal totalInventoryValuation = products.Sum(p => p.CurrentStock * p.PurchasePrice);
-            int lowStockCount = products.Count(p => p.CurrentStock <= p.MinimumStock);
-
-            ViewBag.StartDate = start.ToString("yyyy-MM-dd");
-            ViewBag.EndDate = end.ToString("yyyy-MM-dd");
-            ViewBag.TotalRevenue = totalRevenue;
-            ViewBag.SalesCount = salesCount;
-            ViewBag.AvgInvoice = avgInvoice;
-            ViewBag.InventoryValuation = totalInventoryValuation;
-            ViewBag.LowStockCount = lowStockCount;
+            ViewBag.InitialReportType = reportType;
+            ViewBag.InitialDatePreset = datePreset;
+            ViewBag.InitialStartDate = startDate;
+            ViewBag.InitialEndDate = endDate;
+            ViewBag.InitialCategoryId = categoryId;
+            ViewBag.InitialProductId = productId;
 
             return View();
         }
 
         [HttpGet]
+        public async Task<IActionResult> Preview([FromQuery] ReportFilterRequest request)
+        {
+            try
+            {
+                var reportData = await _reportService.BuildReportDataAsync(request);
+                return Json(new { success = true, data = reportData });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "Failed to generate report preview: " + ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ExportExcel([FromQuery] ReportFilterRequest request)
+        {
+            try
+            {
+                // Force page size to max for full export
+                request.Page = 1;
+                request.PageSize = 100000;
+
+                var reportData = await _reportService.BuildReportDataAsync(request);
+                var fileBytes = _reportService.GenerateExcelReport(reportData);
+
+                string fileName = $"SIMS_{request.ReportType}_Report_{DateTime.UtcNow:yyyyMMdd_HHmmss}.xlsx";
+                return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest("Error generating Excel report: " + ex.Message);
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ExportPdf([FromQuery] ReportFilterRequest request)
+        {
+            try
+            {
+                // Force page size for PDF export
+                request.Page = 1;
+                request.PageSize = 5000;
+
+                var reportData = await _reportService.BuildReportDataAsync(request);
+                var fileBytes = _reportService.GeneratePdfReport(reportData);
+
+                string fileName = $"SIMS_{request.ReportType}_Report_{DateTime.UtcNow:yyyyMMdd_HHmmss}.pdf";
+                return File(fileBytes, "application/pdf", fileName);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest("Error generating PDF report: " + ex.Message);
+            }
+        }
+
+        #region Legacy Compatibility Endpoints
+
+        [HttpGet]
         public async Task<IActionResult> ExportSalesExcel(string startDate, string endDate)
         {
-            if (!DateTime.TryParse(startDate, out var start)) start = DateTime.UtcNow.AddDays(-30);
-            if (!DateTime.TryParse(endDate, out var end)) end = DateTime.UtcNow;
-
-            var sales = await _saleRepository.GetSalesBetweenDatesAsync(start, end);
-            var fileBytes = _reportService.GenerateSalesExcelReport(start, end, sales);
-
-            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Sales_Report_{start:yyyyMMdd}_to_{end:yyyyMMdd}.xlsx");
+            DateTime.TryParse(startDate, out var start);
+            DateTime.TryParse(endDate, out var end);
+            var req = new ReportFilterRequest { ReportType = "Sales", DatePreset = "Custom", StartDate = start, EndDate = end };
+            return await ExportExcel(req);
         }
 
         [HttpGet]
         public async Task<IActionResult> ExportInventoryExcel()
         {
-            var products = await _productService.GetAllProductsAsync();
-            var categories = await _categoryService.GetAllCategoriesAsync();
-            var categoryDict = categories.ToDictionary(c => c.Id, c => c.Name);
-
-            var fileBytes = _reportService.GenerateInventoryValuationExcelReport(products, categoryDict);
-
-            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Inventory_Valuation_{DateTime.UtcNow:yyyyMMdd}.xlsx");
+            var req = new ReportFilterRequest { ReportType = "Inventory", DatePreset = "AllTime" };
+            return await ExportExcel(req);
         }
 
         [HttpGet]
         public async Task<IActionResult> ExportInventoryPdf()
         {
-            var products = await _productService.GetAllProductsAsync();
-            var categories = await _categoryService.GetAllCategoriesAsync();
-            var categoryDict = categories.ToDictionary(c => c.Id, c => c.Name);
-
-            var fileBytes = _reportService.GenerateInventoryPdfReport(products, categoryDict);
-
-            return File(fileBytes, "application/pdf", $"Inventory_Valuation_{DateTime.UtcNow:yyyyMMdd}.pdf");
+            var req = new ReportFilterRequest { ReportType = "Inventory", DatePreset = "AllTime" };
+            return await ExportPdf(req);
         }
+
+        #endregion
     }
 }
