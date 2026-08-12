@@ -464,40 +464,8 @@
         }, { passive: false });
     });
 
-    async function openLogModal(id) {
-        const modalEl = document.getElementById('logDetailsModal');
-        if (!modalEl) return;
-        let modal = bootstrap.Modal.getInstance(modalEl);
-        if (!modal) {
-            modal = new bootstrap.Modal(modalEl);
-        }
-        modal.show();
-
-        const body = document.getElementById('log-modal-body');
-        body.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></div>';
-
-        try {
-            const resp = await fetch('/SystemLog/Details?id=' + encodeURIComponent(id));
-            const data = await resp.json();
-            if (data.success) {
-                body.innerHTML = `
-                    <div class="row g-3">
-                        <div class="col-md-6"><div class="card-d p-3"><div class="small text-muted">Log ID</div><div class="font-monospace text-primary">` + data.id + `</div></div></div>
-                        <div class="col-md-6"><div class="card-d p-3"><div class="small text-muted">Timestamp (IST)</div><div class="font-monospace text-light">` + data.timeIst + `</div></div></div>
-                        <div class="col-md-6"><div class="card-d p-3"><div class="small text-muted">User / Employee</div><div class="fw-bold text-light">` + data.employeeName + `</div><div class="small text-muted">@@` + data.username + ` (` + data.userRole + `)</div></div></div>
-                        <div class="col-md-6"><div class="card-d p-3"><div class="small text-muted">Module & Action</div><div class="fw-bold text-light">` + data.module + ` - ` + data.action + `</div><div class="small text-muted">Status: ` + data.status + `</div></div></div>
-                        <div class="col-md-12"><div class="card-d p-3"><div class="small text-muted">Description / Target</div><div class="text-light">` + data.target + `</div><div class="small text-muted mt-1">` + (data.details || '') + `</div></div></div>
-                        <div class="col-md-6"><div class="card-d p-3"><div class="small text-muted">IP Address</div><div class="font-monospace text-light">` + data.ipAddress + `</div></div></div>
-                        <div class="col-md-6"><div class="card-d p-3"><div class="small text-muted">Browser & OS</div><div class="text-light">` + data.browser + ` (` + data.operatingSystem + `)</div></div></div>
-                    </div>
-                `;
-            } else {
-                body.innerHTML = `<div class="alert alert-danger">${data.message || 'Failed to load details.'}</div>`;
-            }
-        } catch (e) {
-            body.innerHTML = '<div class="alert alert-danger">An error occurred while loading audit details.</div>';
-        }
-    }
+    // openLogModal and helpers are in /js/systemlog-modal.js (loaded below)
+    // escapeHtml is also defined there
 
     function triggerExport(format) {
         document.getElementById('export-format').value = format;
@@ -692,4 +660,5 @@
         } catch (e) {}
     }, 7000);
 </script>
+<script src="~/js/systemlog-modal.js?v=@DateTime.UtcNow.Ticks"></script>
 }

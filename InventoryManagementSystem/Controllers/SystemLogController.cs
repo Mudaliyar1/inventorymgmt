@@ -210,8 +210,48 @@ namespace InventoryManagementSystem.Controllers
                 return Json(new { success = false, message = "Permission denied. Only Administrators can clear logs." });
             }
 
+            var (allLogs, _) = await _auditLogService.GetFilteredLogsAsync(
+                keyword: null, module: null, action: null, status: null, logLevel: null,
+                employee: null, startDate: null, endDate: null, ipAddress: null, browser: null, device: null, page: 1, pageSize: 200);
+
+            var logsSnapshot = allLogs.ToList();
+
             var deletedCount = await _auditLogService.ClearAllLogsAsync();
-            await _auditLogService.LogSecurityEventAsync("Audit Logs Cleared", $"Super Admin cleared all {deletedCount:N0} system activity logs.", "Warning", "Critical");
+
+            if (deletedCount > 0)
+            {
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine($"[CRITICAL AUDIT EVENT] All {deletedCount:N0} system activity logs were cleared by Super Admin.");
+                sb.AppendLine("\n--- DELETED LOGS ARCHIVE SNAPSHOT (Top Records) ---");
+
+                foreach (var log in logsSnapshot)
+                {
+                    sb.AppendLine($"• Log #{log.Id} | {log.TimeIstString} | Executed By: {log.ExecutedBy} (@{log.Username} - {log.UserRole}) | Module: {log.Module} | Action: {log.Action}");
+                    sb.AppendLine($"  Target: {log.Target}");
+                    if (!string.IsNullOrWhiteSpace(log.Details))
+                    {
+                        sb.AppendLine($"  Original Details: {log.Details}");
+                    }
+                    if (!string.IsNullOrWhiteSpace(log.PreviousData))
+                    {
+                        sb.AppendLine($"  Nested Deleted History: {log.PreviousData}");
+                    }
+                    sb.AppendLine();
+                }
+
+                var deletedJson = System.Text.Json.JsonSerializer.Serialize(logsSnapshot);
+
+                await _auditLogService.LogExAsync(
+                    action: "Audit Logs Cleared",
+                    module: "Security",
+                    target: $"Super Admin cleared all {deletedCount:N0} system activity logs.",
+                    details: sb.ToString(),
+                    status: "Warning",
+                    logLevel: "Critical",
+                    previousData: deletedJson,
+                    newData: ""
+                );
+            }
 
             return Json(new { success = true, message = $"All {deletedCount:N0} system activity logs cleared successfully." });
         }
@@ -235,10 +275,49 @@ namespace InventoryManagementSystem.Controllers
                 return Json(new { success = false, message = "Invalid log record ID." });
             }
 
+            // 1. Fetch log record BEFORE deletion to preserve full history
+            var logToDelete = await _auditLogService.GetLogByIdAsync(id);
+
+            // 2. Perform deletion
             var success = await _auditLogService.DeleteLogByIdAsync(id);
-            if (success)
+
+            // 3. Create security audit event containing full deleted log details + nested history
+            if (success && logToDelete != null)
             {
-                await _auditLogService.LogSecurityEventAsync("Audit Log Deleted", $"Administrator deleted single log record (ID: {id}).", "Warning", "Warning");
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine($"[DELETED LOG RECORD BREAKDOWN]");
+                sb.AppendLine($"• Log ID: {logToDelete.Id}");
+                sb.AppendLine($"• Action: {logToDelete.Action}");
+                sb.AppendLine($"• Module: {logToDelete.Module}");
+                sb.AppendLine($"• Executed By: {logToDelete.ExecutedBy} (@{logToDelete.Username} - {logToDelete.UserRole})");
+                sb.AppendLine($"• Original Timestamp (IST): {logToDelete.TimeIstString}");
+                sb.AppendLine($"• Description / Target: {logToDelete.Target}");
+                sb.AppendLine($"• Original Details: {logToDelete.Details}");
+                sb.AppendLine($"• IP & Device: {logToDelete.IpAddress} ({logToDelete.Browser} / {logToDelete.OperatingSystem})");
+                sb.AppendLine($"• Status & Severity: {logToDelete.Status} / {logToDelete.LogLevel}");
+
+                if (!string.IsNullOrWhiteSpace(logToDelete.PreviousData))
+                {
+                    sb.AppendLine($"\n--- NESTED DELETED LOGS HISTORY LOOP (Previous History Payload) ---\n{logToDelete.PreviousData}");
+                }
+
+                if (!string.IsNullOrWhiteSpace(logToDelete.NewData))
+                {
+                    sb.AppendLine($"\n--- NESTED NEW DATA PAYLOAD ---\n{logToDelete.NewData}");
+                }
+
+                var deletedJson = System.Text.Json.JsonSerializer.Serialize(logToDelete);
+
+                await _auditLogService.LogExAsync(
+                    action: "Audit Log Deleted",
+                    module: "Security",
+                    target: $"Deleted Log #{logToDelete.Id} (Action: '{logToDelete.Action}', Executed By: '{logToDelete.ExecutedBy}')",
+                    details: sb.ToString(),
+                    status: "Warning",
+                    logLevel: "Warning",
+                    previousData: deletedJson,
+                    newData: ""
+                );
             }
 
             return Json(new { success = success, message = success ? "Log record deleted successfully." : "Failed to delete log record." });
@@ -263,10 +342,51 @@ namespace InventoryManagementSystem.Controllers
                 return Json(new { success = false, message = "No log records selected for deletion." });
             }
 
-            var deletedCount = await _auditLogService.DeleteLogsByIdsAsync(ids);
-            if (deletedCount > 0)
+            // 1. Fetch target log records BEFORE deletion to preserve full history
+            var targetLogs = new List<AuditLog>();
+            foreach (var id in ids)
             {
-                await _auditLogService.LogSecurityEventAsync("Audit Logs Bulk Deleted", $"Administrator bulk deleted {deletedCount:N0} selected log records.", "Warning", "Warning");
+                var item = await _auditLogService.GetLogByIdAsync(id);
+                if (item != null) targetLogs.Add(item);
+            }
+
+            // 2. Perform bulk deletion
+            var deletedCount = await _auditLogService.DeleteLogsByIdsAsync(ids);
+
+            // 3. Create security audit event containing full deleted log details + nested history
+            if (deletedCount > 0 && targetLogs.Any())
+            {
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine($"[BULK DELETED LOGS ARCHIVE SNAPSHOT - {targetLogs.Count} Records]");
+                sb.AppendLine(new string('-', 60));
+
+                foreach (var log in targetLogs)
+                {
+                    sb.AppendLine($"• Log #{log.Id} | {log.TimeIstString} | Executed By: {log.ExecutedBy} (@{log.Username} - {log.UserRole}) | Module: {log.Module} | Action: {log.Action}");
+                    sb.AppendLine($"  Target: {log.Target}");
+                    if (!string.IsNullOrWhiteSpace(log.Details))
+                    {
+                        sb.AppendLine($"  Original Details: {log.Details}");
+                    }
+                    if (!string.IsNullOrWhiteSpace(log.PreviousData))
+                    {
+                        sb.AppendLine($"  Nested Deleted History: {log.PreviousData}");
+                    }
+                    sb.AppendLine();
+                }
+
+                var deletedJson = System.Text.Json.JsonSerializer.Serialize(targetLogs);
+
+                await _auditLogService.LogExAsync(
+                    action: "Audit Logs Bulk Deleted",
+                    module: "Security",
+                    target: $"Bulk deleted {deletedCount:N0} selected log records.",
+                    details: sb.ToString(),
+                    status: "Warning",
+                    logLevel: "Warning",
+                    previousData: deletedJson,
+                    newData: ""
+                );
             }
 
             return Json(new { success = true, message = $"Successfully deleted {deletedCount:N0} selected log records." });
