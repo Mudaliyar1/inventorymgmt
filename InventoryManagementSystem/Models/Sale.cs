@@ -14,6 +14,9 @@ namespace InventoryManagementSystem.Models
         [BsonElement("InvoiceNumber")]
         public string InvoiceNumber { get; set; } = string.Empty;
 
+        [BsonElement("CustomerId")]
+        public string CustomerId { get; set; } = string.Empty;
+
         [BsonElement("CustomerName")]
         public string CustomerName { get; set; } = string.Empty;
 
@@ -35,11 +38,18 @@ namespace InventoryManagementSystem.Models
         [BsonElement("Discount")]
         public decimal Discount { get; set; }
 
+        [BsonElement("ExchangeDiscount")]
+        public decimal ExchangeDiscount { get; set; }
+
         [BsonElement("GrandTotal")]
         public decimal GrandTotal { get; set; }
 
         [BsonElement("CreatedBy")]
         public string CreatedBy { get; set; } = string.Empty; // Username
+
+        // Payment Method: Cash, UPI, Card, Bank Transfer, Mixed Payment, Credit
+        [BsonElement("PaymentMethod")]
+        public string PaymentMethod { get; set; } = "Cash";
 
         [BsonElement("PaymentStatus")]
         public string PaymentStatus { get; set; } = "Paid"; // Paid, Unpaid, Partial, Draft
@@ -69,8 +79,35 @@ namespace InventoryManagementSystem.Models
         [BsonElement("ProductCode")]
         public string ProductCode { get; set; } = string.Empty; // SKU code
 
+        [BsonElement("DeviceId")]
+        public string DeviceId { get; set; } = string.Empty;
+
+        [BsonElement("IMEI1")]
+        public string IMEI1 { get; set; } = string.Empty;
+
+        [BsonElement("IMEI2")]
+        public string IMEI2 { get; set; } = string.Empty;
+
+        [BsonElement("SerialNumber")]
+        public string SerialNumber { get; set; } = string.Empty;
+
+        [BsonElement("Brand")]
+        public string Brand { get; set; } = string.Empty;
+
+        [BsonElement("ModelName")]
+        public string ModelName { get; set; } = string.Empty;
+
+        [BsonElement("Variant")]
+        public string Variant { get; set; } = string.Empty;
+
+        [BsonElement("Color")]
+        public string Color { get; set; } = string.Empty;
+
+        [BsonElement("WarrantyEndDate")]
+        public DateTime? WarrantyEndDate { get; set; }
+
         [BsonElement("Quantity")]
-        public int Quantity { get; set; }
+        public int Quantity { get; set; } = 1;
 
         [BsonElement("SellingPrice")]
         public decimal SellingPrice { get; set; }

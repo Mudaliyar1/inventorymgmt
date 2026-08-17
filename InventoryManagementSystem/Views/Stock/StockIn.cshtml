@@ -1,149 +1,971 @@
 @model StockTransactionViewModel
 @{
-    ViewData["Title"] = "Stock In";
+    ViewData["Title"] = "Stock In — Mobile Shop";
+    var suppliers = ViewBag.Suppliers as IEnumerable<InventoryManagementSystem.Models.Supplier>;
 }
 
-<div class="ph">
+<div class="d-flex align-items-center justify-content-between mb-4">
     <div>
-        <h1 class="ph-title">Stock In</h1>
-        <p class="ph-sub">Increase inventory levels for a product.</p>
+        <h3 class="fw-bold mb-1"><i class="bi bi-arrow-down-circle me-2 text-success"></i>Stock In Inventory</h3>
+        <p class="text-muted small mb-0">Receive IMEI-tracked physical mobile units or bulk accessory stock using camera barcode scanner</p>
     </div>
-    <div class="ph-actions">
-        <a href="@Url.Action("History","Stock")" class="btn-d btn-outline">
-            <i class="bi bi-clock-history"></i> View History
-        </a>
-    </div>
+    <a href="@Url.Action("History","Stock")" class="btn btn-outline-secondary rounded-pill px-3">
+        <i class="bi bi-clock-history me-1"></i> View Audit History
+    </a>
 </div>
 
-<div class="row g-4">
-    <div class="col-lg-6">
-        <div class="card-d card-p-lg">
-            <div class="s-title" style="display:flex;align-items:center;gap:8px">
-                <span class="badge-d badge-green"><i class="bi bi-arrow-down-circle-fill"></i></span>
-                Add Inventory
-            </div>
+<!-- Tabs Navigation -->
+<ul class="nav nav-pills mb-4 gap-2" id="stockInTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active rounded-pill px-4" id="single-imei-tab" data-bs-toggle="tab" data-bs-target="#single-imei-panel" type="button">
+            <i class="bi bi-phone me-1"></i> Single Mobile Device (IMEI)
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link rounded-pill px-4" id="bulk-imei-tab" data-bs-toggle="tab" data-bs-target="#bulk-imei-panel" type="button">
+            <i class="bi bi-camera-video me-1"></i> Bulk Receive Mobile Devices (Camera Batch Scan)
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link rounded-pill px-4" id="bulk-tab" data-bs-toggle="tab" data-bs-target="#bulk-panel" type="button">
+            <i class="bi bi-boxes me-1"></i> Bulk Accessory Stock In
+        </button>
+    </li>
+</ul>
 
-            <form asp-action="StockIn" method="post">
-                <div asp-validation-summary="ModelOnly" class="alert-d alert-danger mb-4"></div>
+<div class="tab-content" id="stockInTabContent">
+    <!-- PANEL 1: SINGLE IMEI DEVICE STOCK IN -->
+    <div class="tab-pane fade show active" id="single-imei-panel">
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-4">
+                <form asp-action="StockInDevice" method="post" id="singleDeviceForm">
+                    @Html.AntiForgeryToken()
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Select Mobile Model <span class="text-danger">*</span></label>
+                            <select name="ProductId" id="SingleProductId" class="form-select" required>
+                                <option value="">-- Select Product Model --</option>
+                                @if (Model.Products != null)
+                                {
+                                    foreach (var p in Model.Products)
+                                    {
+                                        <option value="@p.Value">@p.Text</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Supplier / Vendor</label>
+                            <select name="SupplierName" class="form-select">
+                                <option value="">-- Direct Procurement --</option>
+                                @if (suppliers != null)
+                                {
+                                    foreach (var sup in suppliers)
+                                    {
+                                        <option value="@sup.CompanyName">@sup.CompanyName</option>
+                                    }
+                                }
+                            </select>
+                        </div>
 
-                <div class="fg">
-                    <label class="fg-label">Search or Select Product <span class="req">*</span></label>
-                    
-                    <!-- Search Product Input -->
-                    <div class="fg-icon-wrap mb-2" style="position:relative">
-                        <i class="bi bi-search fg-icon"></i>
-                        <input type="text" id="product-search-input" class="fg-control"
-                               placeholder="Type product name, SKU or barcode to search…" autocomplete="off">
-                        
-                        <!-- Search Results Dropdown -->
-                        <div id="product-search-results" class="dd-menu" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:1100;max-height:240px;overflow-y:auto;margin-top:4px">
+                        <!-- IMEI 1 with Scan Button -->
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Primary IMEI (IMEI 1) <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="text" name="IMEI1" id="SingleIMEI1" required class="form-control font-monospace fw-bold" placeholder="15-digit IMEI 1" onchange="validateImeiInput(this, 'SingleIMEI1Help')">
+                                <button type="button" class="btn btn-outline-primary" onclick="openCameraScanner('single_imei1')">
+                                    <i class="bi bi-upc-scan me-1"></i> Scan IMEI 1
+                                </button>
+                            </div>
+                            <div id="SingleIMEI1Help" class="form-text small"></div>
+                        </div>
+
+                        <!-- IMEI 2 with Scan Button -->
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Secondary IMEI (IMEI 2 - Dual SIM)</label>
+                            <div class="input-group">
+                                <input type="text" name="IMEI2" id="SingleIMEI2" class="form-control font-monospace" placeholder="15-digit IMEI 2" onchange="validateImeiInput(this, 'SingleIMEI2Help')">
+                                <button type="button" class="btn btn-outline-secondary" onclick="openCameraScanner('single_imei2')">
+                                    <i class="bi bi-upc-scan me-1"></i> Scan IMEI 2
+                                </button>
+                            </div>
+                            <div id="SingleIMEI2Help" class="form-text small"></div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Serial Number</label>
+                            <input type="text" name="SerialNumber" class="form-control font-monospace" placeholder="Serial Number (Optional)">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">RAM / Storage Variant</label>
+                            <input type="text" name="Variant" class="form-control" placeholder="e.g. 8GB / 128GB">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Color</label>
+                            <input type="text" name="Color" class="form-control" placeholder="e.g. Phantom Black">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Purchase Unit Cost (₹)</label>
+                            <input type="number" step="0.01" name="PurchasePrice" class="form-control" placeholder="0.00">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Retail Selling Price (₹)</label>
+                            <input type="number" step="0.01" name="SellingPrice" class="form-control fw-bold text-success" placeholder="0.00">
                         </div>
                     </div>
-
-                    <!-- Direct Select Dropdown -->
-                    <select asp-for="ProductId" id="ProductId" asp-items="Model.Products" class="fg-control" required>
-                        <option value="">— Select a product SKU —</option>
-                    </select>
-                    <span asp-validation-for="ProductId" class="fg-error"></span>
-                </div>
-
-                <div class="fg">
-                    <label class="fg-label" asp-for="Quantity">Quantity to Add <span class="req">*</span></label>
-                    <input asp-for="Quantity" type="number" min="1" class="fg-control" placeholder="e.g. 100" required>
-                    <span asp-validation-for="Quantity" class="fg-error"></span>
-                </div>
-
-                <div class="fg">
-                    <label class="fg-label" asp-for="Reason">Reason / Reference <span class="req">*</span></label>
-                    <input asp-for="Reason" class="fg-control" placeholder="e.g. Purchase Order #1024, Supplier delivery" required>
-                    <span asp-validation-for="Reason" class="fg-error"></span>
-                </div>
-
-                <hr class="s-divider">
-                <div class="d-flex align-items-center justify-content-end gap-3">
-                    <a href="@Url.Action("History","Stock")" class="btn-d btn-outline">Cancel</a>
-                    <button type="submit" class="btn-d btn-primary">
-                        <i class="bi bi-plus-circle"></i> Add to Stock
-                    </button>
-                </div>
-            </form>
+                    <hr class="my-4">
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="reset" class="btn btn-light rounded-pill px-4">Reset</button>
+                        <button type="submit" class="btn btn-success rounded-pill px-4"><i class="bi bi-plus-circle me-1"></i> Stock In Device</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
-    <div class="col-lg-6">
-        <div class="card-d card-p" style="background:var(--success-dim);border-color:transparent">
-            <div style="font-size:13px;font-weight:700;color:var(--success);margin-bottom:12px">
-                <i class="bi bi-info-circle me-1"></i> Stock In Guidelines
+    <!-- PANEL 2: BULK RECEIVE MOBILE DEVICES (CAMERA BATCH SCAN) -->
+    <div class="tab-pane fade" id="bulk-imei-panel">
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4">
+                <h5 class="fw-bold mb-3 text-primary"><i class="bi bi-layers me-2"></i>Batch Header & Pricing Setup</h5>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Select Mobile Model <span class="text-danger">*</span></label>
+                        <select id="BatchProductId" class="form-select" required>
+                            <option value="">-- Select Product Model --</option>
+                            @if (Model.Products != null)
+                            {
+                                foreach (var p in Model.Products)
+                                {
+                                    <option value="@p.Value">@p.Text</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Supplier / Vendor</label>
+                        <select id="BatchSupplierName" class="form-select">
+                            <option value="">-- Direct Procurement --</option>
+                            @if (suppliers != null)
+                            {
+                                foreach (var sup in suppliers)
+                                {
+                                    <option value="@sup.CompanyName">@sup.CompanyName</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">RAM / Storage Variant</label>
+                        <input type="text" id="BatchVariant" class="form-control" placeholder="e.g. 8GB / 256GB">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">Color</label>
+                        <input type="text" id="BatchColor" class="form-control" placeholder="e.g. Phantom Black">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">Purchase Cost (₹)</label>
+                        <input type="number" step="0.01" id="BatchPurchasePrice" class="form-control" placeholder="0.00">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">Selling Price (₹)</label>
+                        <input type="number" step="0.01" id="BatchSellingPrice" class="form-control fw-bold text-success" placeholder="0.00">
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div>
+                        <button type="button" class="btn btn-primary rounded-pill px-4 py-2" onclick="startBulkBatchCameraScan()">
+                            <i class="bi bi-camera-video-fill me-2"></i> Start Camera Batch Scan
+                        </button>
+                        <span class="text-muted small ms-2">Scan mobile box barcodes sequentially</span>
+                    </div>
+                    <div class="badge bg-primary-subtle text-primary border px-3 py-2 rounded-pill fs-6 fw-bold">
+                        Scanned Devices: <span id="batchCountBadge">0</span>
+                    </div>
+                </div>
             </div>
-            <ul style="font-size:13px;color:var(--success);opacity:.85;padding-left:16px;margin:0;line-height:2.2">
-                <li>Search or select the exact product SKU to update</li>
-                <li>Quantity will be added to current stock level</li>
-                <li>Always include a reference number or PO number</li>
-                <li>All transactions are logged with your username</li>
-            </ul>
+        </div>
+
+        <!-- BATCH SCANNED LIST TABLE -->
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0"><i class="bi bi-list-check me-2"></i>Scanned Mobile Units Checklist</h6>
+                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill" onclick="clearBatchList()">Clear Batch</button>
+            </div>
+            <div class="card-body p-4">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light text-muted small uppercase">
+                            <tr>
+                                <th>#</th>
+                                <th>Primary IMEI (IMEI 1)</th>
+                                <th>Secondary IMEI (IMEI 2)</th>
+                                <th>Serial Number</th>
+                                <th>Status Validation</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="batchTableBody">
+                            <tr id="emptyBatchRow">
+                                <td colspan="6" class="text-center py-5 text-muted">
+                                    <i class="bi bi-upc-scan fs-1 d-block mb-2 text-secondary opacity-50"></i>
+                                    No mobile devices scanned yet. Click <strong>"Start Camera Batch Scan"</strong> above.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <hr class="my-4">
+
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" id="submitBatchBtn" class="btn btn-success rounded-pill px-5 py-2 fw-bold" onclick="submitBatchStockIn()" disabled>
+                        <i class="bi bi-check2-circle me-1"></i> Finish & Add Batch to Stock (<span id="btnBatchCount">0</span>)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANEL 3: BULK ACCESSORY STOCK IN -->
+    <div class="tab-pane fade" id="bulk-panel">
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-4">
+                <form asp-action="StockIn" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Select Accessory Product <span class="text-danger">*</span></label>
+                            <select asp-for="ProductId" asp-items="Model.Products" class="form-select" required>
+                                <option value="">-- Select Accessory Product --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Quantity to Add <span class="text-danger">*</span></label>
+                            <input asp-for="Quantity" type="number" min="1" class="form-control" placeholder="e.g. 50" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">Reason / PO Reference <span class="text-danger">*</span></label>
+                            <input asp-for="Reason" class="form-control" placeholder="e.g. Supplier Batch Invoice #4021" required>
+                        </div>
+                    </div>
+                    <hr class="my-4">
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="submit" class="btn btn-primary rounded-pill px-4"><i class="bi bi-plus-circle me-1"></i> Add Stock Quantity</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+     CAMERA BARCODE & IMEI SCANNER MODAL
+     ============================================================ -->
+<div class="modal fade" id="cameraScannerModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow rounded-4 overflow-hidden">
+            <div class="modal-header border-0 pb-0">
+                <div>
+                    <h5 class="fw-bold modal-title mb-0">
+                        <i class="bi bi-camera-video me-2 text-primary"></i>Camera Barcode & IMEI Scanner
+                    </h5>
+                    <p class="text-muted small mb-0" id="scannerSubtitle">Point camera at the barcode on the mobile box label</p>
+                </div>
+                <button type="button" class="btn-close" onclick="closeCameraScanner()"></button>
+            </div>
+            <div class="modal-body py-3">
+
+                <!-- Live Camera Viewport with Low-Light Brightness Filter -->
+                <div class="position-relative mb-3 rounded-4 overflow-hidden bg-black" style="min-height: 320px;">
+                    <div id="html5-qr-reader" style="width:100%; border:none;"></div>
+
+                    <!-- Google Pay Style Full-Screen Scan Zone Overlay -->
+                    <div class="position-absolute top-50 start-50 translate-middle pointer-events-none text-center" style="z-index: 10; width: 90%; height: 80%;">
+                        <div style="width: 100%; height: 100%; border: 3px solid #22c55e; border-radius: 20px; box-shadow: 0 0 25px rgba(34, 197, 94, 0.8), 0 0 0 4000px rgba(0,0,0,0.45); position: relative;">
+                            <div style="position: absolute; top: -14px; left: 50%; transform: translateX(-50%); background: #22c55e; color: #000; font-size: 11px; font-weight: 800; padding: 3px 14px; border-radius: 20px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 2px 10px rgba(0,0,0,0.5);">
+                                <i class="bi bi-lightning-charge-fill me-1"></i> Auto-Detecting Barcode & IMEI
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Camera Selector, Torch & Manual Controls -->
+                <div class="row g-2 align-items-center mb-3">
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <label class="form-label small text-muted mb-0"><i class="bi bi-camera me-1"></i>Camera Source</label>
+                            <button type="button" id="toggleTorchBtn" class="btn btn-outline-warning py-0 px-2" style="font-size: 11px; height: 22px;" onclick="toggleCameraTorch()">
+                                <i class="bi bi-lightbulb me-1"></i> Night Light / Flash
+                            </button>
+                        </div>
+                        <select id="cameraSourceSelect" class="form-select form-select-sm">
+                            <option value="">-- Loading Cameras... --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted mb-1"><i class="bi bi-image me-1"></i>Upload Barcode Photo / Image</label>
+                        <div class="input-group input-group-sm">
+                            <input type="file" id="barcodeFileInput" accept="image/*" class="form-control form-control-sm" onchange="scanUploadedBarcodeImage(this)">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted mb-1"><i class="bi bi-keyboard me-1"></i>Manual Entry Fallback</label>
+                        <div class="input-group input-group-sm">
+                            <input type="text" id="manualScannerInput" class="form-control font-monospace" placeholder="15-digit IMEI">
+                            <button type="button" class="btn btn-primary" onclick="submitManualScan()">Use IMEI</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Scan Feedback Status Banner -->
+                <div id="scannerFeedbackBanner" class="alert alert-info py-2 px-3 small text-center mb-0 rounded-3">
+                    <i class="bi bi-info-circle me-1"></i> Position barcode inside guide frame OR upload barcode photo file...
+                </div>
+            </div>
+            <div class="modal-footer border-0 pt-0 justify-content-between">
+                <div class="small fw-semibold text-muted" id="batchScanStatusText">
+                    Batch Count: <span id="modalBatchCount" class="badge bg-primary">0</span>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" id="btnNextScan" class="btn btn-outline-primary rounded-pill px-3" style="display:none;" onclick="prepareNextScan()">
+                        <i class="bi bi-arrow-right-circle me-1"></i> Scan Next Device
+                    </button>
+                    <button type="button" class="btn btn-secondary rounded-pill px-4" onclick="closeCameraScanner()">Done / Close</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 @section Scripts {
-<partial name="_ValidationScriptsPartial" />
 <script>
+let html5QrcodeScanner = null;
+let currentScanTargetMode = 'single_imei1'; // 'single_imei1', 'single_imei2', 'bulk_batch'
+let batchScannedDevices = [];
+
 document.addEventListener('DOMContentLoaded', function () {
-    const searchInput = document.getElementById('product-search-input');
-    const resultsContainer = document.getElementById('product-search-results');
-    const selectEl = document.getElementById('ProductId');
+    // Populate cameras on modal open
+    const modalEl = document.getElementById('cameraScannerModal');
+    if (modalEl) {
+        modalEl.addEventListener('shown.bs.modal', function () {
+            initCameraDevices();
+        });
+        modalEl.addEventListener('hidden.bs.modal', function () {
+            stopCameraScanner();
+        });
+    }
 
-    if (!searchInput || !selectEl) return;
+    const camSelect = document.getElementById('cameraSourceSelect');
+    if (camSelect) {
+        camSelect.addEventListener('change', function () {
+            if (this.value) {
+                startScanningWithCamera(this.value);
+            }
+        });
+    }
+});
 
-    const options = Array.from(selectEl.options).filter(o => o.value !== '');
+// Single IMEI Database Validation
+async function validateImeiInput(inputEl, helpId) {
+    const helpEl = document.getElementById(helpId);
+    const val = inputEl.value.trim();
+    if (!val) {
+        if (helpEl) helpEl.innerHTML = '';
+        return true;
+    }
 
-    selectEl.addEventListener('change', function () {
-        const selected = selectEl.options[selectEl.selectedIndex];
-        if (selected && selected.value) {
-            searchInput.value = selected.text;
+    if (!/^\d{14,16}$/.test(val)) {
+        if (helpEl) helpEl.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>IMEI must be 14-16 numeric digits.</span>';
+        return false;
+    }
+
+    try {
+        const res = await fetch(`/Stock/CheckImeiExists?imei=${encodeURIComponent(val)}`);
+        const data = await res.json();
+
+        if (data.exists) {
+            if (helpEl) helpEl.innerHTML = `<span class="text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill me-1"></i>${data.message} (${data.deviceInfo})</span>`;
+            if (window.showToast) window.showToast(data.message, 'danger');
+            return false;
         } else {
-            searchInput.value = '';
+            if (helpEl) helpEl.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>IMEI available.</span>';
+            return true;
         }
+    } catch (err) {
+        if (helpEl) helpEl.innerHTML = '';
+        return true;
+    }
+}
+
+// Open Camera Scanner Modal
+function openCameraScanner(targetMode) {
+    currentScanTargetMode = targetMode;
+    const banner = document.getElementById('scannerFeedbackBanner');
+    const nextBtn = document.getElementById('btnNextScan');
+    const subtitle = document.getElementById('scannerSubtitle');
+
+    if (banner) {
+        banner.className = 'alert alert-info py-2 px-3 small text-center mb-0 rounded-3';
+        banner.innerHTML = '<i class="bi bi-info-circle me-1"></i> Position box barcode inside green guide frame...';
+    }
+
+    if (targetMode === 'bulk_batch') {
+        if (nextBtn) nextBtn.style.display = 'inline-flex';
+        if (subtitle) subtitle.innerText = `Bulk Batch Scan — ${batchScannedDevices.length} items scanned so far`;
+    } else {
+        if (nextBtn) nextBtn.style.display = 'none';
+        if (subtitle) subtitle.innerText = `Scanning for ${targetMode === 'single_imei1' ? 'Primary IMEI 1' : 'Secondary IMEI 2'}`;
+    }
+
+    updateModalBatchCount();
+    const modal = new bootstrap.Modal(document.getElementById('cameraScannerModal'));
+    modal.show();
+}
+
+function startBulkBatchCameraScan() {
+    const productId = document.getElementById('BatchProductId').value;
+    if (!productId) {
+        if (window.showToast) window.showToast('Please select a Mobile Model first!', 'warning');
+        alert('Please select a Mobile Model first!');
+        return;
+    }
+    openCameraScanner('bulk_batch');
+}
+
+// Populate camera options
+async function initCameraDevices() {
+    try {
+        const devices = await Html5Qrcode.getCameras();
+        const select = document.getElementById('cameraSourceSelect');
+        if (!select) return;
+
+        select.innerHTML = '';
+        if (devices && devices.length > 0) {
+            let backCam = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear') || d.label.toLowerCase().includes('environment'));
+            let selectedCamId = backCam ? backCam.id : devices[0].id;
+
+            devices.forEach(d => {
+                const opt = document.createElement('option');
+                opt.value = d.id;
+                opt.text = d.label || `Camera ${select.length + 1}`;
+                if (d.id === selectedCamId) opt.selected = true;
+                select.appendChild(opt);
+            });
+
+            startScanningWithCamera(selectedCamId);
+        } else {
+            select.innerHTML = '<option value="">No camera detected</option>';
+            showBanner('No camera detected on this device. You can type IMEI below.', 'warning');
+        }
+    } catch (err) {
+        console.error('Camera permissions error:', err);
+        showBanner('Camera permission denied or camera unavailable. Use manual entry below.', 'warning');
+    }
+}
+
+let isTorchOn = false;
+async function toggleCameraTorch() {
+    if (!html5QrcodeScanner) return;
+    isTorchOn = !isTorchOn;
+    try {
+        await html5QrcodeScanner.applyVideoConstraints({
+            advanced: [{ torch: isTorchOn }]
+        });
+        const btn = document.getElementById('toggleTorchBtn');
+        if (btn) {
+            btn.className = isTorchOn ? 'btn btn-warning py-0 px-2 active fw-bold' : 'btn btn-outline-warning py-0 px-2';
+            btn.innerHTML = isTorchOn ? '<i class="bi bi-lightbulb-fill me-1"></i> Flash ON' : '<i class="bi bi-lightbulb me-1"></i> Night Light / Flash';
+        }
+    } catch (err) {
+        console.warn('Torch constraint not supported on this camera device:', err);
+        if (window.showToast) window.showToast('Flashlight control is not supported on this camera device', 'info');
+    }
+}
+
+// Start HTML5 QR / Barcode Scanner Engine
+function startScanningWithCamera(cameraId) {
+    if (html5QrcodeScanner) {
+        stopCameraScanner().then(() => {
+            launchHtml5Qrcode(cameraId);
+        });
+    } else {
+        launchHtml5Qrcode(cameraId);
+    }
+}
+
+let liveOcrInterval = null;
+let isOcrProcessing = false;
+
+function startLiveOcrFrameScanner() {
+    stopLiveOcrFrameScanner();
+    liveOcrInterval = setInterval(async () => {
+        if (isOcrProcessing || !html5QrcodeScanner) return;
+        const videoEl = document.querySelector("#html5-qr-reader video");
+        if (!videoEl || videoEl.paused || videoEl.ended || videoEl.readyState < 2) return;
+
+        isOcrProcessing = true;
+        try {
+            const canvas = document.createElement("canvas");
+            canvas.width = videoEl.videoWidth || 1280;
+            canvas.height = videoEl.videoHeight || 720;
+            const ctx = canvas.getContext("2d");
+            if (ctx) {
+                ctx.filter = "contrast(1.5) brightness(1.1)";
+                ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+
+                // Check 1: Native BarcodeDetector on HD video frame
+                if ('BarcodeDetector' in window) {
+                    try {
+                        const detector = new BarcodeDetector();
+                        const detected = await detector.detect(canvas);
+                        if (detected && detected.length > 0) {
+                            for (const item of detected) {
+                                const clean = extractImeiFromBarcode(item.rawValue);
+                                if (clean) {
+                                    await processScannedImei(clean);
+                                    isOcrProcessing = false;
+                                    return;
+                                }
+                            }
+                        }
+                    } catch(e){}
+                }
+
+                // Check 2: Tesseract OCR on camera frame for printed IMEI text labels on box sticker
+                if (window.Tesseract) {
+                    const result = await Tesseract.recognize(canvas, 'eng');
+                    const text = result?.data?.text || '';
+                    const matches = text.match(/\b\d{14,16}\b/g);
+                    if (matches && matches.length > 0) {
+                        for (const imei of matches) {
+                            await processScannedImei(imei);
+                            isOcrProcessing = false;
+                            return;
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            // frame sampling error ignored
+        } finally {
+            isOcrProcessing = false;
+        }
+    }, 800);
+}
+
+function stopLiveOcrFrameScanner() {
+    if (liveOcrInterval) {
+        clearInterval(liveOcrInterval);
+        liveOcrInterval = null;
+    }
+    isOcrProcessing = false;
+}
+
+function launchHtml5Qrcode(cameraId) {
+    html5QrcodeScanner = new Html5Qrcode("html5-qr-reader", {
+        experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true
+        },
+        verbose: false
     });
 
-    searchInput.addEventListener('input', function () {
-        const query = this.value.trim().toLowerCase();
-        if (!query) {
-            resultsContainer.style.display = 'none';
+    const config = {
+        fps: 30,
+        qrbox: function(viewfinderWidth, viewfinderHeight) {
+            return {
+                width: Math.floor(viewfinderWidth * 0.96),
+                height: Math.floor(viewfinderHeight * 0.88)
+            };
+        },
+        aspectRatio: 1.0,
+        videoConstraints: {
+            width: { ideal: 1920, min: 1280 },
+            height: { ideal: 1080, min: 720 },
+            facingMode: "environment"
+        }
+    };
+
+    html5QrcodeScanner.start(
+        cameraId,
+        config,
+        onBarcodeDetected,
+        onBarcodeError
+    ).then(() => {
+        // High quality camera stream styling
+        const videoEl = document.querySelector("#html5-qr-reader video");
+        if (videoEl) {
+            videoEl.style.filter = "brightness(1.25) contrast(1.15)";
+            videoEl.style.objectFit = "cover";
+            videoEl.style.width = "100%";
+        }
+        // Start background live frame OCR text scanner
+        startLiveOcrFrameScanner();
+    }).catch(err => {
+        console.error("Scanner start error:", err);
+        showBanner("Could not start camera feed: " + err, "danger");
+    });
+}
+
+async function stopCameraScanner() {
+    stopLiveOcrFrameScanner();
+    if (html5QrcodeScanner) {
+        try {
+            await html5QrcodeScanner.stop();
+            html5QrcodeScanner.clear();
+        } catch (e) {
+            console.warn("Camera stop warning:", e);
+        }
+        html5QrcodeScanner = null;
+    }
+}
+
+// Barcode detection callback
+async function onBarcodeDetected(decodedText, decodedResult) {
+    // Extract IMEI digits
+    const cleanImei = extractImeiFromBarcode(decodedText);
+    if (!cleanImei) {
+        showBanner(`Scanned code '${decodedText}' is not a valid 14-16 digit IMEI.`, 'warning');
+        return;
+    }
+
+    // Process detected IMEI
+    await processScannedImei(cleanImei);
+}
+
+function onBarcodeError(errorMessage) {
+    // Ignore frame read errors
+}
+
+// Extract 14-16 numeric digit IMEI sequence from raw barcode text
+function extractImeiFromBarcode(text) {
+    if (!text) return null;
+    const digitsOnly = text.replace(/\D/g, '');
+
+    // Look for exact 14 to 16 digit sequence
+    const match = text.match(/\b\d{14,16}\b/);
+    if (match) return match[0];
+
+    if (digitsOnly.length >= 14 && digitsOnly.length <= 16) {
+        return digitsOnly;
+    }
+    return null;
+}
+
+// Process IMEI logic
+async function processScannedImei(imei) {
+    // Pause scanning temporarily during check
+    if (html5QrcodeScanner && html5QrcodeScanner.isScanning) {
+        try { html5QrcodeScanner.pause(); } catch(e){}
+    }
+
+    // Play feedback audio/vibration
+    try { if (navigator.vibrate) navigator.vibrate(100); } catch(e){}
+
+    // Check DB Uniqueness via AJAX
+    try {
+        const res = await fetch(`/Stock/CheckImeiExists?imei=${encodeURIComponent(imei)}`);
+        const data = await res.json();
+
+        if (data.exists) {
+            showBanner(`⚠ Duplicate IMEI! ${data.message} (${data.deviceInfo})`, 'danger');
+            if (window.showToast) window.showToast(`Duplicate IMEI ${imei}: already in inventory`, 'danger');
+            setTimeout(() => { resumeScanner(); }, 2000);
             return;
         }
 
-        const matches = options.filter(o => o.text.toLowerCase().includes(query));
+        // Target Handler
+        if (currentScanTargetMode === 'single_imei1') {
+            document.getElementById('SingleIMEI1').value = imei;
+            validateImeiInput(document.getElementById('SingleIMEI1'), 'SingleIMEI1Help');
+            showBanner(`✓ IMEI 1 Scanned Successfully: ${imei}`, 'success');
+            if (window.showToast) window.showToast(`Scanned IMEI 1: ${imei}`, 'success');
+            setTimeout(() => { closeCameraScanner(); }, 800);
+        }
+        else if (currentScanTargetMode === 'single_imei2') {
+            document.getElementById('SingleIMEI2').value = imei;
+            validateImeiInput(document.getElementById('SingleIMEI2'), 'SingleIMEI2Help');
+            showBanner(`✓ IMEI 2 Scanned Successfully: ${imei}`, 'success');
+            if (window.showToast) window.showToast(`Scanned IMEI 2: ${imei}`, 'success');
+            setTimeout(() => { closeCameraScanner(); }, 800);
+        }
+        else if (currentScanTargetMode === 'bulk_batch') {
+            // Check if already in current batch list
+            const inBatch = batchScannedDevices.some(d => d.IMEI1 === imei || d.IMEI2 === imei);
+            if (inBatch) {
+                showBanner(`⚠ Duplicate IMEI: This IMEI ${imei} has already been scanned in this batch!`, 'warning');
+                if (window.showToast) window.showToast(`Duplicate IMEI ${imei} in current batch`, 'warning');
+                setTimeout(() => { resumeScanner(); }, 2000);
+                return;
+            }
 
-        if (matches.length === 0) {
-            resultsContainer.innerHTML = '<div class="px-3 py-2 text-muted" style="font-size:12px">No matching products found</div>';
+            // Add to batch
+            batchScannedDevices.push({
+                IMEI1: imei,
+                IMEI2: '',
+                SerialNumber: ''
+            });
+
+            updateBatchTable();
+            updateModalBatchCount();
+            showBanner(`✓ Scanned Device #${batchScannedDevices.length}: IMEI ${imei}`, 'success');
+            if (window.showToast) window.showToast(`Added Device #${batchScannedDevices.length} (IMEI: ${imei})`, 'success');
+
+            // Immediately prepare for next scan
+            setTimeout(() => { resumeScanner(); }, 1500);
+        }
+    } catch (err) {
+        console.error('Error validating scanned IMEI:', err);
+        showBanner('Error checking IMEI uniqueness: ' + err, 'danger');
+        setTimeout(() => { resumeScanner(); }, 2000);
+    }
+}
+
+function resumeScanner() {
+    if (html5QrcodeScanner) {
+        try { html5QrcodeScanner.resume(); } catch(e){}
+    }
+    showBanner('Ready! Position next mobile box barcode inside green frame...', 'info');
+}
+
+function prepareNextScan() {
+    resumeScanner();
+}
+
+function submitManualScan() {
+    const input = document.getElementById('manualScannerInput');
+    const val = input.value.trim();
+    if (!val) return;
+    const clean = extractImeiFromBarcode(val);
+    if (!clean) {
+        showBanner('Invalid IMEI. Must be 14-16 numeric digits.', 'danger');
+        return;
+    }
+    processScannedImei(clean);
+    input.value = '';
+}
+
+async function scanUploadedBarcodeImage(fileInput) {
+    if (!fileInput.files || fileInput.files.length === 0) return;
+    const file = fileInput.files[0];
+
+    showBanner('<span class="spinner-border spinner-border-sm me-2"></span>Analyzing image / screenshot with Google ML Barcode Engine...', 'info');
+
+    let foundImeis = [];
+
+    // Engine 1: Try Native Browser BarcodeDetector (Chromium Google ML Engine)
+    if ('BarcodeDetector' in window) {
+        try {
+            const detector = new BarcodeDetector();
+            const bitmap = await createImageBitmap(file);
+            const detected = await detector.detect(bitmap);
+            if (detected && detected.length > 0) {
+                detected.forEach(item => {
+                    const clean = extractImeiFromBarcode(item.rawValue);
+                    if (clean && !foundImeis.includes(clean)) foundImeis.push(clean);
+                });
+            }
+        } catch (bdErr) {
+            console.warn('Native BarcodeDetector warning:', bdErr);
+        }
+    }
+
+    // Engine 2: Try ZXing Barcode Engine (Html5Qrcode)
+    if (foundImeis.length === 0) {
+        try {
+            const tempScanner = new Html5Qrcode("html5-qr-reader");
+            const decodedText = await tempScanner.scanFile(file, true);
+            const clean = extractImeiFromBarcode(decodedText);
+            if (clean && !foundImeis.includes(clean)) {
+                foundImeis.push(clean);
+            }
+        } catch (err) {
+            console.log('ZXing scanFile did not decode 1D/2D barcode:', err);
+        }
+    }
+
+    // Engine 3: Fallback to OCR text recognition for screenshots / sticker text (Tesseract.js)
+    if (foundImeis.length === 0) {
+        try {
+            showBanner('<span class="spinner-border spinner-border-sm me-2"></span>Scanning sticker text from screenshot / photo...', 'info');
+
+            if (window.Tesseract) {
+                const result = await Tesseract.recognize(file, 'eng');
+                const text = result?.data?.text || '';
+                console.log('OCR Text Result:', text);
+
+                const matches = text.match(/\b\d{14,16}\b/g);
+                if (matches && matches.length > 0) {
+                    matches.forEach(m => {
+                        if (!foundImeis.includes(m)) foundImeis.push(m);
+                    });
+                }
+            }
+        } catch (ocrErr) {
+            console.error('OCR scanning error:', ocrErr);
+        }
+    }
+
+    fileInput.value = '';
+
+    // Step 4: Auto-fill or Process Extracted IMEIs
+    if (foundImeis.length > 0) {
+        showBanner(`✓ Found ${foundImeis.length} IMEI(s) in photo: ${foundImeis.join(', ')}`, 'success');
+
+        if (currentScanTargetMode === 'single_imei1' || currentScanTargetMode === 'single_imei2') {
+            const imei1 = foundImeis[0];
+            const imei2 = foundImeis[1] || '';
+
+            document.getElementById('SingleIMEI1').value = imei1;
+            validateImeiInput(document.getElementById('SingleIMEI1'), 'SingleIMEI1Help');
+
+            if (imei2 && document.getElementById('SingleIMEI2')) {
+                document.getElementById('SingleIMEI2').value = imei2;
+                validateImeiInput(document.getElementById('SingleIMEI2'), 'SingleIMEI2Help');
+            }
+
+            if (window.showToast) {
+                window.showToast(`Extracted IMEI 1: ${imei1}` + (imei2 ? `, IMEI 2: ${imei2}` : ''), 'success');
+            }
+            setTimeout(() => { closeCameraScanner(); }, 1200);
+        }
+        else if (currentScanTargetMode === 'bulk_batch') {
+            for (const imei of foundImeis) {
+                await processScannedImei(imei);
+            }
+        }
+    } else {
+        showBanner('No 14-16 digit IMEI numbers or barcodes detected in uploaded screenshot / image.', 'warning');
+        if (window.showToast) window.showToast('No IMEI detected in image file.', 'warning');
+    }
+}
+
+function closeCameraScanner() {
+    stopCameraScanner();
+    const modalEl = document.getElementById('cameraScannerModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    if (modal) modal.hide();
+}
+
+function showBanner(text, type) {
+    const banner = document.getElementById('scannerFeedbackBanner');
+    if (!banner) return;
+    banner.className = `alert alert-${type} py-2 px-3 small text-center mb-0 rounded-3 fw-semibold`;
+    banner.innerHTML = text;
+}
+
+function updateModalBatchCount() {
+    const modalCount = document.getElementById('modalBatchCount');
+    if (modalCount) modalCount.innerText = batchScannedDevices.length;
+}
+
+// Update Batch Table UI
+function updateBatchTable() {
+    const tbody = document.getElementById('batchTableBody');
+    const badge = document.getElementById('batchCountBadge');
+    const btnCount = document.getElementById('btnBatchCount');
+    const submitBtn = document.getElementById('submitBatchBtn');
+
+    if (badge) badge.innerText = batchScannedDevices.length;
+    if (btnCount) btnCount.innerText = batchScannedDevices.length;
+    if (submitBtn) submitBtn.disabled = batchScannedDevices.length === 0;
+
+    if (!tbody) return;
+
+    if (batchScannedDevices.length === 0) {
+        tbody.innerHTML = `
+            <tr id="emptyBatchRow">
+                <td colspan="6" class="text-center py-5 text-muted">
+                    <i class="bi bi-upc-scan fs-1 d-block mb-2 text-secondary opacity-50"></i>
+                    No mobile devices scanned yet. Click <strong>"Start Camera Batch Scan"</strong> above.
+                </td>
+            </tr>`;
+        return;
+    }
+
+    tbody.innerHTML = batchScannedDevices.map((item, idx) => `
+        <tr>
+            <td class="fw-bold text-muted">${idx + 1}</td>
+            <td class="font-monospace fw-bold text-primary">${item.IMEI1}</td>
+            <td class="font-monospace small text-muted">${item.IMEI2 || '-'}</td>
+            <td class="font-monospace small text-muted">${item.SerialNumber || '-'}</td>
+            <td><span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-check-circle me-1"></i>Ready to Receive</span></td>
+            <td class="text-end">
+                <button type="button" class="btn btn-sm btn-outline-danger rounded-circle" onclick="removeBatchItem(${idx})" title="Remove item">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function removeBatchItem(index) {
+    batchScannedDevices.splice(index, 1);
+    updateBatchTable();
+    updateModalBatchCount();
+}
+
+function clearBatchList() {
+    if (confirm('Clear all scanned devices from current batch?')) {
+        batchScannedDevices = [];
+        updateBatchTable();
+        updateModalBatchCount();
+    }
+}
+
+// Submit Batch to Server
+async function submitBatchStockIn() {
+    if (batchScannedDevices.length === 0) return;
+
+    const productId = document.getElementById('BatchProductId').value;
+    if (!productId) {
+        alert('Please select a Mobile Model first!');
+        return;
+    }
+
+    const payload = {
+        ProductId: productId,
+        SupplierName: document.getElementById('BatchSupplierName').value,
+        Variant: document.getElementById('BatchVariant').value,
+        Color: document.getElementById('BatchColor').value,
+        PurchasePrice: parseFloat(document.getElementById('BatchPurchasePrice').value) || 0,
+        SellingPrice: parseFloat(document.getElementById('BatchSellingPrice').value) || 0,
+        Devices: batchScannedDevices
+    };
+
+    const btn = document.getElementById('submitBatchBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Receiving Devices...';
+
+    try {
+        const res = await fetch('/Stock/StockInDeviceBatch', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value || ''
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            if (window.showToast) window.showToast(data.message, 'success');
+            alert(data.message);
+            window.location.href = '/Stock/History';
         } else {
-            resultsContainer.innerHTML = matches.map(o => `
-                <div class="dd-item product-search-item" data-value="${o.value}" style="cursor:pointer;padding:8px 12px;font-size:13px">
-                    <i class="bi bi-box-seam me-2 text-primary"></i>
-                    <span>${o.text}</span>
-                </div>
-            `).join('');
+            alert('Error receiving batch: ' + (data.message || 'Validation failed'));
+            btn.disabled = false;
+            btn.innerHTML = `<i class="bi bi-check2-circle me-1"></i> Finish & Add Batch to Stock (${batchScannedDevices.length})`;
         }
-
-        resultsContainer.style.display = 'block';
-    });
-
-    resultsContainer.addEventListener('click', function (e) {
-        const item = e.target.closest('.product-search-item');
-        if (item) {
-            const val = item.getAttribute('data-value');
-            selectEl.value = val;
-            selectEl.dispatchEvent(new Event('change'));
-            resultsContainer.style.display = 'none';
-        }
-    });
-
-    document.addEventListener('click', function (e) {
-        if (!e.target.closest('#product-search-input') && !e.target.closest('#product-search-results')) {
-            resultsContainer.style.display = 'none';
-        }
-    });
-});
+    } catch (err) {
+        console.error('Batch submission error:', err);
+        alert('Failed to submit batch: ' + err);
+        btn.disabled = false;
+        btn.innerHTML = `<i class="bi bi-check2-circle me-1"></i> Finish & Add Batch to Stock (${batchScannedDevices.length})`;
+    }
+}
 </script>
 }

@@ -1,149 +1,144 @@
 @model StockTransactionViewModel
 @{
-    ViewData["Title"] = "Stock Out";
+    ViewData["Title"] = "Stock Out — Mobile Shop";
 }
 
-<div class="ph">
+<div class="d-flex align-items-center justify-content-between mb-4">
     <div>
-        <h1 class="ph-title">Stock Out</h1>
-        <p class="ph-sub">Decrease inventory levels for a product.</p>
+        <h3 class="fw-bold mb-1"><i class="bi bi-arrow-up-circle me-2 text-danger"></i>Stock Out / Issue Device</h3>
+        <p class="text-muted small mb-0">Deduct quantity or issue out specific physical IMEIs</p>
     </div>
-    <div class="ph-actions">
-        <a href="@Url.Action("History","Stock")" class="btn-d btn-outline">
-            <i class="bi bi-clock-history"></i> View History
-        </a>
-    </div>
+    <a href="@Url.Action("History","Stock")" class="btn btn-outline-secondary rounded-pill px-3">
+        <i class="bi bi-clock-history me-1"></i> View Audit History
+    </a>
 </div>
 
-<div class="row g-4">
-    <div class="col-lg-6">
-        <div class="card-d card-p-lg">
-            <div class="s-title" style="display:flex;align-items:center;gap:8px">
-                <span class="badge-d badge-red"><i class="bi bi-arrow-up-circle-fill"></i></span>
-                Remove Inventory
-            </div>
+<ul class="nav nav-pills mb-4 gap-2" id="stockOutTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active rounded-pill px-4" id="out-imei-tab" data-bs-toggle="tab" data-bs-target="#out-imei-panel" type="button">
+            <i class="bi bi-upc-scan me-1"></i> Issue Specific IMEI Unit
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link rounded-pill px-4" id="out-bulk-tab" data-bs-toggle="tab" data-bs-target="#out-bulk-panel" type="button">
+            <i class="bi bi-boxes me-1"></i> Accessory Stock Deduction
+        </button>
+    </li>
+</ul>
 
-            <form asp-action="StockOut" method="post">
-                <div asp-validation-summary="ModelOnly" class="alert-d alert-danger mb-4"></div>
-
-                <div class="fg">
-                    <label class="fg-label">Search or Select Product <span class="req">*</span></label>
-                    
-                    <!-- Search Product Input -->
-                    <div class="fg-icon-wrap mb-2" style="position:relative">
-                        <i class="bi bi-search fg-icon"></i>
-                        <input type="text" id="product-search-input" class="fg-control"
-                               placeholder="Type product name, SKU or barcode to search…" autocomplete="off">
-                        
-                        <!-- Search Results Dropdown -->
-                        <div id="product-search-results" class="dd-menu" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:1100;max-height:240px;overflow-y:auto;margin-top:4px">
+<div class="tab-content">
+    <!-- PANEL 1: ISSUE SPECIFIC IMEI -->
+    <div class="tab-pane fade show active" id="out-imei-panel">
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-4">
+                <form asp-action="StockOutDevice" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Select Mobile Model <span class="text-danger">*</span></label>
+                            <select id="OutProductId" class="form-select" required>
+                                <option value="">-- Select Product Model --</option>
+                                @if (Model.Products != null)
+                                {
+                                    foreach (var p in Model.Products)
+                                    {
+                                        <option value="@p.Value">@p.Text</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Select Physical IMEI <span class="text-danger">*</span></label>
+                            <select name="deviceId" id="DeviceSelect" class="form-select font-monospace" required disabled>
+                                <option value="">-- Select Model First --</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">Reason for Issue / Output <span class="text-danger">*</span></label>
+                            <select name="statusReason" required class="form-select">
+                                <option value="Sold">Direct Retail Sale</option>
+                                <option value="Reserved">Reserved for Order</option>
+                                <option value="UnderRepair">Sent for Repair / Workshop</option>
+                                <option value="Damaged">Mark as Damaged / Scrap</option>
+                            </select>
                         </div>
                     </div>
-
-                    <!-- Direct Select Dropdown -->
-                    <select asp-for="ProductId" id="ProductId" asp-items="Model.Products" class="fg-control" required>
-                        <option value="">— Select a product SKU —</option>
-                    </select>
-                    <span asp-validation-for="ProductId" class="fg-error"></span>
-                </div>
-
-                <div class="fg">
-                    <label class="fg-label" asp-for="Quantity">Quantity to Remove <span class="req">*</span></label>
-                    <input asp-for="Quantity" type="number" min="1" class="fg-control" placeholder="e.g. 10" required>
-                    <span asp-validation-for="Quantity" class="fg-error"></span>
-                </div>
-
-                <div class="fg">
-                    <label class="fg-label" asp-for="Reason">Reason / Reference <span class="req">*</span></label>
-                    <input asp-for="Reason" class="fg-control" placeholder="e.g. Direct Sale, Damaged/Scrap, Sample" required>
-                    <span asp-validation-for="Reason" class="fg-error"></span>
-                </div>
-
-                <hr class="s-divider">
-                <div class="d-flex align-items-center justify-content-end gap-3">
-                    <a href="@Url.Action("History","Stock")" class="btn-d btn-outline">Cancel</a>
-                    <button type="submit" class="btn-d btn-danger">
-                        <i class="bi bi-dash-circle"></i> Remove from Stock
-                    </button>
-                </div>
-            </form>
+                    <hr class="my-4">
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="submit" class="btn btn-danger rounded-pill px-4"><i class="bi bi-dash-circle me-1"></i> Issue Out IMEI</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
-    <div class="col-lg-6">
-        <div class="card-d card-p" style="background:var(--danger-dim);border-color:transparent">
-            <div style="font-size:13px;font-weight:700;color:var(--danger);margin-bottom:12px">
-                <i class="bi bi-exclamation-triangle me-1"></i> Important
+    <!-- PANEL 2: BULK ACCESSORY STOCK DEDUCTION -->
+    <div class="tab-pane fade" id="out-bulk-panel">
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-body p-4">
+                <form asp-action="StockOut" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Select Accessory Product <span class="text-danger">*</span></label>
+                            <select asp-for="ProductId" asp-items="Model.Products" class="form-select" required>
+                                <option value="">-- Select Accessory Product --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Quantity to Remove <span class="text-danger">*</span></label>
+                            <input asp-for="Quantity" type="number" min="1" class="form-control" placeholder="e.g. 5" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">Reason / Note <span class="text-danger">*</span></label>
+                            <input asp-for="Reason" class="form-control" placeholder="e.g. Direct Sale, Damaged Item, Display Sample" required>
+                        </div>
+                    </div>
+                    <hr class="my-4">
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="submit" class="btn btn-danger rounded-pill px-4"><i class="bi bi-dash-circle me-1"></i> Deduct Stock</button>
+                    </div>
+                </form>
             </div>
-            <ul style="font-size:13px;color:var(--danger);opacity:.85;padding-left:16px;margin:0;line-height:2.2">
-                <li>Search or select the exact product SKU</li>
-                <li>Stock cannot go below zero</li>
-                <li>This action is logged and cannot be undone</li>
-                <li>Provide a clear reason for audit purposes</li>
-            </ul>
         </div>
     </div>
 </div>
 
 @section Scripts {
-<partial name="_ValidationScriptsPartial" />
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const searchInput = document.getElementById('product-search-input');
-    const resultsContainer = document.getElementById('product-search-results');
-    const selectEl = document.getElementById('ProductId');
+    const prodSelect = document.getElementById('OutProductId');
+    const devSelect = document.getElementById('DeviceSelect');
 
-    if (!searchInput || !selectEl) return;
+    if (prodSelect && devSelect) {
+        prodSelect.addEventListener('change', async function () {
+            const pid = this.value;
+            if (!pid) {
+                devSelect.innerHTML = '<option value="">-- Select Model First --</option>';
+                devSelect.disabled = true;
+                return;
+            }
 
-    const options = Array.from(selectEl.options).filter(o => o.value !== '');
+            devSelect.innerHTML = '<option value="">Loading available IMEIs...</option>';
+            devSelect.disabled = true;
 
-    selectEl.addEventListener('change', function () {
-        const selected = selectEl.options[selectEl.selectedIndex];
-        if (selected && selected.value) {
-            searchInput.value = selected.text;
-        } else {
-            searchInput.value = '';
-        }
-    });
+            try {
+                const res = await fetch(`/Stock/GetAvailableDevicesForProduct?productId=${pid}`);
+                const data = await res.json();
 
-    searchInput.addEventListener('input', function () {
-        const query = this.value.trim().toLowerCase();
-        if (!query) {
-            resultsContainer.style.display = 'none';
-            return;
-        }
-
-        const matches = options.filter(o => o.text.toLowerCase().includes(query));
-
-        if (matches.length === 0) {
-            resultsContainer.innerHTML = '<div class="px-3 py-2 text-muted" style="font-size:12px">No matching products found</div>';
-        } else {
-            resultsContainer.innerHTML = matches.map(o => `
-                <div class="dd-item product-search-item" data-value="${o.value}" style="cursor:pointer;padding:8px 12px;font-size:13px">
-                    <i class="bi bi-box-seam me-2 text-primary"></i>
-                    <span>${o.text}</span>
-                </div>
-            `).join('');
-        }
-
-        resultsContainer.style.display = 'block';
-    });
-
-    resultsContainer.addEventListener('click', function (e) {
-        const item = e.target.closest('.product-search-item');
-        if (item) {
-            const val = item.getAttribute('data-value');
-            selectEl.value = val;
-            selectEl.dispatchEvent(new Event('change'));
-            resultsContainer.style.display = 'none';
-        }
-    });
-
-    document.addEventListener('click', function (e) {
-        if (!e.target.closest('#product-search-input') && !e.target.closest('#product-search-results')) {
-            resultsContainer.style.display = 'none';
-        }
-    });
+                if (data && data.length > 0) {
+                    devSelect.innerHTML = '<option value="">-- Select Available IMEI --</option>' +
+                        data.map(d => `<option value="${d.id}">${d.displayText}</option>`).join('');
+                    devSelect.disabled = false;
+                } else {
+                    devSelect.innerHTML = '<option value="">No available IMEIs found in stock</option>';
+                    devSelect.disabled = true;
+                }
+            } catch (err) {
+                devSelect.innerHTML = '<option value="">Error loading IMEIs</option>';
+            }
+        });
+    }
 });
 </script>
 }

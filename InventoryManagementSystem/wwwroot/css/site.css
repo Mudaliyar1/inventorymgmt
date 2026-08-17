@@ -864,18 +864,90 @@ select.fg-control { appearance: none; cursor: pointer; padding-right: 36px; back
 }
 
 /* Bootstrap overrides for dark theme */
-.form-control, .form-select, .input-group-text {
+.card, .card-header, .card-body, .card-footer {
+  background-color: var(--card-bg) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary) !important;
+}
+
+.bg-light, .bg-white, .bg-body {
+  background-color: var(--bg-elevated) !important;
+  color: var(--text-primary) !important;
+}
+
+.bg-light-subtle {
+  background-color: var(--card-bg) !important;
+  color: var(--text-secondary) !important;
+}
+
+.table, table.table {
+  --bs-table-bg: var(--card-bg);
+  --bs-table-color: var(--text-primary);
+  --bs-table-hover-bg: var(--card-hover);
+  --bs-table-hover-color: var(--text-primary);
+  --bs-table-border-color: var(--border);
+  background-color: var(--card-bg) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border) !important;
+}
+
+.table th, .table td, table th, table td {
+  background-color: transparent !important;
+  color: var(--text-secondary) !important;
+  border-color: var(--border-light) !important;
+}
+
+.table thead, .table thead th, thead.bg-light, thead.bg-light th, thead th {
+  background-color: var(--bg) !important;
+  color: var(--text-muted) !important;
+  border-color: var(--border) !important;
+}
+
+.table-hover tbody tr:hover, .table-hover tbody tr:hover td {
+  background-color: var(--card-hover) !important;
+  color: var(--text-primary) !important;
+}
+
+.modal-content, .modal-header, .modal-body, .modal-footer {
+  background-color: var(--card-bg) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary) !important;
+}
+
+.modal-header .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+.list-group-item {
+  background-color: var(--card-bg) !important;
+  border-color: var(--border-light) !important;
+  color: var(--text-primary) !important;
+}
+
+.input-group-text {
+  background-color: var(--bg) !important;
+  border-color: var(--border) !important;
+  color: var(--text-muted) !important;
+}
+
+.form-control, .form-select {
   background-color: var(--bg) !important;
   border-color: var(--border) !important;
   color: var(--text-primary) !important;
-  font-family: var(--font) !important;
 }
+
 .form-control:focus, .form-select:focus {
   background-color: var(--bg) !important;
   border-color: var(--border-focus) !important;
   color: var(--text-primary) !important;
   box-shadow: 0 0 0 3px var(--primary-dim) !important;
 }
+
 .form-control::placeholder { color: var(--text-placeholder) !important; }
 .field-validation-error, .text-danger { color: var(--danger) !important; }
-.dropdown-menu { background: var(--card-bg) !important; border-color: var(--border) !important; }
+.dropdown-menu { background: var(--card-bg) !important; border-color: var(--border) !important; color: var(--text-primary) !important; }
+
+option {
+  background-color: var(--card-bg) !important;
+  color: var(--text-primary) !important;
+}

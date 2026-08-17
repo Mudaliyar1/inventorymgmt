@@ -1,0 +1,110 @@
+@model InventoryManagementSystem.Models.Device
+@{
+    ViewData["Title"] = $"Device Timeline — IMEI {Model.IMEI1}";
+    var product = ViewBag.Product as InventoryManagementSystem.Models.Product;
+    var sale = ViewBag.Sale as InventoryManagementSystem.Models.Sale;
+}
+
+<div class="mb-4">
+    <a href="@Url.Action("Index")" class="btn btn-sm btn-outline-secondary rounded-pill px-3 mb-2">
+        <i class="bi bi-arrow-left me-1"></i> Back to Devices
+    </a>
+    <div class="d-flex align-items-center justify-content-between">
+        <div>
+            <h3 class="fw-bold mb-1">@Model.Brand @Model.ModelName</h3>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-primary-subtle text-primary font-monospace">IMEI 1: @Model.IMEI1</span>
+                @if (!string.IsNullOrEmpty(Model.IMEI2))
+                {
+                    <span class="badge bg-secondary-subtle text-secondary font-monospace">IMEI 2: @Model.IMEI2</span>
+                }
+                <span class="badge bg-success-subtle text-success">@Model.Status</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left Spec Card -->
+    <div class="col-md-5">
+        <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card-header bg-transparent border-0 pt-4 px-4">
+                <h5 class="fw-bold mb-0"><i class="bi bi-phone me-2 text-primary"></i>Device Specifications</h5>
+            </div>
+            <div class="card-body px-4">
+                <ul class="list-group list-group-flush small">
+                    <li class="list-group-item d-flex justify-content-between px-0 py-2">
+                        <span class="text-muted">Brand & Model</span>
+                        <span class="fw-semibold">@Model.Brand @Model.ModelName</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between px-0 py-2">
+                        <span class="text-muted">RAM & Storage</span>
+                        <span class="fw-semibold">@Model.Variant</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between px-0 py-2">
+                        <span class="text-muted">Color</span>
+                        <span class="fw-semibold">@Model.Color</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between px-0 py-2">
+                        <span class="text-muted">Serial Number</span>
+                        <span class="font-monospace">@(string.IsNullOrEmpty(Model.SerialNumber) ? "-" : Model.SerialNumber)</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between px-0 py-2">
+                        <span class="text-muted">Purchase Cost</span>
+                        <span class="fw-bold">₹@Model.PurchasePrice.ToString("N2")</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between px-0 py-2">
+                        <span class="text-muted">Retail Price</span>
+                        <span class="fw-bold text-success">₹@Model.SellingPrice.ToString("N2")</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between px-0 py-2">
+                        <span class="text-muted">Supplier Vendor</span>
+                        <span>@(string.IsNullOrEmpty(Model.SupplierName) ? "Direct Procurement" : Model.SupplierName)</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Lifecycle History Timeline -->
+    <div class="col-md-7">
+        <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card-header bg-transparent border-0 pt-4 px-4">
+                <h5 class="fw-bold mb-0"><i class="bi bi-clock-history me-2 text-primary"></i>Lifecycle & Ownership Timeline</h5>
+            </div>
+            <div class="card-body px-4">
+                <div class="timeline ps-3">
+                    <!-- Step 1: Procurement -->
+                    <div class="border-start border-2 border-primary ps-4 pb-4 position-relative">
+                        <span class="position-absolute top-0 start-0 translate-middle p-2 bg-primary border border-light rounded-circle"></span>
+                        <div class="small text-muted mb-1">@Model.CreatedDate.ToString("yyyy-MM-dd HH:mm IST")</div>
+                        <h6 class="fw-bold text-primary mb-1">Device Stocked In</h6>
+                        <p class="small text-muted mb-0">Registered into mobile inventory by <strong>@Model.CreatedBy</strong>. (Supplier: @(Model.SupplierName ?? "Internal Inflow"))</p>
+                    </div>
+
+                    <!-- Step 2: Sale Checkout -->
+                    @if (!string.IsNullOrEmpty(Model.InvoiceNumber))
+                    {
+                        <div class="border-start border-2 border-success ps-4 pb-4 position-relative">
+                            <span class="position-absolute top-0 start-0 translate-middle p-2 bg-success border border-light rounded-circle"></span>
+                            <div class="small text-muted mb-1">@(Model.SoldDate.HasValue ? Model.SoldDate.Value.ToString("yyyy-MM-dd HH:mm IST") : "Sold Date")</div>
+                            <h6 class="fw-bold text-success mb-1">Sold to Customer</h6>
+                            <p class="small text-muted mb-1">Purchased by <strong>@Model.CustomerName</strong> (@Model.CustomerPhone).</p>
+                            <a href="@Url.Action("Invoice", "Sales", new { id = Model.InvoiceNumber })" class="btn btn-sm btn-outline-success rounded-pill px-3">
+                                <i class="bi bi-file-earmark-text me-1"></i> View Tax Invoice #@Model.InvoiceNumber
+                            </a>
+                        </div>
+                    }
+
+                    <!-- Step 3: Current Status -->
+                    <div class="ps-4 position-relative">
+                        <span class="position-absolute top-0 start-0 translate-middle p-2 bg-dark border border-light rounded-circle"></span>
+                        <div class="small text-muted mb-1">Current State</div>
+                        <h6 class="fw-bold text-dark mb-1">Status: @Model.Status</h6>
+                        <p class="small text-muted mb-0">Device is currently logged as <strong>@Model.Status</strong> in system records.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

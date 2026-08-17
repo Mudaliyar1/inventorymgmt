@@ -16,17 +16,23 @@ namespace InventoryManagementSystem.Controllers
     {
         private readonly ISalesService _salesService;
         private readonly IProductService _productService;
+        private readonly ICustomerService _customerService;
+        private readonly IDeviceService _deviceService;
         private readonly IAuditLogService _auditLogService;
         private readonly Data.MongoDbContext _context;
 
         public SalesController(
             ISalesService salesService,
             IProductService productService,
+            ICustomerService customerService,
+            IDeviceService deviceService,
             IAuditLogService auditLogService,
             Data.MongoDbContext context)
         {
             _salesService = salesService;
             _productService = productService;
+            _customerService = customerService;
+            _deviceService = deviceService;
             _auditLogService = auditLogService;
             _context = context;
         }
@@ -71,6 +77,7 @@ namespace InventoryManagementSystem.Controllers
         public async Task<IActionResult> Create()
         {
             await PopulateProductsListBag();
+            ViewBag.Customers = await _customerService.GetAllCustomersAsync();
             var settingsColl = _context.GetCollection<Settings>("Settings");
             var settings = await settingsColl.Find(MongoDB.Driver.FilterDefinition<Settings>.Empty).FirstOrDefaultAsync();
             ViewBag.Settings = settings ?? new Settings();
@@ -93,6 +100,7 @@ namespace InventoryManagementSystem.Controllers
             {
                 ModelState.AddModelError(string.Empty, "Invoice must contain at least one item.");
                 await PopulateProductsListBag();
+                ViewBag.Customers = await _customerService.GetAllCustomersAsync();
                 return View(sale);
             }
 
@@ -106,6 +114,7 @@ namespace InventoryManagementSystem.Controllers
                     {
                         ModelState.AddModelError(string.Empty, $"Product not found for line item {i + 1}.");
                         await PopulateProductsListBag();
+                        ViewBag.Customers = await _customerService.GetAllCustomersAsync();
                         return View(sale);
                     }
 
@@ -113,21 +122,30 @@ namespace InventoryManagementSystem.Controllers
                     {
                         ModelState.AddModelError(string.Empty, $"Insufficient stock for '{product.Name}' (Stock: {product.CurrentStock}, Requested: {item.Quantity})");
                         await PopulateProductsListBag();
+                        ViewBag.Customers = await _customerService.GetAllCustomersAsync();
                         return View(sale);
                     }
 
                     item.ProductName = product.Name;
                     item.ProductCode = product.Code;
-                    item.SellingPrice = product.SellingPrice;
-                    item.Total = item.Quantity * product.SellingPrice;
+                    item.Brand = product.Brand;
+                    item.ModelName = product.ModelName;
+                    item.Variant = product.Variant;
+                    item.Color = product.Color;
+
+                    if (item.SellingPrice <= 0)
+                    {
+                        item.SellingPrice = product.SellingPrice;
+                    }
+                    item.Total = item.Quantity * item.SellingPrice;
                     subTotal += item.Total;
                 }
 
                 sale.SubTotal = subTotal;
-                sale.GstAmount = (subTotal - sale.Discount) * (sale.GstPercentage / 100.0m);
-                sale.GrandTotal = subTotal - sale.Discount + sale.GstAmount;
+                decimal totalDiscounts = sale.Discount + sale.ExchangeDiscount;
+                sale.GstAmount = (subTotal - totalDiscounts) * (sale.GstPercentage / 100.0m);
+                sale.GrandTotal = System.Math.Max(0m, (subTotal - totalDiscounts) + sale.GstAmount);
 
-                // Calculate Amount Paid & Due Amount based on PaymentStatus
                 if (sale.PaymentStatus == "Paid")
                 {
                     sale.AmountPaid = sale.GrandTotal;
@@ -144,9 +162,9 @@ namespace InventoryManagementSystem.Controllers
                 }
 
                 var createdSale = await _salesService.CreateSaleAsync(sale);
-                await _auditLogService.LogActivityAsync("Sale Created", User.Identity?.Name ?? "System", $"Invoice: {createdSale?.InvoiceNumber}", $"Customer: {sale.CustomerName}. Total: ₹{sale.GrandTotal:F2}, Status: {sale.PaymentStatus}");
+                await _auditLogService.LogActivityAsync("Sale Created", User.Identity?.Name ?? "System", $"Invoice: {createdSale?.InvoiceNumber}", $"Customer: {sale.CustomerName}. Total: ₹{sale.GrandTotal:N2}, Status: {sale.PaymentStatus}");
 
-                TempData["ToastMessage"] = $"Invoice {createdSale?.InvoiceNumber} created successfully!";
+                TempData["ToastMessage"] = $"Mobile Shop Invoice {createdSale?.InvoiceNumber} generated successfully!";
                 TempData["ToastType"] = "success";
                 return RedirectToAction(nameof(Index));
             }
@@ -154,6 +172,7 @@ namespace InventoryManagementSystem.Controllers
             {
                 ModelState.AddModelError(string.Empty, ex.Message);
                 await PopulateProductsListBag();
+                ViewBag.Customers = await _customerService.GetAllCustomersAsync();
                 return View(sale);
             }
         }
@@ -243,7 +262,7 @@ namespace InventoryManagementSystem.Controllers
                 {
                     await _auditLogService.LogActivityAsync(
                         "Invoice Modified", currentUser, $"Invoice: {updatedSale.InvoiceNumber}",
-                        $"Updated invoice details for customer {updatedSale.CustomerName}. Total: ₹{updatedSale.GrandTotal}");
+                        $"Updated invoice details for customer {updatedSale.CustomerName}. Total: ₹{updatedSale.GrandTotal:N2}");
 
                     TempData["ToastMessage"] = $"Invoice {updatedSale.InvoiceNumber} updated successfully!";
                     TempData["ToastType"] = "success";

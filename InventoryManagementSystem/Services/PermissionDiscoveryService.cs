@@ -95,9 +95,15 @@ namespace InventoryManagementSystem.Services
         {
             "Home" => "Dashboard & Overview",
             "Category" => "Categories",
-            "Product" => "Products",
-            "Stock" => "Stock Management",
+            "Product" => "Products & Mobile Specs",
+            "Imei" => "IMEI & Device Management",
+            "Stock" => "Stock Management & Devices",
             "Sales" => "POS Billing & Invoices",
+            "Customer" => "Customer Management",
+            "Supplier" => "Supplier & Procurement",
+            "Return" => "Device & Product Returns",
+            "Exchange" => "Mobile Trade-In Exchange",
+            "Repair" => "Service & Repair Tickets",
             "Report" => "Reports & Analytics",
             "Admin" => "Administrator Management",
             "User" => "Employee Management",
@@ -111,9 +117,15 @@ namespace InventoryManagementSystem.Services
         {
             "Home" => "bi-grid-1x2",
             "Category" => "bi-tag",
-            "Product" => "bi-box-seam",
+            "Product" => "bi-phone",
+            "Imei" => "bi-upc-scan",
             "Stock" => "bi-boxes",
             "Sales" => "bi-receipt-cutoff",
+            "Customer" => "bi-person-vcard",
+            "Supplier" => "bi-truck",
+            "Return" => "bi-arrow-return-left",
+            "Exchange" => "bi-arrow-repeat",
+            "Repair" => "bi-wrench-adjustable",
             "Report" => "bi-bar-chart",
             "Admin" => "bi-shield-lock",
             "User" => "bi-people",
@@ -126,15 +138,21 @@ namespace InventoryManagementSystem.Services
         private static int GetModuleOrder(string controllerName) => controllerName switch
         {
             "Home" => 1,
-            "Category" => 2,
-            "Product" => 3,
-            "Stock" => 4,
-            "Sales" => 5,
-            "Report" => 6,
-            "Admin" => 7,
-            "User" => 8,
-            "Settings" => 9,
-            "SystemLog" => 10,
+            "Product" => 2,
+            "Imei" => 3,
+            "Category" => 4,
+            "Stock" => 5,
+            "Sales" => 6,
+            "Exchange" => 7,
+            "Return" => 8,
+            "Repair" => 9,
+            "Customer" => 10,
+            "Supplier" => 11,
+            "Report" => 12,
+            "Admin" => 13,
+            "User" => 14,
+            "Settings" => 15,
+            "SystemLog" => 16,
             _ => 99
         };
 
@@ -142,7 +160,7 @@ namespace InventoryManagementSystem.Services
         {
             var name = actionName.ToLower();
 
-            if (name.Contains("create") || name.Contains("add") || name.Contains("stockin") || name.Contains("stockout")) return "Create";
+            if (name.Contains("create") || name.Contains("add") || name.Contains("stockin") || name.Contains("stockout") || name.Contains("process")) return "Create";
             if (name.Contains("edit") || name.Contains("update") || name.Contains("adjust") || name.Contains("resetpassword") || name.Contains("toggle") || name.Contains("save")) return "Edit";
             if (name.Contains("delete") || name.Contains("remove") || name.Contains("bulkdelete")) return "Delete";
             if (name.Contains("download") || name.Contains("export") || name.Contains("pdf")) return "Export";
@@ -177,6 +195,9 @@ namespace InventoryManagementSystem.Services
             if (actionName.Equals("StockOut", StringComparison.OrdinalIgnoreCase))
                 return "Perform Stock Out";
 
+            if (actionName.Equals("Search", StringComparison.OrdinalIgnoreCase))
+                return "Search & Track IMEI";
+
             if (actionName.Equals("Adjust", StringComparison.OrdinalIgnoreCase))
                 return "Adjust Stock Quantities";
 
@@ -186,23 +207,8 @@ namespace InventoryManagementSystem.Services
             if (actionName.Equals("History", StringComparison.OrdinalIgnoreCase))
                 return "View Stock Audit History";
 
-            if (actionName.Equals("Analytics", StringComparison.OrdinalIgnoreCase))
-                return "View Stock Analytics";
-
             if (actionName.Equals("DownloadInvoice", StringComparison.OrdinalIgnoreCase))
                 return "Download PDF Invoice";
-
-            if (actionName.Equals("Invoice", StringComparison.OrdinalIgnoreCase))
-                return "View Invoice Details";
-
-            if (actionName.Equals("ToggleStatus", StringComparison.OrdinalIgnoreCase) || actionName.Equals("ToggleLock", StringComparison.OrdinalIgnoreCase))
-                return "Activate / Deactivate Account";
-
-            if (actionName.Equals("ResetPassword", StringComparison.OrdinalIgnoreCase))
-                return "Reset Employee Password";
-
-            if (actionName.Equals("Activity", StringComparison.OrdinalIgnoreCase))
-                return "View Employee Activity Logs";
 
             return $"{actionType} - {SplitCamelCase(actionName)}";
         }

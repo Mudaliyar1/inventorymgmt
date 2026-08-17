@@ -1,0 +1,99 @@
+@model InventoryManagementSystem.Models.Customer
+@{
+    ViewData["Title"] = $"Customer Profile — {Model.Name}";
+    var sales = ViewBag.Sales as IEnumerable<InventoryManagementSystem.Models.Sale>;
+    var devices = ViewBag.Devices as IEnumerable<InventoryManagementSystem.Models.Device>;
+}
+
+<div class="mb-4">
+    <a href="@Url.Action("Index")" class="btn btn-sm btn-outline-secondary rounded-pill px-3 mb-2">
+        <i class="bi bi-arrow-left me-1"></i> Back to Customers
+    </a>
+    <div class="d-flex align-items-center justify-content-between">
+        <div>
+            <h3 class="fw-bold mb-1">@Model.Name</h3>
+            <p class="text-muted small mb-0"><i class="bi bi-telephone me-1"></i>@Model.Phone | <i class="bi bi-envelope me-1"></i>@(string.IsNullOrEmpty(Model.Email) ? "No Email" : Model.Email)</p>
+        </div>
+        <div>
+            <span class="badge bg-success fs-6 rounded-pill px-3 py-2">Total Spend: ₹@Model.TotalPurchases.ToString("N2")</span>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Purchases Table Card -->
+    <div class="col-md-7">
+        <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card-header bg-transparent border-0 pt-4 px-4">
+                <h5 class="fw-bold mb-0"><i class="bi bi-receipt me-2 text-primary"></i>Sales Invoices History</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light text-muted small">
+                            <tr>
+                                <th class="ps-4">Invoice #</th>
+                                <th>Date</th>
+                                <th>Grand Total</th>
+                                <th>Status</th>
+                                <th class="pe-4 text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (sales == null || !sales.Any())
+                            {
+                                <tr><td colspan="5" class="text-center py-4 text-muted">No sales invoices recorded yet.</td></tr>
+                            }
+                            else
+                            {
+                                foreach (var s in sales)
+                                {
+                                    <tr>
+                                        <td class="ps-4 font-monospace fw-bold">@s.InvoiceNumber</td>
+                                        <td class="small">@s.Date.ToString("yyyy-MM-dd")</td>
+                                        <td class="fw-bold">₹@s.GrandTotal.ToString("N2")</td>
+                                        <td><span class="badge bg-success-subtle text-success">@s.PaymentStatus</span></td>
+                                        <td class="pe-4 text-end">
+                                            <a href="@Url.Action("Invoice", "Sales", new { id = s.Id })" class="btn btn-sm btn-outline-primary rounded-pill px-2">View Invoice</a>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Purchased Devices IMEIs Card -->
+    <div class="col-md-5">
+        <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card-header bg-transparent border-0 pt-4 px-4">
+                <h5 class="fw-bold mb-0"><i class="bi bi-phone me-2 text-primary"></i>Purchased Devices & IMEIs</h5>
+            </div>
+            <div class="card-body px-4">
+                @if (devices == null || !devices.Any())
+                {
+                    <p class="text-muted small mb-0">No mobile devices associated with this phone number.</p>
+                }
+                else
+                {
+                    <ul class="list-group list-group-flush small">
+                        @foreach (var d in devices)
+                        {
+                            <li class="list-group-item px-0 py-3">
+                                <div class="fw-bold text-dark">@d.Brand @d.ModelName</div>
+                                <div class="font-monospace text-primary small">IMEI 1: @d.IMEI1</div>
+                                <div class="d-flex align-items-center justify-content-between mt-1">
+                                    <span class="badge bg-light text-dark border">@d.Variant</span>
+                                    <a href="@Url.Action("Details", "Imei", new { imei = d.IMEI1 })" class="btn btn-sm btn-link text-decoration-none p-0">IMEI Timeline &rarr;</a>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+</div>

@@ -10,6 +10,7 @@ namespace InventoryManagementSystem.Services
     public class StockService : IStockService
     {
         private readonly IProductRepository _productRepository;
+        private readonly IDeviceRepository _deviceRepository;
         private readonly IStockTransactionRepository _transactionRepository;
         private readonly INotificationRepository _notificationRepository;
         private readonly IEmailService _emailService;
@@ -18,6 +19,7 @@ namespace InventoryManagementSystem.Services
 
         public StockService(
             IProductRepository productRepository,
+            IDeviceRepository deviceRepository,
             IStockTransactionRepository transactionRepository,
             INotificationRepository notificationRepository,
             IEmailService emailService,
@@ -25,6 +27,7 @@ namespace InventoryManagementSystem.Services
             IInventoryAlertService inventoryAlertService)
         {
             _productRepository = productRepository;
+            _deviceRepository = deviceRepository;
             _transactionRepository = transactionRepository;
             _notificationRepository = notificationRepository;
             _emailService = emailService;
@@ -40,6 +43,66 @@ namespace InventoryManagementSystem.Services
         public async Task<bool> StockOutAsync(string productId, int quantity, string reason, string executedBy)
         {
             return await AdjustStockAsync(productId, quantity, "Stock Out", reason, executedBy);
+        }
+
+        public async Task<(bool Success, string Message)> StockInDeviceAsync(Device device, string executedBy)
+        {
+            if (device == null || string.IsNullOrWhiteSpace(device.ProductId))
+            {
+                return (false, "Invalid device or product selection.");
+            }
+
+            // Check IMEI 1
+            if (!string.IsNullOrWhiteSpace(device.IMEI1) && await _deviceRepository.IsImeiExistsAsync(device.IMEI1))
+            {
+                return (false, $"IMEI 1 '{device.IMEI1}' already exists in database. Unique IMEI required.");
+            }
+            // Check IMEI 2
+            if (!string.IsNullOrWhiteSpace(device.IMEI2) && await _deviceRepository.IsImeiExistsAsync(device.IMEI2))
+            {
+                return (false, $"IMEI 2 '{device.IMEI2}' already exists in database. Unique IMEI required.");
+            }
+
+            var product = await _productRepository.GetByIdAsync(device.ProductId);
+            if (product == null) return (false, "Target product model not found.");
+
+            device.ProductName = product.Name;
+            device.ProductCode = product.Code;
+            device.Brand = string.IsNullOrWhiteSpace(device.Brand) ? product.Brand : device.Brand;
+            device.ModelName = string.IsNullOrWhiteSpace(device.ModelName) ? product.ModelName : device.ModelName;
+            device.Variant = string.IsNullOrWhiteSpace(device.Variant) ? product.Variant : device.Variant;
+            device.Color = string.IsNullOrWhiteSpace(device.Color) ? product.Color : device.Color;
+            device.PurchasePrice = device.PurchasePrice <= 0 ? product.PurchasePrice : device.PurchasePrice;
+            device.SellingPrice = device.SellingPrice <= 0 ? product.SellingPrice : device.SellingPrice;
+            device.Status = "InStock";
+            device.CreatedBy = executedBy;
+            device.CreatedDate = DateTime.UtcNow;
+            device.UpdatedDate = DateTime.UtcNow;
+
+            await _deviceRepository.CreateAsync(device);
+
+            // Increase product stock & log transaction
+            await AdjustStockAsync(product.Id, 1, "Stock In", $"Received Physical Device (IMEI: {device.IMEI1}, Supplier: {device.SupplierName})", executedBy);
+
+            return (true, $"Stock In completed for IMEI {device.IMEI1}.");
+        }
+
+        public async Task<(bool Success, string Message)> StockOutDeviceAsync(string deviceId, string statusReason, string executedBy)
+        {
+            var device = await _deviceRepository.GetByIdAsync(deviceId);
+            if (device == null) return (false, "Device record not found.");
+            if (device.Status != "InStock") return (false, $"Device is currently in status '{device.Status}' and cannot be issued out.");
+
+            string newStatus = string.IsNullOrWhiteSpace(statusReason) ? "Sold" : statusReason;
+            await _deviceRepository.UpdateStatusAsync(device.Id, newStatus);
+
+            var product = await _productRepository.GetByIdAsync(device.ProductId);
+            if (product != null)
+            {
+                await AdjustStockAsync(product.Id, 1, "Stock Out", $"Device Issued Out (IMEI: {device.IMEI1}, Status: {newStatus})", executedBy);
+            }
+
+            return (true, $"Device IMEI {device.IMEI1} issued out cleanly.");
         }
 
         public async Task<bool> AdjustStockAsync(string productId, int quantity, string type, string reason, string executedBy)
@@ -69,7 +132,7 @@ namespace InventoryManagementSystem.Services
             product.UpdatedDate = DateTime.UtcNow;
             await _productRepository.UpdateAsync(product.Id, product);
 
-            // Trigger Brevo Email Inventory Alert System (Asynchronous, Non-blocking)
+            // Trigger Brevo Email Inventory Alert System
             await _inventoryAlertService.CheckAndTriggerStockAlertsAsync(product, previousStock, currentStock);
 
             // Look up employee details for stock attribution
@@ -88,7 +151,7 @@ namespace InventoryManagementSystem.Services
                 }
             }
 
-            // Record transaction log with full employee attribution
+            // Record transaction log
             var transaction = new StockTransaction
             {
                 ProductId = productId,
@@ -114,7 +177,6 @@ namespace InventoryManagementSystem.Services
                 var title = currentStock == 0 ? "Product Out of Stock" : "Low Stock Alert";
                 var message = $"Product '{product.Name}' (SKU: {product.Code}) has dropped to {currentStock} units. (Safety threshold: {product.MinimumStock})";
 
-                // System Notification
                 await _notificationRepository.CreateAsync(new Notification
                 {
                     Type = typeAlert,
@@ -123,7 +185,6 @@ namespace InventoryManagementSystem.Services
                     Timestamp = DateTime.UtcNow
                 });
 
-                // Email Notification
                 try
                 {
                     await _emailService.SendLowStockAlertEmailAsync("admin@sims.com", product.Name, currentStock, product.MinimumStock);

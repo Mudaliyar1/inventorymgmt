@@ -23,17 +23,74 @@ namespace InventoryManagementSystem.Models
         [BsonRepresentation(BsonType.ObjectId)]
         public string CategoryId { get; set; } = string.Empty;
 
+        // Mobile Shop Specific Classification
+        [BsonElement("ProductType")]
+        public string ProductType { get; set; } = "Accessory"; // Smartphone, Feature Phone, Tablet, Smartwatch, Accessory, Charger, Cable, Mobile Cover, Tempered Glass, Earphones, Headphones, Power Bank, Memory Card, Speaker, Other
+
+        [BsonElement("Brand")]
+        public string Brand { get; set; } = string.Empty;
+
+        [BsonElement("ModelName")]
+        public string ModelName { get; set; } = string.Empty;
+
+        [BsonElement("ModelNumber")]
+        public string ModelNumber { get; set; } = string.Empty;
+
+        [BsonElement("Variant")]
+        public string Variant { get; set; } = string.Empty; // e.g., 8GB RAM / 128GB Storage
+
+        [BsonElement("Color")]
+        public string Color { get; set; } = string.Empty;
+
+        // Mobile Device Specifications
+        [BsonElement("Ram")]
+        public string Ram { get; set; } = string.Empty;
+
+        [BsonElement("Storage")]
+        public string Storage { get; set; } = string.Empty;
+
+        [BsonElement("Processor")]
+        public string Processor { get; set; } = string.Empty;
+
+        [BsonElement("DisplaySize")]
+        public string DisplaySize { get; set; } = string.Empty;
+
+        [BsonElement("BatteryCapacity")]
+        public string BatteryCapacity { get; set; } = string.Empty;
+
+        [BsonElement("OperatingSystem")]
+        public string OperatingSystem { get; set; } = string.Empty;
+
+        [BsonElement("NetworkSupport")]
+        public string NetworkSupport { get; set; } = string.Empty;
+
+        [BsonElement("SimType")]
+        public string SimType { get; set; } = string.Empty;
+
+        // Commercials
         [BsonElement("PurchasePrice")]
         public decimal PurchasePrice { get; set; }
 
         [BsonElement("SellingPrice")]
         public decimal SellingPrice { get; set; }
 
+        [BsonElement("Mrp")]
+        public decimal Mrp { get; set; }
+
+        [BsonElement("GstPercentage")]
+        public decimal GstPercentage { get; set; } = 18.0m;
+
         [BsonElement("CurrentStock")]
         public int CurrentStock { get; set; }
 
         [BsonElement("MinimumStock")]
         public int MinimumStock { get; set; }
+
+        [BsonElement("WarrantyDurationMonths")]
+        public int WarrantyDurationMonths { get; set; } = 12;
+
+        [BsonElement("IsImeiRequired")]
+        public bool IsImeiRequired { get; set; } = false;
 
         [BsonElement("Description")]
         public string Description { get; set; } = string.Empty;

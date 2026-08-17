@@ -16,20 +16,26 @@ namespace InventoryManagementSystem.Controllers
     {
         private readonly IStockService _stockService;
         private readonly IProductService _productService;
+        private readonly IDeviceService _deviceService;
         private readonly ICategoryService _categoryService;
+        private readonly ISupplierService _supplierService;
         private readonly IAuditLogService _auditLogService;
         private readonly ISaleRepository _saleRepository;
 
         public StockController(
             IStockService stockService,
             IProductService productService,
+            IDeviceService deviceService,
             ICategoryService categoryService,
+            ISupplierService supplierService,
             IAuditLogService auditLogService,
             ISaleRepository saleRepository)
         {
             _stockService = stockService;
             _productService = productService;
+            _deviceService = deviceService;
             _categoryService = categoryService;
+            _supplierService = supplierService;
             _auditLogService = auditLogService;
             _saleRepository = saleRepository;
         }
@@ -39,6 +45,7 @@ namespace InventoryManagementSystem.Controllers
         {
             var model = new StockTransactionViewModel { Type = "Stock In" };
             await PopulateProductsList(model);
+            ViewBag.Suppliers = await _supplierService.GetAllSuppliersAsync();
             return View(model);
         }
 
@@ -49,6 +56,7 @@ namespace InventoryManagementSystem.Controllers
             if (!ModelState.IsValid)
             {
                 await PopulateProductsList(model);
+                ViewBag.Suppliers = await _supplierService.GetAllSuppliersAsync();
                 return View(model);
             }
 
@@ -65,7 +73,126 @@ namespace InventoryManagementSystem.Controllers
 
             ModelState.AddModelError(string.Empty, "Error performing Stock In action.");
             await PopulateProductsList(model);
+            ViewBag.Suppliers = await _supplierService.GetAllSuppliersAsync();
             return View(model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> StockInDevice([FromForm] Device device)
+        {
+            var executedBy = User.Identity?.Name ?? "Admin";
+            var (success, message) = await _stockService.StockInDeviceAsync(device, executedBy);
+
+            if (success)
+            {
+                TempData["ToastMessage"] = message;
+                TempData["ToastType"] = "success";
+                return RedirectToAction(nameof(History));
+            }
+
+            TempData["ToastMessage"] = message;
+            TempData["ToastType"] = "danger";
+            return RedirectToAction(nameof(StockIn));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> CheckImeiExists(string imei)
+        {
+            if (string.IsNullOrWhiteSpace(imei))
+            {
+                return Json(new { valid = false, exists = false, message = "IMEI is required." });
+            }
+
+            var cleanImei = imei.Trim();
+            if (!System.Text.RegularExpressions.Regex.IsMatch(cleanImei, @"^\d{14,16}$"))
+            {
+                return Json(new { valid = false, exists = false, message = "IMEI must be numeric (14 to 16 digits)." });
+            }
+
+            var existingDevice = await _deviceService.GetDeviceByImeiAsync(cleanImei);
+            if (existingDevice != null)
+            {
+                return Json(new {
+                    valid = true,
+                    exists = true,
+                    message = "This IMEI already exists in inventory.",
+                    deviceInfo = $"{existingDevice.Brand} {existingDevice.ModelName} (Status: {existingDevice.Status})"
+                });
+            }
+
+            return Json(new { valid = true, exists = false, message = "IMEI available." });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> StockInDeviceBatch([FromBody] BatchDeviceStockInRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.ProductId) || request.Devices == null || !request.Devices.Any())
+            {
+                return Json(new { success = false, message = "No valid product or devices provided in batch." });
+            }
+
+            var executedBy = User.Identity?.Name ?? "Admin";
+            int addedCount = 0;
+            var errors = new List<string>();
+
+            var seenImeis = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var item in request.Devices)
+            {
+                var imei1 = item.IMEI1?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(imei1)) continue;
+
+                if (seenImeis.Contains(imei1))
+                {
+                    errors.Add($"Duplicate IMEI '{imei1}' found within current batch.");
+                    continue;
+                }
+                seenImeis.Add(imei1);
+
+                if (!string.IsNullOrWhiteSpace(item.IMEI2))
+                {
+                    var imei2 = item.IMEI2.Trim();
+                    if (seenImeis.Contains(imei2))
+                    {
+                        errors.Add($"Duplicate IMEI 2 '{imei2}' found within current batch.");
+                        continue;
+                    }
+                    seenImeis.Add(imei2);
+                }
+
+                var device = new Device
+                {
+                    ProductId = request.ProductId,
+                    SupplierName = request.SupplierName,
+                    Variant = request.Variant,
+                    Color = request.Color,
+                    PurchasePrice = request.PurchasePrice,
+                    SellingPrice = request.SellingPrice,
+                    IMEI1 = imei1,
+                    IMEI2 = item.IMEI2?.Trim() ?? string.Empty,
+                    SerialNumber = item.SerialNumber?.Trim() ?? string.Empty
+                };
+
+                var (success, msg) = await _stockService.StockInDeviceAsync(device, executedBy);
+                if (success)
+                {
+                    addedCount++;
+                }
+                else
+                {
+                    errors.Add($"IMEI '{imei1}': {msg}");
+                }
+            }
+
+            if (addedCount > 0)
+            {
+                var responseMsg = $"Successfully received {addedCount} physical mobile units into stock!";
+                if (errors.Any()) responseMsg += $" ({errors.Count} items skipped due to duplicates/validation).";
+                return Json(new { success = true, addedCount, message = responseMsg, errors });
+            }
+
+            return Json(new { success = false, message = errors.FirstOrDefault() ?? "Failed to process batch stock-in.", errors });
         }
 
         [HttpGet]
@@ -105,6 +232,42 @@ namespace InventoryManagementSystem.Controllers
             ModelState.AddModelError(string.Empty, "Error performing Stock Out action.");
             await PopulateProductsList(model);
             return View(model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> StockOutDevice(string deviceId, string statusReason)
+        {
+            var executedBy = User.Identity?.Name ?? "Admin";
+            var (success, message) = await _stockService.StockOutDeviceAsync(deviceId, statusReason, executedBy);
+
+            if (success)
+            {
+                TempData["ToastMessage"] = message;
+                TempData["ToastType"] = "success";
+                return RedirectToAction(nameof(History));
+            }
+
+            TempData["ToastMessage"] = message;
+            TempData["ToastType"] = "danger";
+            return RedirectToAction(nameof(StockOut));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAvailableDevicesForProduct(string productId)
+        {
+            if (string.IsNullOrWhiteSpace(productId)) return Json(new List<object>());
+            var devices = await _deviceService.GetAvailableDevicesForProductAsync(productId);
+            return Json(devices.Select(d => new
+            {
+                id = d.Id,
+                imei1 = d.IMEI1,
+                imei2 = d.IMEI2,
+                serialNumber = d.SerialNumber,
+                variant = d.Variant,
+                color = d.Color,
+                displayText = $"{d.Brand} {d.ModelName} ({d.Variant} {d.Color}) - IMEI: {d.IMEI1}"
+            }));
         }
 
         [HttpGet]
@@ -263,7 +426,7 @@ namespace InventoryManagementSystem.Controllers
             model.Products = products.Where(p => p.Status == "Active").Select(p => new SelectListItem
             {
                 Value = p.Id,
-                Text = $"{p.Name} (SKU: {p.Code} - Qty: {p.CurrentStock})"
+                Text = $"{p.Name} (SKU: {p.Code} - Qty: {p.CurrentStock}) - {(p.IsImeiRequired ? "Requires IMEI" : "Accessory")}"
             }).ToList();
         }
 
@@ -324,7 +487,6 @@ namespace InventoryManagementSystem.Controllers
 
             var categoryDict = categories.ToDictionary(c => c.Id, c => c.Name);
 
-            // Calculate total units sold and revenue per product
             var productSalesMap = new Dictionary<string, (int SoldCount, decimal TotalRevenue)>();
             foreach (var sale in sales)
             {
@@ -341,7 +503,6 @@ namespace InventoryManagementSystem.Controllers
                 }
             }
 
-            // High-level overall metrics across all products
             int totalProducts = products.Count;
             int totalCategories = categories.Count;
             int totalStockQty = products.Sum(p => p.CurrentStock);
@@ -352,7 +513,6 @@ namespace InventoryManagementSystem.Controllers
             int lowStockCount = products.Count(p => p.Status == "Active" && p.CurrentStock > 0 && p.CurrentStock <= p.MinimumStock);
             int outOfStockCount = products.Count(p => p.Status == "Active" && p.CurrentStock == 0);
 
-            // Transform into DTO items
             var allItems = products.Select(p =>
             {
                 var catName = !string.IsNullOrEmpty(p.CategoryId) && categoryDict.TryGetValue(p.CategoryId, out var cName) ? cName : "General";
@@ -377,7 +537,6 @@ namespace InventoryManagementSystem.Controllers
                 };
             }).AsQueryable();
 
-            // Apply Filters
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 var term = searchTerm.Trim().ToLower();
@@ -402,7 +561,6 @@ namespace InventoryManagementSystem.Controllers
                 allItems = allItems.Where(i => i.StockStatus.Equals(stockStatus, StringComparison.OrdinalIgnoreCase));
             }
 
-            // Apply Sorting
             allItems = sortBy switch
             {
                 "stock_asc" => allItems.OrderBy(i => i.CurrentStock),

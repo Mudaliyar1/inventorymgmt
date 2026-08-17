@@ -5,16 +5,16 @@ namespace InventoryManagementSystem.ViewModels
 {
     public class ReportFilterRequest
     {
-        public string ReportType { get; set; } = "Sales"; // Sales, Inventory, StockMovement, StockHistory, EmployeeActivity, Alerts, Category, ProductPerformance, ExecutiveSummary
-        public string DatePreset { get; set; } = "ThisMonth"; // Today, Yesterday, ThisWeek, ThisMonth, LastMonth, ThisYear, Custom, AllTime
+        public string ReportType { get; set; } = "Sales"; // Sales, ImeiInventory, TradeIn, Returns, Repairs, Warranty, Customer, Supplier, Inventory, StockMovement, EmployeeActivity, Alerts, ExecutiveSummary
+        public string DatePreset { get; set; } = "ThisMonth";
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
         public string? ProductId { get; set; }
         public string? CategoryId { get; set; }
-        public string? TransactionType { get; set; } // Stock In, Stock Out, Adjustment, POS Sale
+        public string? TransactionType { get; set; }
         public string? EmployeeId { get; set; }
-        public string? PaymentStatus { get; set; } // Paid, Unpaid, Partial, Draft
-        public string? StockStatus { get; set; } // All, InStock, LowStock, OutOfStock
+        public string? PaymentStatus { get; set; }
+        public string? StockStatus { get; set; }
         public string? SearchTerm { get; set; }
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 20;
@@ -48,6 +48,7 @@ namespace InventoryManagementSystem.ViewModels
         public string DateString { get; set; } = string.Empty;
         public string Code { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
+        public string ProductInfo { get; set; } = string.Empty;
         public string CategoryName { get; set; } = string.Empty;
         public string CustomerInfo { get; set; } = string.Empty;
         public string PrimaryText { get; set; } = string.Empty;
@@ -55,9 +56,13 @@ namespace InventoryManagementSystem.ViewModels
         public string BadgeText { get; set; } = string.Empty;
         public string BadgeClass { get; set; } = string.Empty;
         public int Quantity { get; set; }
+        public int StockQty { get; set; }
+        public int MinStockQty { get; set; }
         public int PreviousStock { get; set; }
         public int NewStock { get; set; }
         public decimal UnitPrice { get; set; }
+        public decimal CostPrice { get; set; }
+        public decimal SellingPrice { get; set; }
         public decimal SubTotal { get; set; }
         public decimal Discount { get; set; }
         public decimal TaxAmount { get; set; }
@@ -65,6 +70,9 @@ namespace InventoryManagementSystem.ViewModels
         public decimal CostValue { get; set; }
         public decimal SalesValue { get; set; }
         public decimal ProfitValue { get; set; }
+        public decimal CostValuation { get; set; }
+        public decimal SalesValuation { get; set; }
+        public decimal ProfitPotential { get; set; }
         public string UserExecutor { get; set; } = string.Empty;
         public string Reason { get; set; } = string.Empty;
         public string ReferenceInfo { get; set; } = string.Empty;

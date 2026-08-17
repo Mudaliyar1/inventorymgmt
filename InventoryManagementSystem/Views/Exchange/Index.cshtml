@@ -1,0 +1,148 @@
+@model IEnumerable<InventoryManagementSystem.Models.ExchangeRecord>
+@{
+    ViewData["Title"] = "Mobile Phone Trade-In & Exchange";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-arrow-repeat me-2 text-primary"></i>Mobile Trade-In & Exchange</h3>
+        <p class="text-muted small mb-0">Record old phone trade-in valuations and offset credit against new phone checkout</p>
+    </div>
+    <button type="button" class="btn btn-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#processExchangeModal">
+        <i class="bi bi-plus-circle me-1"></i> New Phone Trade-In
+    </button>
+</div>
+
+<!-- Search Bar -->
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-3">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-9">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
+                    <input type="text" name="search" value="@ViewBag.Search" class="form-control bg-light border-0" placeholder="Search Exchange #, Old IMEI, Brand/Model, or Customer...">
+                </div>
+            </div>
+            <div class="col-md-3 d-flex gap-1">
+                <button type="submit" class="btn btn-dark w-100 rounded-pill"><i class="bi bi-funnel me-1"></i>Filter</button>
+                <a href="@Url.Action("Index")" class="btn btn-outline-secondary rounded-circle"><i class="bi bi-arrow-counterclockwise"></i></a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Table Card -->
+<div class="card border-0 shadow-sm rounded-4">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light text-muted small uppercase">
+                    <tr>
+                        <th class="ps-4">Exchange #</th>
+                        <th>Date & Time</th>
+                        <th>Customer</th>
+                        <th>Old Phone Details</th>
+                        <th>Old IMEI 1</th>
+                        <th>Condition</th>
+                        <th>Valuation Credit</th>
+                        <th>Executed By</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model == null || !Model.Any())
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted">No trade-in exchanges recorded yet.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var e in Model)
+                        {
+                            <tr>
+                                <td class="ps-4 font-monospace fw-bold text-primary">@e.ExchangeNumber</td>
+                                <td class="small">@e.Date.ToString("yyyy-MM-dd HH:mm IST")</td>
+                                <td>
+                                    <div class="fw-semibold">@e.CustomerName</div>
+                                    <div class="small text-muted">@e.CustomerPhone</div>
+                                </td>
+                                <td>
+                                    <div class="fw-bold text-dark">@e.OldBrand @e.OldModel</div>
+                                    <div class="small text-muted">@e.OldStorage</div>
+                                </td>
+                                <td class="font-monospace small">@(string.IsNullOrEmpty(e.OldImei1) ? "-" : e.OldImei1)</td>
+                                <td><span class="badge bg-info-subtle text-info border border-info-subtle">@e.Condition</span></td>
+                                <td class="fw-bold text-success fs-6">₹@e.FinalExchangeValue.ToString("N2")</td>
+                                <td class="small text-muted">@e.ExecutedBy</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Process Exchange -->
+<div class="modal fade" id="processExchangeModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="fw-bold modal-title"><i class="bi bi-arrow-repeat me-2 text-primary"></i>Record Mobile Phone Trade-In</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="ProcessExchange" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body py-3">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Old Phone Brand <span class="text-danger">*</span></label>
+                            <input type="text" name="OldBrand" required class="form-control" placeholder="e.g. Apple, OnePlus, Xiaomi">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Old Phone Model <span class="text-danger">*</span></label>
+                            <input type="text" name="OldModel" required class="form-control" placeholder="e.g. iPhone 11, Nord CE 2">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Storage / RAM</label>
+                            <input type="text" name="OldStorage" class="form-control" placeholder="e.g. 128GB / 6GB">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Old Phone IMEI 1</label>
+                            <input type="text" name="OldImei1" class="form-control font-monospace" placeholder="15-digit IMEI">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Physical Condition <span class="text-danger">*</span></label>
+                            <select name="Condition" required class="form-select">
+                                <option value="Flawless / Like New">Flawless / Like New (No scratches)</option>
+                                <option value="Good Condition">Good Condition (Minor body wear)</option>
+                                <option value="Fair Condition">Fair Condition (Scratches/dents)</option>
+                                <option value="Screen Cracked">Screen Cracked / Display issue</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Final Valuation Credit (₹) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" name="FinalExchangeValue" required class="form-control fw-bold text-success" placeholder="e.g. 8500.00">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Customer Full Name <span class="text-danger">*</span></label>
+                            <input type="text" name="CustomerName" required class="form-control" placeholder="Customer Name">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Customer Phone Number <span class="text-danger">*</span></label>
+                            <input type="tel" name="CustomerPhone" required class="form-control" placeholder="Customer Phone">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">Remarks & Inspector Notes</label>
+                            <textarea name="Remarks" rows="2" class="form-control" placeholder="Original box available, charger included, screen guard present..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Submit Trade-In Valuation</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

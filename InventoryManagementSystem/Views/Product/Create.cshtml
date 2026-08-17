@@ -1,12 +1,12 @@
 @model ProductCreateViewModel
 @{
-    ViewData["Title"] = "Add Product";
+    ViewData["Title"] = "Add Product — Mobile Shop Catalog";
 }
 
 <div class="ph">
     <div>
-        <h1 class="ph-title">Add Product</h1>
-        <p class="ph-sub">Register a new product item in the inventory.</p>
+        <h1 class="ph-title">Add Mobile Product / Accessory</h1>
+        <p class="ph-sub">Register a new smartphone model or accessory in the mobile shop catalog.</p>
     </div>
     <div class="ph-actions">
         <a href="@Url.Action("Index","Product")" class="btn-d btn-outline">
@@ -20,16 +20,79 @@
     <div class="row g-4">
         <!-- Left Column -->
         <div class="col-lg-8">
-            <div class="card-d card-p-lg">
-                <div class="s-title">Product Information</div>
+            <div class="card-d card-p-lg mb-4">
+                <div class="s-title"><i class="bi bi-phone me-2 text-primary"></i>Mobile Device & Product Information</div>
                 <div asp-validation-summary="ModelOnly" class="alert-d alert-danger mb-4"></div>
 
                 <div class="row g-3">
-                    <div class="col-12">
+                    <div class="col-md-6">
                         <div class="fg">
-                            <label class="fg-label" asp-for="Name">Product Name <span class="req">*</span></label>
-                            <input asp-for="Name" id="Name" class="fg-control" placeholder="e.g. Wireless Keyboard Pro" required>
+                            <label class="fg-label">Product Type <span class="req">*</span></label>
+                            <select name="ProductType" class="fg-control" required>
+                                <option value="Smartphone">Smartphone (IMEI Tracked)</option>
+                                <option value="Feature Phone">Feature Phone (IMEI Tracked)</option>
+                                <option value="Tablet">Tablet (IMEI / Serial Tracked)</option>
+                                <option value="Smartwatch">Smartwatch</option>
+                                <option value="Charger">Charger / Adapter</option>
+                                <option value="Cable">Cable / Converter</option>
+                                <option value="Mobile Cover">Mobile Cover / Case</option>
+                                <option value="Tempered Glass">Tempered Glass Screen Guard</option>
+                                <option value="Earphones">Earphones / TWS Earbuds</option>
+                                <option value="Headphones">Headphones</option>
+                                <option value="Power Bank">Power Bank</option>
+                                <option value="Memory Card">Memory Card / Flash Drive</option>
+                                <option value="Speaker">Bluetooth Speaker</option>
+                                <option value="Other">Other Mobile Accessory</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="Name">Product / Model Title <span class="req">*</span></label>
+                            <input asp-for="Name" id="Name" class="fg-control" placeholder="e.g. Samsung Galaxy S23 Ultra" required>
                             <span asp-validation-for="Name" class="fg-error"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label">Brand</label>
+                            <input type="text" name="Brand" class="fg-control" placeholder="e.g. Samsung, Apple, Vivo">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label">Model Name</label>
+                            <input type="text" name="ModelName" class="fg-control" placeholder="e.g. Galaxy S23">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label">RAM / Storage Variant</label>
+                            <input type="text" name="Variant" class="fg-control" placeholder="e.g. 12GB RAM / 256GB">
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label">Color</label>
+                            <input type="text" name="Color" class="fg-control" placeholder="e.g. Phantom Black">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label">Warranty (Months)</label>
+                            <input type="number" name="WarrantyDurationMonths" value="12" class="fg-control" placeholder="12">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label">Requires IMEI Tracking?</label>
+                            <select name="IsImeiRequired" class="fg-control">
+                                <option value="true">Yes — IMEI Tracked Device</option>
+                                <option value="false">No — Quantity-based Accessory</option>
+                            </select>
                         </div>
                     </div>
 
@@ -42,7 +105,7 @@
                                 </button>
                             </div>
                             <div class="fg-action-wrap">
-                                <input asp-for="Code" id="Code" class="fg-control" placeholder="e.g. WKB-001" required>
+                                <input asp-for="Code" id="Code" class="fg-control" placeholder="e.g. SAM-S23-256" required>
                                 <button type="button" class="fg-action-btn" onclick="generateSKU()" title="Generate SKU Code">
                                     <i class="bi bi-magic"></i> Generate
                                 </button>
@@ -129,9 +192,9 @@
 
                     <div class="col-12">
                         <div class="fg">
-                            <label class="fg-label" asp-for="Description">Description</label>
+                            <label class="fg-label" asp-for="Description">Description & Key Specs</label>
                             <textarea asp-for="Description" class="fg-control" rows="3"
-                                      placeholder="Add product description, specifications or features…"></textarea>
+                                      placeholder="Add processor specs, camera details, battery capacity..."></textarea>
                         </div>
                     </div>
                 </div>
@@ -160,19 +223,6 @@
                        onchange="previewImg(this)">
                 <span asp-validation-for="ProductImage" class="fg-error mt-2"></span>
             </div>
-
-            <!-- Tips card -->
-            <div class="card-d card-p mt-4" style="background:var(--primary-dim);border-color:transparent">
-                <div style="font-size:13px;font-weight:600;color:var(--primary-text);margin-bottom:8px">
-                    <i class="bi bi-info-circle me-1"></i> Quick Tips
-                </div>
-                <ul style="font-size:12px;color:var(--primary-text);opacity:.8;padding-left:16px;margin:0;line-height:2">
-                    <li>Use <strong>Auto Generate</strong> for quick SKU and Barcode creation</li>
-                    <li>SKU codes are auto-uppercased on save</li>
-                    <li>Barcodes must be unique across all products</li>
-                    <li>Initial stock sets the opening quantity</li>
-                </ul>
-            </div>
         </div>
     </div>
 
@@ -198,7 +248,7 @@ function previewImg(input) {
 function generateSKU() {
   const nameInput = document.getElementById('Name');
   const codeInput = document.getElementById('Code');
-  let prefix = 'PRD';
+  let prefix = 'MOB';
 
   if (nameInput && nameInput.value.trim()) {
     const words = nameInput.value.trim().split(/\s+/);

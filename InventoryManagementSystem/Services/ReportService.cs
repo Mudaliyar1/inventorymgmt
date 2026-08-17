@@ -22,6 +22,12 @@ namespace InventoryManagementSystem.Services
         private readonly IStockTransactionRepository _stockTransactionRepository;
         private readonly IAuditLogRepository _auditLogRepository;
         private readonly IUserRepository _userRepository;
+        private readonly IDeviceRepository _deviceRepository;
+        private readonly ICustomerRepository _customerRepository;
+        private readonly ISupplierRepository _supplierRepository;
+        private readonly IReturnRepository _returnRepository;
+        private readonly IExchangeRepository _exchangeRepository;
+        private readonly IRepairRepository _repairRepository;
 
         public ReportService(
             ISaleRepository saleRepository,
@@ -29,7 +35,13 @@ namespace InventoryManagementSystem.Services
             ICategoryRepository categoryRepository,
             IStockTransactionRepository stockTransactionRepository,
             IAuditLogRepository auditLogRepository,
-            IUserRepository userRepository)
+            IUserRepository userRepository,
+            IDeviceRepository deviceRepository,
+            ICustomerRepository customerRepository,
+            ISupplierRepository supplierRepository,
+            IReturnRepository returnRepository,
+            IExchangeRepository exchangeRepository,
+            IRepairRepository repairRepository)
         {
             _saleRepository = saleRepository;
             _productRepository = productRepository;
@@ -37,6 +49,12 @@ namespace InventoryManagementSystem.Services
             _stockTransactionRepository = stockTransactionRepository;
             _auditLogRepository = auditLogRepository;
             _userRepository = userRepository;
+            _deviceRepository = deviceRepository;
+            _customerRepository = customerRepository;
+            _supplierRepository = supplierRepository;
+            _returnRepository = returnRepository;
+            _exchangeRepository = exchangeRepository;
+            _repairRepository = repairRepository;
 
             QuestPDF.Settings.License = LicenseType.Community;
         }
@@ -54,16 +72,13 @@ namespace InventoryManagementSystem.Services
                 GeneratedAt = DateTime.UtcNow
             };
 
-            // 1. Normalize Date Range
             var (startUtc, endUtc, dateLabel) = ResolveDateRange(request.DatePreset, request.StartDate, request.EndDate);
 
-            // Fetch lookup metadata
             var categories = (await _categoryRepository.GetAllAsync()).ToList();
             var categoryDict = categories.ToDictionary(c => c.Id, c => c.Name);
             var products = (await _productRepository.GetAllAsync()).ToList();
             var productDict = products.ToDictionary(p => p.Id, p => p);
 
-            // Filter helper string
             var filterParts = new List<string> { $"Date: {dateLabel}" };
             if (!string.IsNullOrWhiteSpace(request.SearchTerm)) filterParts.Add($"Search: '{request.SearchTerm}'");
             if (!string.IsNullOrWhiteSpace(request.CategoryId) && categoryDict.TryGetValue(request.CategoryId, out var catName)) filterParts.Add($"Category: {catName}");
@@ -73,7 +88,6 @@ namespace InventoryManagementSystem.Services
             if (!string.IsNullOrWhiteSpace(request.StockStatus) && request.StockStatus != "All") filterParts.Add($"Stock: {request.StockStatus}");
             result.AppliedFiltersText = string.Join(" | ", filterParts);
 
-            // Global stats base calculation
             var globalStats = new ReportSummaryStats
             {
                 TotalProductsCount = products.Count,
@@ -86,9 +100,40 @@ namespace InventoryManagementSystem.Services
                 TotalProfitPotential = products.Sum(p => p.CurrentStock * (p.SellingPrice - p.PurchasePrice))
             };
 
-            // Switch by Report Type
             switch ((request.ReportType ?? "Sales").Trim().ToLower())
             {
+                case "imeiinventory":
+                case "device":
+                    await BuildImeiInventoryReportAsync(request, result, globalStats);
+                    break;
+
+                case "tradein":
+                case "exchange":
+                    await BuildExchangeReportAsync(request, result, globalStats);
+                    break;
+
+                case "returns":
+                case "return":
+                    await BuildReturnsReportAsync(request, result, globalStats);
+                    break;
+
+                case "repairs":
+                case "repair":
+                    await BuildRepairsReportAsync(request, result, globalStats);
+                    break;
+
+                case "warranty":
+                    await BuildWarrantyReportAsync(request, result, globalStats);
+                    break;
+
+                case "customer":
+                    await BuildCustomerReportAsync(request, result, globalStats);
+                    break;
+
+                case "supplier":
+                    await BuildSupplierReportAsync(request, result, globalStats);
+                    break;
+
                 case "inventory":
                     BuildInventoryReport(request, result, products, categoryDict, globalStats);
                     break;
@@ -129,17 +174,331 @@ namespace InventoryManagementSystem.Services
 
         #region Report Builders
 
+        private async Task BuildImeiInventoryReportAsync(ReportFilterRequest req, ReportResultData res, ReportSummaryStats stats)
+        {
+            res.ReportTitle = "Mobile Shop IMEI-Level Physical Device Stock Report";
+            res.Headers = new List<string> { "#", "IMEI 1", "IMEI 2", "Brand & Model", "Variant / Color", "Status", "Purchase Price", "Selling Price", "Invoice #", "Customer Phone", "Received Date" };
+
+            var devices = await _deviceRepository.GetAllAsync();
+            var devList = devices.ToList();
+
+            if (!string.IsNullOrWhiteSpace(req.SearchTerm))
+            {
+                var s = req.SearchTerm.Trim().ToLower();
+                devList = devList.Where(d =>
+                    (d.IMEI1 != null && d.IMEI1.ToLower().Contains(s)) ||
+                    (d.IMEI2 != null && d.IMEI2.ToLower().Contains(s)) ||
+                    (d.Brand != null && d.Brand.ToLower().Contains(s)) ||
+                    (d.ModelName != null && d.ModelName.ToLower().Contains(s)) ||
+                    (d.CustomerName != null && d.CustomerName.ToLower().Contains(s))
+                ).ToList();
+            }
+
+            if (!string.IsNullOrWhiteSpace(req.StockStatus) && req.StockStatus != "All")
+            {
+                devList = devList.Where(d => string.Equals(d.Status, req.StockStatus, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+
+            res.SummaryStats = stats;
+            res.TotalCount = devList.Count;
+            int pages = (int)System.Math.Ceiling((double)res.TotalCount / res.PageSize);
+            res.TotalPages = pages < 1 ? 1 : pages;
+
+            var paged = devList.Skip((res.Page - 1) * res.PageSize).Take(res.PageSize);
+
+            foreach (var d in paged)
+            {
+                res.Rows.Add(new ReportRowItem
+                {
+                    Id = d.Id,
+                    PrimaryText = d.IMEI1,
+                    SecondaryText = d.IMEI2 ?? "-",
+                    ProductInfo = $"{d.Brand} {d.ModelName}",
+                    CategoryName = $"{d.Variant} {d.Color}",
+                    BadgeText = d.Status,
+                    BadgeClass = d.Status == "InStock" ? "bg-success" : (d.Status == "Sold" ? "bg-primary" : "bg-warning text-dark"),
+                    CostPrice = d.PurchasePrice,
+                    SellingPrice = d.SellingPrice,
+                    CustomerInfo = !string.IsNullOrWhiteSpace(d.CustomerName) ? $"{d.CustomerName} ({d.CustomerPhone})" : "-",
+                    DateString = d.CreatedDate.ToIstString("yyyy-MM-dd HH:mm IST"),
+                    UserExecutor = d.CreatedBy ?? "System"
+                });
+            }
+        }
+
+        private async Task BuildExchangeReportAsync(ReportFilterRequest req, ReportResultData res, ReportSummaryStats stats)
+        {
+            res.ReportTitle = "Mobile Trade-In & Phone Exchange Valuation Report";
+            res.Headers = new List<string> { "#", "Exchange #", "Date & Time (IST)", "Customer", "Old Phone Brand / Model", "Old IMEI", "Condition", "Exchange Value", "Offset Invoice", "Executed By" };
+
+            var exchanges = await _exchangeRepository.GetAllAsync();
+            var exchList = exchanges.ToList();
+
+            if (!string.IsNullOrWhiteSpace(req.SearchTerm))
+            {
+                var s = req.SearchTerm.Trim().ToLower();
+                exchList = exchList.Where(e =>
+                    (e.ExchangeNumber != null && e.ExchangeNumber.ToLower().Contains(s)) ||
+                    (e.CustomerName != null && e.CustomerName.ToLower().Contains(s)) ||
+                    (e.OldBrand != null && e.OldBrand.ToLower().Contains(s)) ||
+                    (e.OldModel != null && e.OldModel.ToLower().Contains(s)) ||
+                    (e.OldImei1 != null && e.OldImei1.ToLower().Contains(s))
+                ).ToList();
+            }
+
+            res.SummaryStats = stats;
+            res.TotalCount = exchList.Count;
+            int pages = (int)System.Math.Ceiling((double)res.TotalCount / res.PageSize);
+            res.TotalPages = pages < 1 ? 1 : pages;
+
+            var paged = exchList.Skip((res.Page - 1) * res.PageSize).Take(res.PageSize);
+
+            foreach (var e in paged)
+            {
+                res.Rows.Add(new ReportRowItem
+                {
+                    Id = e.Id,
+                    PrimaryText = e.ExchangeNumber,
+                    DateString = e.Date.ToIstString("yyyy-MM-dd HH:mm IST"),
+                    CustomerInfo = $"{e.CustomerName} ({e.CustomerPhone})",
+                    ProductInfo = $"{e.OldBrand} {e.OldModel} ({e.OldStorage})",
+                    SecondaryText = e.OldImei1 ?? "-",
+                    BadgeText = e.Condition,
+                    BadgeClass = "bg-info text-dark",
+                    GrandTotal = e.FinalExchangeValue,
+                    UserExecutor = e.ExecutedBy ?? "System"
+                });
+            }
+        }
+
+        private async Task BuildReturnsReportAsync(ReportFilterRequest req, ReportResultData res, ReportSummaryStats stats)
+        {
+            res.ReportTitle = "Device & Accessory Returns Report";
+            res.Headers = new List<string> { "#", "Return #", "Date & Time (IST)", "Customer", "Product / Device", "IMEI", "Reason", "Refund Amount", "Target Status", "Processed By" };
+
+            var returns = await _returnRepository.GetAllAsync();
+            var retList = returns.ToList();
+
+            if (!string.IsNullOrWhiteSpace(req.SearchTerm))
+            {
+                var s = req.SearchTerm.Trim().ToLower();
+                retList = retList.Where(r =>
+                    (r.ReturnNumber != null && r.ReturnNumber.ToLower().Contains(s)) ||
+                    (r.CustomerName != null && r.CustomerName.ToLower().Contains(s)) ||
+                    (r.ProductName != null && r.ProductName.ToLower().Contains(s)) ||
+                    (r.IMEI != null && r.IMEI.ToLower().Contains(s))
+                ).ToList();
+            }
+
+            res.SummaryStats = stats;
+            res.TotalCount = retList.Count;
+            int pages = (int)System.Math.Ceiling((double)res.TotalCount / res.PageSize);
+            res.TotalPages = pages < 1 ? 1 : pages;
+
+            var paged = retList.Skip((res.Page - 1) * res.PageSize).Take(res.PageSize);
+
+            foreach (var r in paged)
+            {
+                res.Rows.Add(new ReportRowItem
+                {
+                    Id = r.Id,
+                    PrimaryText = r.ReturnNumber,
+                    DateString = r.ReturnDate.ToIstString("yyyy-MM-dd HH:mm IST"),
+                    CustomerInfo = $"{r.CustomerName} ({r.CustomerPhone})",
+                    ProductInfo = r.ProductName,
+                    SecondaryText = r.IMEI ?? "-",
+                    BadgeText = r.Reason,
+                    BadgeClass = "bg-secondary",
+                    GrandTotal = r.RefundAmount,
+                    UserExecutor = r.ExecutedBy ?? "System"
+                });
+            }
+        }
+
+        private async Task BuildRepairsReportAsync(ReportFilterRequest req, ReportResultData res, ReportSummaryStats stats)
+        {
+            res.ReportTitle = "Mobile Service & Repair Job Tickets Report";
+            res.Headers = new List<string> { "#", "Ticket #", "Date & Time (IST)", "Customer", "Device Model", "IMEI", "Problem Description", "Technician", "Estimated Cost", "Final Cost", "Status" };
+
+            var repairs = await _repairRepository.GetAllAsync();
+            var repList = repairs.ToList();
+
+            if (!string.IsNullOrWhiteSpace(req.SearchTerm))
+            {
+                var s = req.SearchTerm.Trim().ToLower();
+                repList = repList.Where(r =>
+                    (r.TicketNumber != null && r.TicketNumber.ToLower().Contains(s)) ||
+                    (r.CustomerName != null && r.CustomerName.ToLower().Contains(s)) ||
+                    (r.DeviceModel != null && r.DeviceModel.ToLower().Contains(s)) ||
+                    (r.IMEI != null && r.IMEI.ToLower().Contains(s)) ||
+                    (r.TechnicianName != null && r.TechnicianName.ToLower().Contains(s))
+                ).ToList();
+            }
+
+            res.SummaryStats = stats;
+            res.TotalCount = repList.Count;
+            int pages = (int)System.Math.Ceiling((double)res.TotalCount / res.PageSize);
+            res.TotalPages = pages < 1 ? 1 : pages;
+
+            var paged = repList.Skip((res.Page - 1) * res.PageSize).Take(res.PageSize);
+
+            foreach (var r in paged)
+            {
+                res.Rows.Add(new ReportRowItem
+                {
+                    Id = r.Id,
+                    PrimaryText = r.TicketNumber,
+                    DateString = r.CreatedDate.ToIstString("yyyy-MM-dd HH:mm IST"),
+                    CustomerInfo = $"{r.CustomerName} ({r.CustomerPhone})",
+                    ProductInfo = $"{r.DeviceBrand} {r.DeviceModel}",
+                    SecondaryText = r.IMEI ?? "-",
+                    BadgeText = r.Status,
+                    BadgeClass = r.Status == "Delivered" ? "bg-success" : (r.Status == "Repairing" ? "bg-warning text-dark" : "bg-info text-dark"),
+                    CostPrice = r.EstimatedCost,
+                    GrandTotal = r.FinalCost,
+                    UserExecutor = r.TechnicianName ?? "Unassigned"
+                });
+            }
+        }
+
+        private async Task BuildWarrantyReportAsync(ReportFilterRequest req, ReportResultData res, ReportSummaryStats stats)
+        {
+            res.ReportTitle = "Mobile Device Warranty Status & Expiry Report";
+            res.Headers = new List<string> { "#", "IMEI 1", "Brand & Model", "Customer Name", "Customer Phone", "Sold Date", "Warranty End Date", "Warranty Status" };
+
+            var devices = await _deviceRepository.GetDevicesByStatusAsync("Sold");
+            var devList = devices.ToList();
+
+            if (!string.IsNullOrWhiteSpace(req.SearchTerm))
+            {
+                var s = req.SearchTerm.Trim().ToLower();
+                devList = devList.Where(d =>
+                    (d.IMEI1 != null && d.IMEI1.ToLower().Contains(s)) ||
+                    (d.CustomerName != null && d.CustomerName.ToLower().Contains(s)) ||
+                    (d.CustomerPhone != null && d.CustomerPhone.ToLower().Contains(s)) ||
+                    (d.Brand != null && d.Brand.ToLower().Contains(s)) ||
+                    (d.ModelName != null && d.ModelName.ToLower().Contains(s))
+                ).ToList();
+            }
+
+            res.SummaryStats = stats;
+            res.TotalCount = devList.Count;
+            int pages = (int)System.Math.Ceiling((double)res.TotalCount / res.PageSize);
+            res.TotalPages = pages < 1 ? 1 : pages;
+
+            var paged = devList.Skip((res.Page - 1) * res.PageSize).Take(res.PageSize);
+
+            foreach (var d in paged)
+            {
+                var soldDateStr = d.SoldDate.HasValue ? d.SoldDate.Value.ToIstString("yyyy-MM-dd") : "-";
+                var warrantyEndStr = d.WarrantyEndDate.HasValue ? d.WarrantyEndDate.Value.ToIstString("yyyy-MM-dd") : "N/A";
+                var isExpired = d.WarrantyEndDate.HasValue && d.WarrantyEndDate.Value < DateTime.UtcNow;
+
+                res.Rows.Add(new ReportRowItem
+                {
+                    Id = d.Id,
+                    PrimaryText = d.IMEI1,
+                    ProductInfo = $"{d.Brand} {d.ModelName}",
+                    CustomerInfo = d.CustomerName ?? "-",
+                    SecondaryText = d.CustomerPhone ?? "-",
+                    DateString = soldDateStr,
+                    BadgeText = isExpired ? "Expired" : "Active",
+                    BadgeClass = isExpired ? "bg-danger" : "bg-success"
+                });
+            }
+        }
+
+        private async Task BuildCustomerReportAsync(ReportFilterRequest req, ReportResultData res, ReportSummaryStats stats)
+        {
+            res.ReportTitle = "Customer Accounts & Purchase History Report";
+            res.Headers = new List<string> { "#", "Customer Name", "Phone", "Email", "GSTIN", "Total Purchases", "Outstanding Balance", "Created Date" };
+
+            var customers = await _customerRepository.GetAllAsync();
+            var custList = customers.ToList();
+
+            if (!string.IsNullOrWhiteSpace(req.SearchTerm))
+            {
+                var s = req.SearchTerm.Trim().ToLower();
+                custList = custList.Where(c =>
+                    (c.Name != null && c.Name.ToLower().Contains(s)) ||
+                    (c.Phone != null && c.Phone.ToLower().Contains(s)) ||
+                    (c.Email != null && c.Email.ToLower().Contains(s))
+                ).ToList();
+            }
+
+            res.SummaryStats = stats;
+            res.TotalCount = custList.Count;
+            int pages = (int)System.Math.Ceiling((double)res.TotalCount / res.PageSize);
+            res.TotalPages = pages < 1 ? 1 : pages;
+
+            var paged = custList.Skip((res.Page - 1) * res.PageSize).Take(res.PageSize);
+
+            foreach (var c in paged)
+            {
+                res.Rows.Add(new ReportRowItem
+                {
+                    Id = c.Id,
+                    PrimaryText = c.Name,
+                    SecondaryText = c.Phone,
+                    CustomerInfo = c.Email ?? "-",
+                    BadgeText = c.Gstin ?? "-",
+                    GrandTotal = c.TotalPurchases,
+                    SubTotal = c.OutstandingBalance,
+                    DateString = c.CreatedDate.ToIstString("yyyy-MM-dd")
+                });
+            }
+        }
+
+        private async Task BuildSupplierReportAsync(ReportFilterRequest req, ReportResultData res, ReportSummaryStats stats)
+        {
+            res.ReportTitle = "Supplier Directory & Procurement Report";
+            res.Headers = new List<string> { "#", "Company Name", "Contact Person", "Phone", "Email", "GSTIN", "Payables", "Created Date" };
+
+            var suppliers = await _supplierRepository.GetAllAsync();
+            var supList = suppliers.ToList();
+
+            if (!string.IsNullOrWhiteSpace(req.SearchTerm))
+            {
+                var s = req.SearchTerm.Trim().ToLower();
+                supList = supList.Where(sup =>
+                    (sup.CompanyName != null && sup.CompanyName.ToLower().Contains(s)) ||
+                    (sup.ContactPerson != null && sup.ContactPerson.ToLower().Contains(s)) ||
+                    (sup.Phone != null && sup.Phone.ToLower().Contains(s))
+                ).ToList();
+            }
+
+            res.SummaryStats = stats;
+            res.TotalCount = supList.Count;
+            int pages = (int)System.Math.Ceiling((double)res.TotalCount / res.PageSize);
+            res.TotalPages = pages < 1 ? 1 : pages;
+
+            var paged = supList.Skip((res.Page - 1) * res.PageSize).Take(res.PageSize);
+
+            foreach (var sup in paged)
+            {
+                res.Rows.Add(new ReportRowItem
+                {
+                    Id = sup.Id,
+                    PrimaryText = sup.CompanyName,
+                    SecondaryText = sup.ContactPerson,
+                    CustomerInfo = sup.Phone,
+                    BadgeText = sup.Gstin ?? "-",
+                    GrandTotal = sup.OutstandingPayable,
+                    DateString = sup.CreatedDate.ToIstString("yyyy-MM-dd")
+                });
+            }
+        }
+
         private async Task BuildSalesReportAsync(ReportFilterRequest req, ReportResultData res, DateTime start, DateTime end, List<Product> products, Dictionary<string, string> catDict, ReportSummaryStats stats)
         {
-            res.ReportTitle = "Detailed Sales & Commercial Revenue Report";
-            res.Headers = new List<string> { "#", "Invoice #", "Date & Time (IST)", "Customer", "Items Purchased", "Subtotal", "Discount", "GST Tax", "Grand Total", "Payment Status", "Cashier / User" };
+            res.ReportTitle = "Detailed Sales & POS Revenue Report";
+            res.Headers = new List<string> { "#", "Invoice #", "Date & Time (IST)", "Customer", "Items / IMEIs Purchased", "Subtotal", "Discount", "GST Tax", "Grand Total", "Payment Status", "Cashier / User" };
 
             var (sales, totalCount) = await _saleRepository.GetFilteredSalesAsync(
                 req.SearchTerm, customerName: null, start, end, cashier: req.EmployeeId, 1, 50000);
 
             var salesList = sales.ToList();
 
-            // Additional filters
             if (!string.IsNullOrWhiteSpace(req.PaymentStatus))
             {
                 salesList = salesList.Where(s => string.Equals(s.PaymentStatus, req.PaymentStatus, StringComparison.OrdinalIgnoreCase)).ToList();
@@ -148,17 +507,11 @@ namespace InventoryManagementSystem.Services
             {
                 salesList = salesList.Where(s => s.Items.Any(i => i.ProductId == req.ProductId)).ToList();
             }
-            if (!string.IsNullOrWhiteSpace(req.CategoryId))
-            {
-                var catProdIds = products.Where(p => p.CategoryId == req.CategoryId).Select(p => p.Id).ToHashSet();
-                salesList = salesList.Where(s => s.Items.Any(i => catProdIds.Contains(i.ProductId))).ToList();
-            }
 
-            // Calculate exact metrics for selected set
             stats.TotalSalesRevenue = salesList.Sum(s => s.GrandTotal);
             stats.TotalOrders = salesList.Count;
             stats.TotalItemsSold = salesList.Sum(s => s.Items.Sum(i => i.Quantity));
-            stats.TotalDiscounts = salesList.Sum(s => s.Discount);
+            stats.TotalDiscounts = salesList.Sum(s => s.Discount + s.ExchangeDiscount);
             stats.TotalGstTax = salesList.Sum(s => s.GstAmount);
             stats.AverageOrderValue = stats.TotalOrders > 0 ? stats.TotalSalesRevenue / stats.TotalOrders : 0.0m;
             res.SummaryStats = stats;
@@ -171,7 +524,7 @@ namespace InventoryManagementSystem.Services
 
             foreach (var s in paged)
             {
-                var itemsSummary = string.Join(", ", s.Items.Select(i => $"{i.ProductName} x{i.Quantity}"));
+                var itemsSummary = string.Join(", ", s.Items.Select(i => $"{i.ProductName}" + (!string.IsNullOrWhiteSpace(i.IMEI1) ? $" (IMEI: {i.IMEI1})" : $" x{i.Quantity}")));
                 res.Rows.Add(new ReportRowItem
                 {
                     Id = s.Id,
@@ -180,7 +533,7 @@ namespace InventoryManagementSystem.Services
                     CustomerInfo = string.IsNullOrWhiteSpace(s.CustomerName) ? "Walk-in Customer" : s.CustomerName,
                     SecondaryText = itemsSummary,
                     SubTotal = s.SubTotal,
-                    Discount = s.Discount,
+                    Discount = s.Discount + s.ExchangeDiscount,
                     TaxAmount = s.GstAmount,
                     GrandTotal = s.GrandTotal,
                     BadgeText = s.PaymentStatus,
@@ -199,124 +552,87 @@ namespace InventoryManagementSystem.Services
 
             if (!string.IsNullOrWhiteSpace(req.SearchTerm))
             {
-                var term = req.SearchTerm.Trim().ToLower();
-                filtered = filtered.Where(p => p.Name.ToLower().Contains(term) || p.Code.ToLower().Contains(term) || p.Barcode.ToLower().Contains(term));
+                var s = req.SearchTerm.Trim().ToLower();
+                filtered = filtered.Where(p => p.Name.ToLower().Contains(s) || p.Code.ToLower().Contains(s));
             }
             if (!string.IsNullOrWhiteSpace(req.CategoryId))
             {
                 filtered = filtered.Where(p => p.CategoryId == req.CategoryId);
             }
-            if (!string.IsNullOrWhiteSpace(req.ProductId))
-            {
-                filtered = filtered.Where(p => p.Id == req.ProductId);
-            }
-            if (!string.IsNullOrWhiteSpace(req.StockStatus) && req.StockStatus != "All")
-            {
-                if (req.StockStatus == "OutOfStock") filtered = filtered.Where(p => p.CurrentStock == 0);
-                else if (req.StockStatus == "LowStock") filtered = filtered.Where(p => p.CurrentStock > 0 && p.CurrentStock <= p.MinimumStock);
-                else if (req.StockStatus == "InStock") filtered = filtered.Where(p => p.CurrentStock > p.MinimumStock);
-            }
 
-            var list = filtered.OrderBy(p => p.Name).ToList();
-
-            stats.TotalProductsCount = list.Count;
-            stats.TotalInventoryQty = list.Sum(p => p.CurrentStock);
-            stats.CurrentInventoryValue = list.Sum(p => p.CurrentStock * p.PurchasePrice);
-            stats.PotentialSalesValue = list.Sum(p => p.CurrentStock * p.SellingPrice);
-            stats.TotalProfitPotential = list.Sum(p => p.CurrentStock * (p.SellingPrice - p.PurchasePrice));
-            stats.LowStockCount = list.Count(p => p.CurrentStock > 0 && p.CurrentStock <= p.MinimumStock);
-            stats.OutOfStockCount = list.Count(p => p.CurrentStock == 0);
+            var prodList = filtered.ToList();
             res.SummaryStats = stats;
-
-            res.TotalCount = list.Count;
+            res.TotalCount = prodList.Count;
             int pages = (int)System.Math.Ceiling((double)res.TotalCount / res.PageSize);
             res.TotalPages = pages < 1 ? 1 : pages;
 
-            var paged = list.Skip((res.Page - 1) * res.PageSize).Take(res.PageSize);
+            var paged = prodList.Skip((res.Page - 1) * res.PageSize).Take(res.PageSize);
 
             foreach (var p in paged)
             {
-                var catName = catDict.TryGetValue(p.CategoryId, out var name) ? name : "Unclassified";
-                string stStatus = p.CurrentStock == 0 ? "Out of Stock" : (p.CurrentStock <= p.MinimumStock ? "Low Stock" : "In Stock");
-                string stBadge = p.CurrentStock == 0 ? "bg-danger" : (p.CurrentStock <= p.MinimumStock ? "bg-warning text-dark" : "bg-success");
+                var catName = !string.IsNullOrEmpty(p.CategoryId) && catDict.TryGetValue(p.CategoryId, out var cn) ? cn : "General";
+                var status = p.CurrentStock == 0 ? "Out of Stock" : (p.CurrentStock <= p.MinimumStock ? "Low Stock" : "Healthy");
 
                 res.Rows.Add(new ReportRowItem
                 {
                     Id = p.Id,
-                    Code = p.Code,
-                    Name = p.Name,
+                    PrimaryText = p.Code,
+                    SecondaryText = p.Name,
                     CategoryName = catName,
-                    Quantity = p.CurrentStock,
-                    PreviousStock = p.MinimumStock,
-                    BadgeText = stStatus,
-                    BadgeClass = stBadge,
-                    UnitPrice = p.PurchasePrice,
-                    SalesValue = p.SellingPrice,
-                    CostValue = p.CurrentStock * p.PurchasePrice,
-                    GrandTotal = p.CurrentStock * p.SellingPrice,
-                    ProfitValue = p.CurrentStock * (p.SellingPrice - p.PurchasePrice)
+                    StockQty = p.CurrentStock,
+                    MinStockQty = p.MinimumStock,
+                    BadgeText = status,
+                    BadgeClass = status == "Healthy" ? "bg-success" : (status == "Low Stock" ? "bg-warning text-dark" : "bg-danger"),
+                    CostPrice = p.PurchasePrice,
+                    SellingPrice = p.SellingPrice,
+                    CostValuation = p.CurrentStock * p.PurchasePrice,
+                    SalesValuation = p.CurrentStock * p.SellingPrice,
+                    ProfitPotential = p.CurrentStock * (p.SellingPrice - p.PurchasePrice)
                 });
             }
         }
 
         private async Task BuildStockMovementReportAsync(ReportFilterRequest req, ReportResultData res, DateTime start, DateTime end, List<Product> products, Dictionary<string, string> catDict, ReportSummaryStats stats)
         {
-            res.ReportTitle = "Stock Movement & Audit History Log Report";
-            res.Headers = new List<string> { "#", "Timestamp (IST)", "Product Name", "SKU", "Movement Type", "Quantity", "Prev Stock", "New Stock", "Reason", "Executed By" };
+            res.ReportTitle = "Stock Movement Audit History Report";
+            res.Headers = new List<string> { "#", "Timestamp (IST)", "Product", "Type", "Quantity", "Reason", "Prev Stock", "New Stock", "Executed By" };
 
-            var (txs, count) = await _stockTransactionRepository.GetFilteredTransactionsAsync(
-                req.SearchTerm, req.TransactionType, req.ProductId, matchingProductIds: null, start, end, executedBy: req.EmployeeId, 1, 50000);
+            var (txs, totalCount) = await _stockTransactionRepository.GetFilteredTransactionsAsync(
+                req.SearchTerm, req.TransactionType, req.ProductId, null, start, end, req.EmployeeId, 1, 50000);
 
-            var txList = txs.ToList();
-
-            if (!string.IsNullOrWhiteSpace(req.CategoryId))
-            {
-                var catProdIds = products.Where(p => p.CategoryId == req.CategoryId).Select(p => p.Id).ToHashSet();
-                txList = txList.Where(t => catProdIds.Contains(t.ProductId)).ToList();
-            }
-
-            stats.TotalStockInQty = txList.Where(t => (t.Type ?? "").ToLower().Contains("in") || t.Quantity > 0).Sum(t => System.Math.Abs(t.Quantity));
-            stats.TotalStockOutQty = txList.Where(t => (t.Type ?? "").ToLower().Contains("out") || (t.Type ?? "").ToLower().Contains("sale") || t.Quantity < 0).Sum(t => System.Math.Abs(t.Quantity));
+            var list = txs.ToList();
             res.SummaryStats = stats;
-
-            res.TotalCount = txList.Count;
+            res.TotalCount = list.Count;
             int pages = (int)System.Math.Ceiling((double)res.TotalCount / res.PageSize);
             res.TotalPages = pages < 1 ? 1 : pages;
 
-            var paged = txList.Skip((res.Page - 1) * res.PageSize).Take(res.PageSize);
+            var paged = list.Skip((res.Page - 1) * res.PageSize).Take(res.PageSize);
 
             foreach (var t in paged)
             {
-                string bClass = (t.Type ?? "").ToLower().Contains("in") ? "bg-success" : ((t.Type ?? "").ToLower().Contains("out") || (t.Type ?? "").ToLower().Contains("sale") ? "bg-warning text-dark" : "bg-info text-dark");
-
                 res.Rows.Add(new ReportRowItem
                 {
                     Id = t.Id,
                     DateString = t.Timestamp.ToIstString("yyyy-MM-dd HH:mm IST"),
-                    Name = t.ProductName,
-                    Code = t.ProductCode,
-                    BadgeText = t.Type ?? string.Empty,
-                    BadgeClass = bClass,
-                    Quantity = t.Quantity,
-                    PreviousStock = t.PreviousStock,
-                    NewStock = t.CurrentStock,
-                    Reason = string.IsNullOrWhiteSpace(t.Reason) ? "Standard Log" : t.Reason,
-                    UserExecutor = string.IsNullOrWhiteSpace(t.ExecutedBy) ? (string.IsNullOrWhiteSpace(t.Username) ? "System" : t.Username) : t.ExecutedBy
+                    PrimaryText = t.ProductName,
+                    SecondaryText = t.Reason,
+                    BadgeText = t.Type,
+                    BadgeClass = t.Type == "Stock In" ? "bg-success" : (t.Type == "Stock Out" ? "bg-danger" : "bg-info text-dark"),
+                    StockQty = t.Quantity,
+                    UserExecutor = t.ExecutedBy
                 });
             }
         }
 
         private async Task BuildEmployeeActivityReportAsync(ReportFilterRequest req, ReportResultData res, DateTime start, DateTime end, ReportSummaryStats stats)
         {
-            res.ReportTitle = "Employee & System Audit Activity Report";
-            res.Headers = new List<string> { "#", "Timestamp (IST)", "Employee / User", "Role", "Module", "Action", "Description / Target", "IP Address", "Status" };
+            res.ReportTitle = "Employee System Audit Trail Report";
+            res.Headers = new List<string> { "#", "Timestamp (IST)", "User", "Module", "Action", "Target", "Status", "Details" };
 
-            var (logs, count) = await _auditLogRepository.GetFilteredLogsAsync(
-                req.SearchTerm, module: null, action: req.TransactionType, status: null, logLevel: null, employee: req.EmployeeId, start, end, ipAddress: null, browser: null, device: null, 1, 50000);
-
+            var (logs, _) = await _auditLogRepository.GetFilteredLogsAsync(req.SearchTerm, null, null, null, null, req.EmployeeId, start, end, null, null, null, 1, 50000);
             var logList = logs.ToList();
-            res.SummaryStats = stats;
 
+            res.SummaryStats = stats;
             res.TotalCount = logList.Count;
             int pages = (int)System.Math.Ceiling((double)res.TotalCount / res.PageSize);
             res.TotalPages = pages < 1 ? 1 : pages;
@@ -325,17 +641,14 @@ namespace InventoryManagementSystem.Services
 
             foreach (var l in paged)
             {
-                var empName = !string.IsNullOrWhiteSpace(l.EmployeeName) ? l.EmployeeName : (!string.IsNullOrWhiteSpace(l.ExecutedBy) ? l.ExecutedBy : l.Username);
                 res.Rows.Add(new ReportRowItem
                 {
                     Id = l.Id,
                     DateString = l.Timestamp.ToIstString("yyyy-MM-dd HH:mm IST"),
-                    UserExecutor = empName,
-                    SecondaryText = l.UserRole,
+                    UserExecutor = l.Username,
                     CategoryName = l.Module,
-                    Name = l.Action,
-                    PrimaryText = l.Target,
-                    Code = l.IpAddress,
+                    PrimaryText = l.Action,
+                    SecondaryText = l.Details,
                     BadgeText = l.Status,
                     BadgeClass = l.Status == "Success" ? "bg-success" : "bg-danger"
                 });
@@ -345,338 +658,198 @@ namespace InventoryManagementSystem.Services
         private void BuildAlertsReport(ReportFilterRequest req, ReportResultData res, List<Product> products, Dictionary<string, string> catDict, ReportSummaryStats stats)
         {
             res.ReportTitle = "Low Stock & Out of Stock Exception Report";
-            res.Headers = new List<string> { "#", "SKU Code", "Product Name", "Category", "Current Stock", "Min Threshold", "Alert Status", "Purchase Cost", "Selling Price", "Stock Shortage Qty" };
+            res.Headers = new List<string> { "#", "Product SKU", "Product Name", "Category", "Current Stock", "Min Threshold", "Alert Status" };
 
-            var alerts = products.Where(p => p.CurrentStock <= p.MinimumStock).OrderBy(p => p.CurrentStock).ToList();
-
-            if (!string.IsNullOrWhiteSpace(req.CategoryId))
-            {
-                alerts = alerts.Where(p => p.CategoryId == req.CategoryId).ToList();
-            }
-
-            stats.LowStockCount = alerts.Count(p => p.CurrentStock > 0);
-            stats.OutOfStockCount = alerts.Count(p => p.CurrentStock == 0);
+            var alertProds = products.Where(p => p.CurrentStock <= p.MinimumStock).ToList();
             res.SummaryStats = stats;
-
-            res.TotalCount = alerts.Count;
+            res.TotalCount = alertProds.Count;
             int pages = (int)System.Math.Ceiling((double)res.TotalCount / res.PageSize);
             res.TotalPages = pages < 1 ? 1 : pages;
 
-            var paged = alerts.Skip((res.Page - 1) * res.PageSize).Take(res.PageSize);
+            var paged = alertProds.Skip((res.Page - 1) * res.PageSize).Take(res.PageSize);
 
             foreach (var p in paged)
             {
-                var catName = catDict.TryGetValue(p.CategoryId, out var name) ? name : "Unclassified";
-                string stStatus = p.CurrentStock == 0 ? "CRITICAL OUT OF STOCK" : "LOW STOCK WARNING";
-                string stBadge = p.CurrentStock == 0 ? "bg-danger" : "bg-warning text-dark";
+                var catName = !string.IsNullOrEmpty(p.CategoryId) && catDict.TryGetValue(p.CategoryId, out var cn) ? cn : "General";
+                var status = p.CurrentStock == 0 ? "Out of Stock" : "Low Stock Alert";
 
                 res.Rows.Add(new ReportRowItem
                 {
                     Id = p.Id,
-                    Code = p.Code,
-                    Name = p.Name,
+                    PrimaryText = p.Code,
+                    SecondaryText = p.Name,
                     CategoryName = catName,
-                    Quantity = p.CurrentStock,
-                    PreviousStock = p.MinimumStock,
-                    BadgeText = stStatus,
-                    BadgeClass = stBadge,
-                    UnitPrice = p.PurchasePrice,
-                    SalesValue = p.SellingPrice,
-                    NewStock = p.MinimumStock > p.CurrentStock ? p.MinimumStock - p.CurrentStock : 0
+                    StockQty = p.CurrentStock,
+                    MinStockQty = p.MinimumStock,
+                    BadgeText = status,
+                    BadgeClass = p.CurrentStock == 0 ? "bg-danger" : "bg-warning text-dark"
                 });
             }
         }
 
         private async Task BuildCategoryReportAsync(ReportFilterRequest req, ReportResultData res, DateTime start, DateTime end, List<Product> products, List<Category> categories, ReportSummaryStats stats)
         {
-            res.ReportTitle = "Category Distribution & Revenue Summary Report";
-            res.Headers = new List<string> { "#", "Category Name", "Total Products", "Total Units", "Cost Valuation", "Sales Value", "Revenue Generated", "Low Stock Products", "Out of Stock" };
-
-            var sales = await _saleRepository.GetSalesBetweenDatesAsync(start, end);
-            var salesItems = sales.SelectMany(s => s.Items).ToList();
-
-            var categoryRows = new List<ReportRowItem>();
-
-            foreach (var cat in categories)
-            {
-                var catProds = products.Where(p => p.CategoryId == cat.Id).ToList();
-                var catProdIds = catProds.Select(p => p.Id).ToHashSet();
-
-                var revenue = salesItems.Where(i => catProdIds.Contains(i.ProductId)).Sum(i => i.Total);
-                var costVal = catProds.Sum(p => p.CurrentStock * p.PurchasePrice);
-                var salesVal = catProds.Sum(p => p.CurrentStock * p.SellingPrice);
-
-                categoryRows.Add(new ReportRowItem
-                {
-                    Id = cat.Id,
-                    Name = cat.Name,
-                    Quantity = catProds.Count,
-                    NewStock = catProds.Sum(p => p.CurrentStock),
-                    CostValue = costVal,
-                    SalesValue = salesVal,
-                    GrandTotal = revenue,
-                    PreviousStock = catProds.Count(p => p.CurrentStock > 0 && p.CurrentStock <= p.MinimumStock),
-                    Discount = catProds.Count(p => p.CurrentStock == 0)
-                });
-            }
+            res.ReportTitle = "Category Sales & Valuation Distribution Report";
+            res.Headers = new List<string> { "#", "Category Name", "Total Products", "Total Inventory Qty", "Cost Valuation", "Retail Value" };
 
             res.SummaryStats = stats;
-            res.TotalCount = categoryRows.Count;
-            int pages = (int)System.Math.Ceiling((double)res.TotalCount / res.PageSize);
-            res.TotalPages = pages < 1 ? 1 : pages;
+            res.TotalCount = categories.Count;
+            res.TotalPages = 1;
 
-            res.Rows = categoryRows.Skip((res.Page - 1) * res.PageSize).Take(res.PageSize).ToList();
+            foreach (var c in categories)
+            {
+                var catProds = products.Where(p => p.CategoryId == c.Id).ToList();
+                res.Rows.Add(new ReportRowItem
+                {
+                    Id = c.Id,
+                    PrimaryText = c.Name,
+                    StockQty = catProds.Count,
+                    MinStockQty = catProds.Sum(p => p.CurrentStock),
+                    CostValuation = catProds.Sum(p => p.CurrentStock * p.PurchasePrice),
+                    SalesValuation = catProds.Sum(p => p.CurrentStock * p.SellingPrice)
+                });
+            }
         }
 
         private async Task BuildProductPerformanceReportAsync(ReportFilterRequest req, ReportResultData res, DateTime start, DateTime end, List<Product> products, Dictionary<string, string> catDict, ReportSummaryStats stats)
         {
-            res.ReportTitle = "Product Commercial Performance & Margin Analysis";
-            res.Headers = new List<string> { "#", "SKU Code", "Product Name", "Category", "Units Sold", "Revenue (₹)", "Discounts", "Current Stock", "Inventory Cost", "Gross Profit Potential" };
+            res.ReportTitle = "Product Sales Performance Matrix";
+            res.Headers = new List<string> { "#", "SKU Code", "Product Name", "Category", "Current Stock", "Selling Price" };
 
-            var sales = await _saleRepository.GetSalesBetweenDatesAsync(start, end);
-            var salesList = sales.ToList();
-
-            var perfMap = products.Select(p => new
-            {
-                Product = p,
-                CategoryName = catDict.TryGetValue(p.CategoryId, out var name) ? name : "Unclassified",
-                UnitsSold = salesList.SelectMany(s => s.Items).Where(i => i.ProductId == p.Id).Sum(i => i.Quantity),
-                Revenue = salesList.SelectMany(s => s.Items).Where(i => i.ProductId == p.Id).Sum(i => i.Total),
-                CostValuation = p.CurrentStock * p.PurchasePrice,
-                ProfitPotential = p.CurrentStock * (p.SellingPrice - p.PurchasePrice)
-            }).AsEnumerable();
-
-            if (!string.IsNullOrWhiteSpace(req.CategoryId))
-            {
-                perfMap = perfMap.Where(x => x.Product.CategoryId == req.CategoryId);
-            }
-            if (!string.IsNullOrWhiteSpace(req.SearchTerm))
-            {
-                var term = req.SearchTerm.ToLower();
-                perfMap = perfMap.Where(x => x.Product.Name.ToLower().Contains(term) || x.Product.Code.ToLower().Contains(term));
-            }
-
-            // Sorting options
-            perfMap = (req.SortBy?.ToLower()) switch
-            {
-                "highestsales" => perfMap.OrderByDescending(x => x.UnitsSold),
-                "lowestsales" => perfMap.OrderBy(x => x.UnitsSold),
-                "highestrevenue" => perfMap.OrderByDescending(x => x.Revenue),
-                "lowestrevenue" => perfMap.OrderBy(x => x.Revenue),
-                "higheststock" => perfMap.OrderByDescending(x => x.Product.CurrentStock),
-                "loweststock" => perfMap.OrderBy(x => x.Product.CurrentStock),
-                _ => perfMap.OrderByDescending(x => x.Revenue)
-            };
-
-            var perfList = perfMap.ToList();
             res.SummaryStats = stats;
-            res.TotalCount = perfList.Count;
+            res.TotalCount = products.Count;
             int pages = (int)System.Math.Ceiling((double)res.TotalCount / res.PageSize);
             res.TotalPages = pages < 1 ? 1 : pages;
 
-            var paged = perfList.Skip((res.Page - 1) * res.PageSize).Take(res.PageSize);
+            var paged = products.Skip((res.Page - 1) * res.PageSize).Take(res.PageSize);
 
-            foreach (var item in paged)
+            foreach (var p in paged)
             {
+                var catName = !string.IsNullOrEmpty(p.CategoryId) && catDict.TryGetValue(p.CategoryId, out var cn) ? cn : "General";
                 res.Rows.Add(new ReportRowItem
                 {
-                    Id = item.Product.Id,
-                    Code = item.Product.Code,
-                    Name = item.Product.Name,
-                    CategoryName = item.CategoryName,
-                    Quantity = item.UnitsSold,
-                    GrandTotal = item.Revenue,
-                    PreviousStock = item.Product.CurrentStock,
-                    CostValue = item.CostValuation,
-                    ProfitValue = item.ProfitPotential
+                    Id = p.Id,
+                    PrimaryText = p.Code,
+                    SecondaryText = p.Name,
+                    CategoryName = catName,
+                    StockQty = p.CurrentStock,
+                    SellingPrice = p.SellingPrice
                 });
             }
         }
 
         private async Task BuildExecutiveSummaryReportAsync(ReportFilterRequest req, ReportResultData res, DateTime start, DateTime end, List<Product> products, List<Category> categories, ReportSummaryStats stats)
         {
-            await BuildSalesReportAsync(req, res, start, end, products, categories.ToDictionary(c => c.Id, c => c.Name), stats);
-            res.ReportTitle = "Executive Management Performance Summary";
+            res.ReportTitle = "Mobile Shop Executive Overview & Financial Summary";
+            res.Headers = new List<string> { "#", "Metric Overview", "Value / Count" };
+
+            res.SummaryStats = stats;
+            res.TotalCount = 8;
+            res.TotalPages = 1;
+
+            res.Rows.Add(new ReportRowItem { PrimaryText = "Total Active Product Catalog", SecondaryText = products.Count.ToString() });
+            res.Rows.Add(new ReportRowItem { PrimaryText = "Total Physical Inventory Units", SecondaryText = products.Sum(p => p.CurrentStock).ToString() });
+            res.Rows.Add(new ReportRowItem { PrimaryText = "Total Inventory Purchase Cost Valuation", GrandTotal = stats.CurrentInventoryValue });
+            res.Rows.Add(new ReportRowItem { PrimaryText = "Total Inventory Retail Value Potential", GrandTotal = stats.PotentialSalesValue });
+            res.Rows.Add(new ReportRowItem { PrimaryText = "Total Estimated Gross Profit Margin", GrandTotal = stats.TotalProfitPotential });
+            res.Rows.Add(new ReportRowItem { PrimaryText = "Low Stock Alert Count", SecondaryText = stats.LowStockCount.ToString() });
+            res.Rows.Add(new ReportRowItem { PrimaryText = "Out of Stock Count", SecondaryText = stats.OutOfStockCount.ToString() });
         }
 
         #endregion
 
-        #region Helper Methods
+        #region Date Range Utility
 
-        private (DateTime Start, DateTime End, string Label) ResolveDateRange(string preset, DateTime? customStart, DateTime? customEnd)
+        private (DateTime startUtc, DateTime endUtc, string label) ResolveDateRange(string? preset, DateTime? customStart, DateTime? customEnd)
         {
             var nowUtc = DateTime.UtcNow;
-            var todayIstDate = nowUtc.AddHours(5.5).Date;
 
-            switch ((preset ?? "ThisMonth").Trim().ToLower())
+            switch (preset?.ToLower())
             {
                 case "today":
-                    var startToday = todayIstDate.AddHours(-5.5);
-                    var endToday = startToday.AddDays(1).AddTicks(-1);
-                    return (startToday, endToday, "Today");
+                    return (nowUtc.Date, nowUtc.Date.AddDays(1).AddTicks(-1), "Today");
 
                 case "yesterday":
-                    var startYest = todayIstDate.AddDays(-1).AddHours(-5.5);
-                    var endYest = startYest.AddDays(1).AddTicks(-1);
-                    return (startYest, endYest, "Yesterday");
+                    var yest = nowUtc.Date.AddDays(-1);
+                    return (yest, yest.AddDays(1).AddTicks(-1), "Yesterday");
 
                 case "thisweek":
-                    int diff = (int)todayIstDate.DayOfWeek - (int)DayOfWeek.Monday;
-                    if (diff < 0) diff += 7;
-                    var startWeek = todayIstDate.AddDays(-diff).AddHours(-5.5);
-                    return (startWeek, nowUtc, "This Week");
-
-                case "lastmonth":
-                    var firstThisMonth = new DateTime(todayIstDate.Year, todayIstDate.Month, 1);
-                    var firstLastMonth = firstThisMonth.AddMonths(-1);
-                    var lastLastMonth = firstThisMonth.AddTicks(-1);
-                    return (firstLastMonth.AddHours(-5.5), lastLastMonth.AddHours(-5.5), "Last Month");
-
-                case "thisyear":
-                    var startYear = new DateTime(todayIstDate.Year, 1, 1).AddHours(-5.5);
-                    return (startYear, nowUtc, "This Year");
-
-                case "alltime":
-                    return (DateTime.MinValue, DateTime.MaxValue, "All Time");
-
-                case "custom":
-                    if (customStart.HasValue && customEnd.HasValue)
-                    {
-                        return (customStart.Value.ToUniversalTime(), customEnd.Value.ToUniversalTime(), $"{customStart.Value:yyyy-MM-dd} to {customEnd.Value:yyyy-MM-dd}");
-                    }
-                    goto case "thismonth";
+                    int diff = (7 + (nowUtc.DayOfWeek - DayOfWeek.Monday)) % 7;
+                    var weekStart = nowUtc.Date.AddDays(-1 * diff);
+                    return (weekStart, nowUtc, "This Week");
 
                 case "thismonth":
+                    var monthStart = new DateTime(nowUtc.Year, nowUtc.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                    return (monthStart, nowUtc, "This Month");
+
+                case "lastmonth":
+                    var lmEnd = new DateTime(nowUtc.Year, nowUtc.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddTicks(-1);
+                    var lmStart = new DateTime(lmEnd.Year, lmEnd.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                    return (lmStart, lmEnd, "Last Month");
+
+                case "thisyear":
+                    var yrStart = new DateTime(nowUtc.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+                    return (yrStart, nowUtc, "This Year");
+
+                case "custom":
+                    var s = customStart ?? nowUtc.AddDays(-30);
+                    var e = customEnd ?? nowUtc;
+                    return (s, e, $"{s:yyyy-MM-dd} to {e:yyyy-MM-dd}");
+
+                case "alltime":
                 default:
-                    var startMonth = new DateTime(todayIstDate.Year, todayIstDate.Month, 1).AddHours(-5.5);
-                    return (startMonth, nowUtc, "This Month");
+                    return (DateTime.MinValue, DateTime.MaxValue, "All Time");
             }
         }
 
         #endregion
 
-        #region Export Generation (Excel & PDF)
+        #region Export Generator Methods (Excel & PDF)
 
         public byte[] GenerateExcelReport(ReportResultData data)
         {
-            using (var workbook = new XLWorkbook())
+            using var workbook = new XLWorkbook();
+            var worksheet = workbook.Worksheets.Add("Mobile Shop Report");
+
+            worksheet.Cell(1, 1).Value = data.ReportTitle;
+            worksheet.Cell(1, 1).Style.Font.Bold = true;
+            worksheet.Cell(1, 1).Style.Font.FontSize = 14;
+
+            worksheet.Cell(2, 1).Value = $"Filters: {data.AppliedFiltersText} | Generated: {data.GeneratedAt.ToIstString("yyyy-MM-dd HH:mm IST")}";
+            worksheet.Cell(2, 1).Style.Font.Italic = true;
+
+            int rowIdx = 4;
+            for (int c = 0; c < data.Headers.Count; c++)
             {
-                var worksheet = workbook.Worksheets.Add(data.ReportType);
-
-                // Title Banner
-                worksheet.Cell(1, 1).Value = "SMART INVENTORY MANAGEMENT SYSTEM";
-                worksheet.Cell(1, 1).Style.Font.Bold = true;
-                worksheet.Cell(1, 1).Style.Font.FontSize = 14;
-                worksheet.Cell(1, 1).Style.Font.FontColor = XLColor.FromHtml("#1e3a8a");
-
-                worksheet.Cell(2, 1).Value = data.ReportTitle;
-                worksheet.Cell(2, 1).Style.Font.Bold = true;
-                worksheet.Cell(2, 1).Style.Font.FontSize = 12;
-
-                worksheet.Cell(3, 1).Value = $"Generated IST: {data.GeneratedAt.ToIstString("yyyy-MM-dd HH:mm IST")} | Filters: {data.AppliedFiltersText}";
-                worksheet.Cell(3, 1).Style.Font.Italic = true;
-                worksheet.Cell(3, 1).Style.Font.FontColor = XLColor.Gray;
-
-                // Executive Metrics Table Box (Rows 5 to 7)
-                worksheet.Cell(5, 1).Value = "Total Revenue";
-                worksheet.Cell(5, 2).Value = data.SummaryStats.TotalSalesRevenue;
-                worksheet.Cell(5, 2).Style.NumberFormat.Format = "₹#,##0.00";
-
-                worksheet.Cell(5, 4).Value = "Asset Valuation";
-                worksheet.Cell(5, 5).Value = data.SummaryStats.CurrentInventoryValue;
-                worksheet.Cell(5, 5).Style.NumberFormat.Format = "₹#,##0.00";
-
-                worksheet.Cell(6, 1).Value = "Total Orders";
-                worksheet.Cell(6, 2).Value = data.SummaryStats.TotalOrders;
-
-                worksheet.Cell(6, 4).Value = "Low Stock SKUs";
-                worksheet.Cell(6, 5).Value = data.SummaryStats.LowStockCount;
-
-                worksheet.Range("A5:E6").Style.Font.Bold = true;
-                worksheet.Range("A5:E6").Style.Fill.BackgroundColor = XLColor.FromHtml("#f1f5f9");
-
-                // Headers at Row 9
-                int startRow = 9;
-                for (int col = 0; col < data.Headers.Count; col++)
-                {
-                    var cell = worksheet.Cell(startRow, col + 1);
-                    cell.Value = data.Headers[col];
-                    cell.Style.Font.Bold = true;
-                    cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#1e293b");
-                    cell.Style.Font.FontColor = XLColor.White;
-                    cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                }
-
-                // Data Rows
-                int r = startRow + 1;
-                int rowNum = 1;
-                foreach (var item in data.Rows)
-                {
-                    worksheet.Cell(r, 1).Value = rowNum++;
-
-                    if (data.ReportType.Equals("Sales", StringComparison.OrdinalIgnoreCase))
-                    {
-                        worksheet.Cell(r, 2).Value = item.PrimaryText;
-                        worksheet.Cell(r, 3).Value = item.DateString;
-                        worksheet.Cell(r, 4).Value = item.CustomerInfo;
-                        worksheet.Cell(r, 5).Value = item.SecondaryText;
-                        worksheet.Cell(r, 6).Value = item.SubTotal;
-                        worksheet.Cell(r, 7).Value = item.Discount;
-                        worksheet.Cell(r, 8).Value = item.TaxAmount;
-                        worksheet.Cell(r, 9).Value = item.GrandTotal;
-                        worksheet.Cell(r, 10).Value = item.BadgeText;
-                        worksheet.Cell(r, 11).Value = item.UserExecutor;
-
-                        worksheet.Cell(r, 6).Style.NumberFormat.Format = "₹#,##0.00";
-                        worksheet.Cell(r, 7).Style.NumberFormat.Format = "₹#,##0.00";
-                        worksheet.Cell(r, 8).Style.NumberFormat.Format = "₹#,##0.00";
-                        worksheet.Cell(r, 9).Style.NumberFormat.Format = "₹#,##0.00";
-                    }
-                    else if (data.ReportType.Equals("StockMovement", StringComparison.OrdinalIgnoreCase) || data.ReportType.Equals("StockHistory", StringComparison.OrdinalIgnoreCase))
-                    {
-                        worksheet.Cell(r, 2).Value = item.DateString;
-                        worksheet.Cell(r, 3).Value = item.Name;
-                        worksheet.Cell(r, 4).Value = item.Code;
-                        worksheet.Cell(r, 5).Value = item.BadgeText;
-                        worksheet.Cell(r, 6).Value = item.Quantity;
-                        worksheet.Cell(r, 7).Value = item.PreviousStock;
-                        worksheet.Cell(r, 8).Value = item.NewStock;
-                        worksheet.Cell(r, 9).Value = item.Reason;
-                        worksheet.Cell(r, 10).Value = item.UserExecutor;
-                    }
-                    else
-                    {
-                        worksheet.Cell(r, 2).Value = item.Code;
-                        worksheet.Cell(r, 3).Value = item.Name;
-                        worksheet.Cell(r, 4).Value = item.CategoryName;
-                        worksheet.Cell(r, 5).Value = item.Quantity;
-                        worksheet.Cell(r, 6).Value = item.PreviousStock;
-                        worksheet.Cell(r, 7).Value = item.BadgeText;
-                        worksheet.Cell(r, 8).Value = item.UnitPrice;
-                        worksheet.Cell(r, 9).Value = item.SalesValue;
-                        worksheet.Cell(r, 10).Value = item.CostValue;
-
-                        worksheet.Cell(r, 8).Style.NumberFormat.Format = "₹#,##0.00";
-                        worksheet.Cell(r, 9).Style.NumberFormat.Format = "₹#,##0.00";
-                        worksheet.Cell(r, 10).Style.NumberFormat.Format = "₹#,##0.00";
-                    }
-
-                    if (r % 2 == 0)
-                    {
-                        worksheet.Row(r).Style.Fill.BackgroundColor = XLColor.FromHtml("#f8fafc");
-                    }
-                    r++;
-                }
-
-                worksheet.Columns().AdjustToContents();
-                worksheet.SheetView.FreezeRows(startRow);
-
-                using (var stream = new MemoryStream())
-                {
-                    workbook.SaveAs(stream);
-                    return stream.ToArray();
-                }
+                var cell = worksheet.Cell(rowIdx, c + 1);
+                cell.Value = data.Headers[c];
+                cell.Style.Font.Bold = true;
+                cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#1E293B");
+                cell.Style.Font.FontColor = XLColor.White;
             }
+
+            rowIdx++;
+            int count = 1;
+            foreach (var r in data.Rows)
+            {
+                worksheet.Cell(rowIdx, 1).Value = count++;
+                int col = 2;
+                if (!string.IsNullOrEmpty(r.PrimaryText)) worksheet.Cell(rowIdx, col++).Value = r.PrimaryText;
+                if (!string.IsNullOrEmpty(r.SecondaryText)) worksheet.Cell(rowIdx, col++).Value = r.SecondaryText;
+                if (!string.IsNullOrEmpty(r.DateString)) worksheet.Cell(rowIdx, col++).Value = r.DateString;
+                if (!string.IsNullOrEmpty(r.CustomerInfo)) worksheet.Cell(rowIdx, col++).Value = r.CustomerInfo;
+                if (!string.IsNullOrEmpty(r.ProductInfo)) worksheet.Cell(rowIdx, col++).Value = r.ProductInfo;
+                if (r.GrandTotal > 0) worksheet.Cell(rowIdx, col++).Value = (double)r.GrandTotal;
+                if (!string.IsNullOrEmpty(r.BadgeText)) worksheet.Cell(rowIdx, col++).Value = r.BadgeText;
+                if (!string.IsNullOrEmpty(r.UserExecutor)) worksheet.Cell(rowIdx, col++).Value = r.UserExecutor;
+
+                rowIdx++;
+            }
+
+            worksheet.Columns().AdjustToContents();
+            using var stream = new MemoryStream();
+            workbook.SaveAs(stream);
+            return stream.ToArray();
         }
 
         public byte[] GeneratePdfReport(ReportResultData data)
@@ -685,101 +858,52 @@ namespace InventoryManagementSystem.Services
             {
                 container.Page(page =>
                 {
-                    page.Margin(35);
-                    page.Size(PageSizes.A4);
-                    page.DefaultTextStyle(x => x.FontSize(8.5f).FontFamily("Arial"));
+                    page.Margin(30);
+                    page.Size(PageSizes.A4.Landscape());
+                    page.DefaultTextStyle(x => x.FontSize(9).FontFamily("Arial"));
 
-                    // Header
                     page.Header().Column(col =>
                     {
-                        col.Item().Row(row =>
-                        {
-                            row.RelativeItem().Column(c =>
-                            {
-                                c.Item().Text("SMART INVENTORY MANAGEMENT SYSTEM").FontSize(15).Bold().FontColor(Colors.Blue.Darken4);
-                                c.Item().Text(data.ReportTitle).FontSize(11).Bold().FontColor(Colors.Grey.Darken3);
-                                c.Item().Text($"Filters: {data.AppliedFiltersText}").FontSize(8).FontColor(Colors.Grey.Darken1);
-                            });
-
-                            row.ConstantItem(140).Column(c =>
-                            {
-                                c.Item().Text($"IST: {data.GeneratedAt.ToIstString("yyyy-MM-dd HH:mm")}")
-                                    .AlignRight().FontSize(8);
-                                c.Item().Text("Official System Audit")
-                                    .AlignRight().FontSize(8).Italic().FontColor(Colors.Grey.Darken2);
-                            });
-                        });
-                        col.Item().PaddingTop(6).LineHorizontal(1.5f).LineColor(Colors.Blue.Darken3);
+                        col.Item().Text(data.ReportTitle.ToUpper()).FontSize(14).Bold().FontColor(Colors.Blue.Darken4);
+                        col.Item().Text($"Filters: {data.AppliedFiltersText} | Generated: {data.GeneratedAt.ToIstString("yyyy-MM-dd HH:mm IST")}").FontSize(8).Italic().FontColor(Colors.Grey.Darken1);
+                        col.Item().PaddingTop(5).LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
                     });
 
-                    // Content
-                    page.Content().PaddingTop(12).Column(col =>
+                    page.Content().PaddingTop(10).Table(table =>
                     {
-                        // Dynamic KPI Summary Bar
-                        col.Item().Background(Colors.Grey.Lighten4).Padding(8).Row(r =>
+                        table.ColumnsDefinition(cols =>
                         {
-                            r.RelativeItem().Column(c =>
-                            {
-                                c.Item().Text("Period Revenue:").FontSize(7.5f).FontColor(Colors.Grey.Darken2);
-                                c.Item().Text($"₹{data.SummaryStats.TotalSalesRevenue:N2}").Bold().FontSize(11).FontColor(Colors.Green.Darken3);
-                            });
-                            r.RelativeItem().Column(c =>
-                            {
-                                c.Item().Text("Total Orders:").FontSize(7.5f).FontColor(Colors.Grey.Darken2);
-                                c.Item().Text($"{data.SummaryStats.TotalOrders} Invoices").Bold().FontSize(11);
-                            });
-                            r.RelativeItem().Column(c =>
-                            {
-                                c.Item().Text("Asset Valuation:").FontSize(7.5f).FontColor(Colors.Grey.Darken2);
-                                c.Item().Text($"₹{data.SummaryStats.CurrentInventoryValue:N2}").Bold().FontSize(11).FontColor(Colors.Blue.Darken3);
-                            });
-                            r.RelativeItem().Column(c =>
-                            {
-                                c.Item().Text("Stock Alerts:").FontSize(7.5f).FontColor(Colors.Grey.Darken2);
-                                c.Item().Text($"{data.SummaryStats.LowStockCount} Low / {data.SummaryStats.OutOfStockCount} Out").Bold().FontSize(10).FontColor(Colors.Orange.Darken3);
-                            });
+                            cols.ConstantColumn(25);
+                            for (int i = 1; i < data.Headers.Count; i++) cols.RelativeColumn();
                         });
 
-                        col.Item().PaddingTop(12).Table(table =>
+                        table.Header(h =>
                         {
-                            table.ColumnsDefinition(cols =>
+                            foreach (var header in data.Headers)
                             {
-                                cols.ConstantColumn(25);
-                                cols.RelativeColumn(2.5f);
-                                cols.RelativeColumn(2.5f);
-                                cols.RelativeColumn(2.0f);
-                                cols.RelativeColumn(1.8f);
-                                cols.RelativeColumn(1.8f);
-                            });
-
-                            table.Header(h =>
-                            {
-                                int cIdx = 0;
-                                foreach (var head in data.Headers.Take(6))
-                                {
-                                    h.Cell().Background(Colors.Blue.Darken4).Padding(4).Text(head).Bold().FontColor(Colors.White);
-                                    cIdx++;
-                                }
-                            });
-
-                            int rowIdx = 1;
-                            foreach (var item in data.Rows)
-                            {
-                                var bg = rowIdx % 2 == 0 ? Colors.Grey.Lighten4 : Colors.White;
-
-                                table.Cell().Background(bg).Padding(4).Text(rowIdx.ToString());
-                                table.Cell().Background(bg).Padding(4).Text(string.IsNullOrWhiteSpace(item.PrimaryText) ? item.Code : item.PrimaryText).Bold();
-                                table.Cell().Background(bg).Padding(4).Text(string.IsNullOrWhiteSpace(item.Name) ? item.CustomerInfo : item.Name);
-                                table.Cell().Background(bg).Padding(4).Text(string.IsNullOrWhiteSpace(item.CategoryName) ? item.DateString : item.CategoryName);
-                                table.Cell().Background(bg).Padding(4).Text(item.GrandTotal > 0 ? $"₹{item.GrandTotal:N2}" : item.Quantity.ToString()).AlignRight();
-                                table.Cell().Background(bg).Padding(4).Text(string.IsNullOrWhiteSpace(item.BadgeText) ? (item.UserExecutor ?? "-") : item.BadgeText).AlignCenter();
-
-                                rowIdx++;
+                                h.Cell().Background(Colors.Blue.Darken3).Padding(4).Text(header).FontColor(Colors.White).Bold();
                             }
                         });
+
+                        int idx = 1;
+                        foreach (var row in data.Rows)
+                        {
+                            var bg = idx % 2 == 0 ? Colors.Grey.Lighten4 : Colors.White;
+                            table.Cell().Background(bg).Padding(3).Text(idx.ToString());
+
+                            if (!string.IsNullOrEmpty(row.PrimaryText)) table.Cell().Background(bg).Padding(3).Text(row.PrimaryText);
+                            if (!string.IsNullOrEmpty(row.SecondaryText)) table.Cell().Background(bg).Padding(3).Text(row.SecondaryText);
+                            if (!string.IsNullOrEmpty(row.DateString)) table.Cell().Background(bg).Padding(3).Text(row.DateString);
+                            if (!string.IsNullOrEmpty(row.CustomerInfo)) table.Cell().Background(bg).Padding(3).Text(row.CustomerInfo);
+                            if (!string.IsNullOrEmpty(row.ProductInfo)) table.Cell().Background(bg).Padding(3).Text(row.ProductInfo);
+                            if (row.GrandTotal > 0) table.Cell().Background(bg).Padding(3).Text($"₹{row.GrandTotal:N2}").AlignRight().Bold();
+                            if (!string.IsNullOrEmpty(row.BadgeText)) table.Cell().Background(bg).Padding(3).Text(row.BadgeText);
+                            if (!string.IsNullOrEmpty(row.UserExecutor)) table.Cell().Background(bg).Padding(3).Text(row.UserExecutor);
+
+                            idx++;
+                        }
                     });
 
-                    // Footer
                     page.Footer().AlignCenter().Text(x =>
                     {
                         x.Span("Page ");
@@ -791,24 +915,23 @@ namespace InventoryManagementSystem.Services
             }).GeneratePdf();
         }
 
-        // Legacy compatibility overrides
         public byte[] GenerateSalesExcelReport(DateTime start, DateTime end, IEnumerable<Sale> sales)
         {
-            var req = new ReportFilterRequest { ReportType = "Sales", StartDate = start, EndDate = end, DatePreset = "Custom" };
+            var req = new ReportFilterRequest { ReportType = "Sales", StartDate = start, EndDate = end };
             var data = BuildReportDataAsync(req).GetAwaiter().GetResult();
             return GenerateExcelReport(data);
         }
 
         public byte[] GenerateInventoryValuationExcelReport(IEnumerable<Product> products, Dictionary<string, string> categoryNames)
         {
-            var req = new ReportFilterRequest { ReportType = "Inventory", DatePreset = "AllTime" };
+            var req = new ReportFilterRequest { ReportType = "Inventory" };
             var data = BuildReportDataAsync(req).GetAwaiter().GetResult();
             return GenerateExcelReport(data);
         }
 
         public byte[] GenerateInventoryPdfReport(IEnumerable<Product> products, Dictionary<string, string> categoryNames)
         {
-            var req = new ReportFilterRequest { ReportType = "Inventory", DatePreset = "AllTime" };
+            var req = new ReportFilterRequest { ReportType = "Inventory" };
             var data = BuildReportDataAsync(req).GetAwaiter().GetResult();
             return GeneratePdfReport(data);
         }

@@ -1,0 +1,133 @@
+@model IEnumerable<InventoryManagementSystem.Models.Customer>
+@{
+    ViewData["Title"] = "Customer Management";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-person-vcard me-2 text-primary"></i>Customer Directory</h3>
+        <p class="text-muted small mb-0">Manage customer profiles, purchase history, and outstanding credit balances</p>
+    </div>
+    <button type="button" class="btn btn-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#addCustomerModal">
+        <i class="bi bi-person-plus me-1"></i> Add New Customer
+    </button>
+</div>
+
+<!-- Search Bar -->
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-3">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-9">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
+                    <input type="text" name="search" value="@ViewBag.Search" class="form-control bg-light border-0" placeholder="Search Customer Name, Phone, Email, or GSTIN...">
+                </div>
+            </div>
+            <div class="col-md-3 d-flex gap-1">
+                <button type="submit" class="btn btn-dark w-100 rounded-pill"><i class="bi bi-funnel me-1"></i>Search</button>
+                <a href="@Url.Action("Index")" class="btn btn-outline-secondary rounded-circle"><i class="bi bi-arrow-counterclockwise"></i></a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Table Card -->
+<div class="card border-0 shadow-sm rounded-4">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light text-muted small uppercase">
+                    <tr>
+                        <th class="ps-4">Customer Name</th>
+                        <th>Phone Number</th>
+                        <th>Email</th>
+                        <th>GSTIN</th>
+                        <th>Total Purchases</th>
+                        <th>Credit Balance</th>
+                        <th class="pe-4 text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model == null || !Model.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted">No customer profiles registered yet.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var c in Model)
+                        {
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="fw-bold">@c.Name</div>
+                                    <div class="small text-muted">Joined: @c.CreatedDate.ToString("yyyy-MM-dd")</div>
+                                </td>
+                                <td class="fw-semibold">@c.Phone</td>
+                                <td>@(string.IsNullOrEmpty(c.Email) ? "-" : c.Email)</td>
+                                <td><span class="badge bg-light text-dark border">@(string.IsNullOrEmpty(c.Gstin) ? "-" : c.Gstin)</span></td>
+                                <td class="fw-bold text-success">₹@c.TotalPurchases.ToString("N2")</td>
+                                <td>
+                                    @if (c.OutstandingBalance > 0)
+                                    {
+                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle">₹@c.OutstandingBalance.ToString("N2")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success-subtle text-success">Clear</span>
+                                    }
+                                </td>
+                                <td class="pe-4 text-end">
+                                    <a href="@Url.Action("Details", new { id = c.Id })" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                        <i class="bi bi-eye me-1"></i> Profile
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Add Customer -->
+<div class="modal fade" id="addCustomerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="fw-bold modal-title"><i class="bi bi-person-plus me-2 text-primary"></i>Add Customer Profile</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="Save" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body py-3">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Customer Full Name <span class="text-danger">*</span></label>
+                        <input type="text" name="Name" required class="form-control" placeholder="e.g. Rahul Sharma">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Phone Number <span class="text-danger">*</span></label>
+                        <input type="tel" name="Phone" required class="form-control" placeholder="e.g. 9876543210">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Email Address</label>
+                        <input type="email" name="Email" class="form-control" placeholder="e.g. rahul@gmail.com">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">GSTIN (Optional)</label>
+                        <input type="text" name="Gstin" class="form-control text-uppercase" placeholder="27AAAAA0000A1Z5">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Billing Address</label>
+                        <textarea name="Address" rows="2" class="form-control" placeholder="Street, City, State"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Save Customer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

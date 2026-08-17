@@ -1,12 +1,12 @@
 @model ProductEditViewModel
 @{
-    ViewData["Title"] = "Edit Product";
+    ViewData["Title"] = "Edit Mobile Product";
 }
 
 <div class="ph">
     <div>
-        <h1 class="ph-title">Edit Product</h1>
-        <p class="ph-sub">Update product details, pricing and category.</p>
+        <h1 class="ph-title">Edit Mobile Product</h1>
+        <p class="ph-sub">Update mobile model specifications, pricing and category.</p>
     </div>
     <div class="ph-actions">
         <a href="@Url.Action("Index","Product")" class="btn-d btn-outline">
@@ -23,15 +23,15 @@
     <div class="row g-4">
         <!-- Left Column -->
         <div class="col-lg-8">
-            <div class="card-d card-p-lg">
-                <div class="s-title">Product Information</div>
+            <div class="card-d card-p-lg mb-4">
+                <div class="s-title"><i class="bi bi-phone me-2 text-primary"></i>Mobile Device Specifications</div>
                 <div asp-validation-summary="ModelOnly" class="alert-d alert-danger mb-4"></div>
 
                 <div class="row g-3">
                     <div class="col-12">
                         <div class="fg">
-                            <label class="fg-label" asp-for="Name">Product Name <span class="req">*</span></label>
-                            <input asp-for="Name" id="Name" class="fg-control" placeholder="e.g. Wireless Keyboard Pro" required>
+                            <label class="fg-label" asp-for="Name">Product / Model Title <span class="req">*</span></label>
+                            <input asp-for="Name" id="Name" class="fg-control" placeholder="e.g. Samsung Galaxy S23 Ultra" required>
                             <span asp-validation-for="Name" class="fg-error"></span>
                         </div>
                     </div>
@@ -45,7 +45,7 @@
                                 </button>
                             </div>
                             <div class="fg-action-wrap">
-                                <input asp-for="Code" id="Code" class="fg-control" placeholder="e.g. WKB-001" required>
+                                <input asp-for="Code" id="Code" class="fg-control" placeholder="e.g. SAM-S23-256" required>
                                 <button type="button" class="fg-action-btn" onclick="generateSKU()" title="Generate SKU Code">
                                     <i class="bi bi-magic"></i> Generate
                                 </button>
@@ -124,7 +124,7 @@
 
                     <div class="col-12">
                         <div class="fg">
-                            <label class="fg-label" asp-for="Description">Description</label>
+                            <label class="fg-label" asp-for="Description">Description & Key Specs</label>
                             <textarea asp-for="Description" class="fg-control" rows="3"
                                       placeholder="Add product description, specifications or features…"></textarea>
                         </div>
@@ -183,7 +183,7 @@ function previewImg(input) {
 function generateSKU() {
   const nameInput = document.getElementById('Name');
   const codeInput = document.getElementById('Code');
-  let prefix = 'PRD';
+  let prefix = 'MOB';
 
   if (nameInput && nameInput.value.trim()) {
     const words = nameInput.value.trim().split(/\s+/);

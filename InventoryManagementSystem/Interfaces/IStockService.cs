@@ -10,6 +10,11 @@ namespace InventoryManagementSystem.Interfaces
         Task<bool> StockInAsync(string productId, int quantity, string reason, string executedBy);
         Task<bool> StockOutAsync(string productId, int quantity, string reason, string executedBy);
         Task<bool> AdjustStockAsync(string productId, int quantity, string type, string reason, string executedBy);
+        
+        // Mobile Shop Device Stock Operations
+        Task<(bool Success, string Message)> StockInDeviceAsync(Device device, string executedBy);
+        Task<(bool Success, string Message)> StockOutDeviceAsync(string deviceId, string statusReason, string executedBy);
+
         Task<IEnumerable<StockTransaction>> GetProductTransactionsAsync(string productId);
         Task<IEnumerable<StockTransaction>> GetRecentHistoryAsync(int count);
         Task<IEnumerable<StockTransaction>> GetPagedHistoryAsync(int page, int pageSize);

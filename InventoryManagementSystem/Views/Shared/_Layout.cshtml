@@ -56,7 +56,91 @@
         </a>
       }
 
-      <div class="sb-label">Inventory</div>
+      <div class="sb-label">Mobile Shop</div>
+
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Imei", "Index"))
+      {
+        <a href="@Url.Action("Index","Imei")"
+           class="sb-link @(ctrl=="Imei"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="IMEI Search & Devices" data-bs-placement="right">
+          <i class="bi bi-upc-scan sb-icon"></i>
+          <span class="sb-text">IMEI & Devices</span>
+        </a>
+      }
+
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Sales", "Create"))
+      {
+        <a href="@Url.Action("Create","Sales")"
+           class="sb-link @(ctrl=="Sales"&&act=="Create"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="POS Billing" data-bs-placement="right">
+          <i class="bi bi-receipt-cutoff sb-icon"></i>
+          <span class="sb-text">POS Billing</span>
+        </a>
+      }
+
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Exchange", "Index"))
+      {
+        <a href="@Url.Action("Index","Exchange")"
+           class="sb-link @(ctrl=="Exchange"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="Mobile Trade-In Exchange" data-bs-placement="right">
+          <i class="bi bi-arrow-repeat sb-icon"></i>
+          <span class="sb-text">Trade-In Exchange</span>
+        </a>
+      }
+
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Return", "Index"))
+      {
+        <a href="@Url.Action("Index","Return")"
+           class="sb-link @(ctrl=="Return"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="Returns & Refunds" data-bs-placement="right">
+          <i class="bi bi-arrow-return-left sb-icon"></i>
+          <span class="sb-text">Returns & Refunds</span>
+        </a>
+      }
+
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Repair", "Index"))
+      {
+        <a href="@Url.Action("Index","Repair")"
+           class="sb-link @(ctrl=="Repair"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="Service & Repairs" data-bs-placement="right">
+          <i class="bi bi-wrench-adjustable sb-icon"></i>
+          <span class="sb-text">Service & Repairs</span>
+        </a>
+      }
+
+      <div class="sb-label">Directory</div>
+
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Customer", "Index"))
+      {
+        <a href="@Url.Action("Index","Customer")"
+           class="sb-link @(ctrl=="Customer"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="Customers" data-bs-placement="right">
+          <i class="bi bi-person-vcard sb-icon"></i>
+          <span class="sb-text">Customers</span>
+        </a>
+      }
+
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Supplier", "Index"))
+      {
+        <a href="@Url.Action("Index","Supplier")"
+           class="sb-link @(ctrl=="Supplier"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="Suppliers" data-bs-placement="right">
+          <i class="bi bi-truck sb-icon"></i>
+          <span class="sb-text">Suppliers</span>
+        </a>
+      }
+
+      <div class="sb-label">Inventory & Stock</div>
+
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Product", "Index"))
+      {
+        <a href="@Url.Action("Index","Product")"
+           class="sb-link @(ctrl=="Product"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="Products & Specs" data-bs-placement="right">
+          <i class="bi bi-phone sb-icon"></i>
+          <span class="sb-text">Products & Specs</span>
+        </a>
+      }
 
       @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Category", "Index"))
       {
@@ -65,16 +149,6 @@
            data-bs-toggle="tooltip" data-bs-title="Categories" data-bs-placement="right">
           <i class="bi bi-tag sb-icon"></i>
           <span class="sb-text">Categories</span>
-        </a>
-      }
-
-      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Product", "Index"))
-      {
-        <a href="@Url.Action("Index","Product")"
-           class="sb-link @(ctrl=="Product"?"active":"")"
-           data-bs-toggle="tooltip" data-bs-title="Products" data-bs-placement="right">
-          <i class="bi bi-box-seam sb-icon"></i>
-          <span class="sb-text">Products</span>
         </a>
       }
 
@@ -118,17 +192,7 @@
         </a>
       }
 
-      <div class="sb-label">Transactions</div>
-
-      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Sales", "Create"))
-      {
-        <a href="@Url.Action("Create","Sales")"
-           class="sb-link @(ctrl=="Sales"&&act=="Create"?"active":"")"
-           data-bs-toggle="tooltip" data-bs-title="POS Billing" data-bs-placement="right">
-          <i class="bi bi-receipt-cutoff sb-icon"></i>
-          <span class="sb-text">POS Billing</span>
-        </a>
-      }
+      <div class="sb-label">Records & Reports</div>
 
       @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Sales", "Index"))
       {
@@ -328,6 +392,8 @@ else
 <script src="~/lib/jquery/dist/jquery.min.js"></script>
 <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="~/js/app.js" asp-append-version="true"></script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>

@@ -1,0 +1,136 @@
+@model IEnumerable<InventoryManagementSystem.Models.Supplier>
+@{
+    ViewData["Title"] = "Supplier Directory & Procurement";
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-truck me-2 text-primary"></i>Supplier Management</h3>
+        <p class="text-muted small mb-0">Vendor directory, procurement stock-in sources, and outstanding payables</p>
+    </div>
+    <button type="button" class="btn btn-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#addSupplierModal">
+        <i class="bi bi-plus-circle me-1"></i> Add New Supplier
+    </button>
+</div>
+
+<!-- Search Bar -->
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-3">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-9">
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
+                    <input type="text" name="search" value="@ViewBag.Search" class="form-control bg-light border-0" placeholder="Search Company Name, Contact Person, Phone or GSTIN...">
+                </div>
+            </div>
+            <div class="col-md-3 d-flex gap-1">
+                <button type="submit" class="btn btn-dark w-100 rounded-pill"><i class="bi bi-funnel me-1"></i>Search</button>
+                <a href="@Url.Action("Index")" class="btn btn-outline-secondary rounded-circle"><i class="bi bi-arrow-counterclockwise"></i></a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Table Card -->
+<div class="card border-0 shadow-sm rounded-4">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light text-muted small uppercase">
+                    <tr>
+                        <th class="ps-4">Company Name</th>
+                        <th>Contact Person</th>
+                        <th>Phone & Email</th>
+                        <th>GSTIN</th>
+                        <th>Payment Terms</th>
+                        <th>Payable Balance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model == null || !Model.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-muted">No suppliers added yet.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var s in Model)
+                        {
+                            <tr>
+                                <td class="ps-4">
+                                    <div class="fw-bold">@s.CompanyName</div>
+                                    <div class="small text-muted">Added: @s.CreatedDate.ToString("yyyy-MM-dd")</div>
+                                </td>
+                                <td class="fw-semibold">@s.ContactPerson</td>
+                                <td>
+                                    <div>@s.Phone</div>
+                                    <div class="small text-muted">@(string.IsNullOrEmpty(s.Email) ? "-" : s.Email)</div>
+                                </td>
+                                <td><span class="badge bg-light text-dark border">@(string.IsNullOrEmpty(s.Gstin) ? "-" : s.Gstin)</span></td>
+                                <td><span class="badge bg-light text-secondary border">@(string.IsNullOrEmpty(s.PaymentTerms) ? "Net 30" : s.PaymentTerms)</span></td>
+                                <td>
+                                    @if (s.OutstandingPayable > 0)
+                                    {
+                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle">₹@s.OutstandingPayable.ToString("N2")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success-subtle text-success">Clear</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Add Supplier -->
+<div class="modal fade" id="addSupplierModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="fw-bold modal-title"><i class="bi bi-truck me-2 text-primary"></i>Add Supplier Vendor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="Save" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body py-3">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Company / Vendor Name <span class="text-danger">*</span></label>
+                        <input type="text" name="CompanyName" required class="form-control" placeholder="e.g. Samsung India Distributors">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Contact Person</label>
+                        <input type="text" name="ContactPerson" class="form-control" placeholder="e.g. Rajesh Kumar">
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Phone Number</label>
+                            <input type="tel" name="Phone" class="form-control" placeholder="9876543210">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Email Address</label>
+                            <input type="email" name="Email" class="form-control" placeholder="vendor@supplier.com">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Vendor GSTIN</label>
+                        <input type="text" name="Gstin" class="form-control text-uppercase" placeholder="27AAAAA0000A1Z5">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Office Address</label>
+                        <textarea name="Address" rows="2" class="form-control" placeholder="Warehouse / Office address"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Save Supplier</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

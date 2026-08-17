@@ -37,6 +37,14 @@ namespace InventoryManagementSystem.Data
         public IMongoCollection<StockTransaction> StockTransactions => GetCollection<StockTransaction>("StockTransactions");
         public IMongoCollection<Sale> Sales => GetCollection<Sale>("Sales");
 
+        // Mobile Shop Collections
+        public IMongoCollection<Device> Devices => GetCollection<Device>("Devices");
+        public IMongoCollection<Customer> Customers => GetCollection<Customer>("Customers");
+        public IMongoCollection<Supplier> Suppliers => GetCollection<Supplier>("Suppliers");
+        public IMongoCollection<ReturnRecord> ReturnRecords => GetCollection<ReturnRecord>("ReturnRecords");
+        public IMongoCollection<ExchangeRecord> ExchangeRecords => GetCollection<ExchangeRecord>("ExchangeRecords");
+        public IMongoCollection<RepairTicket> RepairTickets => GetCollection<RepairTicket>("RepairTickets");
+
         /// <summary>
         /// Automatically verifies and creates database indexes on startup for fast queries.
         /// </summary>
@@ -52,7 +60,35 @@ namespace InventoryManagementSystem.Data
                     Builders<Product>.IndexKeys.Ascending(p => p.CategoryId));
                 var productStatusIndex = new CreateIndexModel<Product>(
                     Builders<Product>.IndexKeys.Ascending(p => p.Status));
-                await Products.Indexes.CreateManyAsync(new[] { productCodeIndex, productCatIndex, productStatusIndex });
+                var productBrandIndex = new CreateIndexModel<Product>(
+                    Builders<Product>.IndexKeys.Ascending(p => p.Brand));
+                await Products.Indexes.CreateManyAsync(new[] { productCodeIndex, productCatIndex, productStatusIndex, productBrandIndex });
+
+                // Devices (IMEI) Indexes
+                var deviceImei1Index = new CreateIndexModel<Device>(
+                    Builders<Device>.IndexKeys.Ascending(d => d.IMEI1),
+                    new CreateIndexOptions { Unique = true, Sparse = true });
+                var deviceImei2Index = new CreateIndexModel<Device>(
+                    Builders<Device>.IndexKeys.Ascending(d => d.IMEI2),
+                    new CreateIndexOptions { Unique = true, Sparse = true });
+                var deviceSerialIndex = new CreateIndexModel<Device>(
+                    Builders<Device>.IndexKeys.Ascending(d => d.SerialNumber),
+                    new CreateIndexOptions { Sparse = true });
+                var deviceProdIndex = new CreateIndexModel<Device>(
+                    Builders<Device>.IndexKeys.Ascending(d => d.ProductId).Ascending(d => d.Status));
+                await Devices.Indexes.CreateManyAsync(new[] { deviceImei1Index, deviceImei2Index, deviceSerialIndex, deviceProdIndex });
+
+                // Customers Indexes
+                var customerPhoneIndex = new CreateIndexModel<Customer>(
+                    Builders<Customer>.IndexKeys.Ascending(c => c.Phone),
+                    new CreateIndexOptions { Unique = true, Sparse = true });
+                await Customers.Indexes.CreateOneAsync(customerPhoneIndex);
+
+                // Suppliers Indexes
+                var supplierNameIndex = new CreateIndexModel<Supplier>(
+                    Builders<Supplier>.IndexKeys.Ascending(s => s.CompanyName),
+                    new CreateIndexOptions { Unique = true, Sparse = true });
+                await Suppliers.Indexes.CreateOneAsync(supplierNameIndex);
 
                 // Categories Indexes
                 var categoryNameIndex = new CreateIndexModel<Category>(
@@ -74,6 +110,12 @@ namespace InventoryManagementSystem.Data
                 var saleDateIndex = new CreateIndexModel<Sale>(
                     Builders<Sale>.IndexKeys.Descending(s => s.Date));
                 await Sales.Indexes.CreateManyAsync(new[] { saleInvoiceIndex, saleDateIndex });
+
+                // RepairTickets Indexes
+                var repairTicketIndex = new CreateIndexModel<RepairTicket>(
+                    Builders<RepairTicket>.IndexKeys.Ascending(r => r.TicketNumber),
+                    new CreateIndexOptions { Unique = true, Sparse = true });
+                await RepairTickets.Indexes.CreateOneAsync(repairTicketIndex);
 
                 // Notifications Indexes
                 var notifReadIndex = new CreateIndexModel<Notification>(
