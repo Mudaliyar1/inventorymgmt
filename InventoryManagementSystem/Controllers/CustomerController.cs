@@ -60,6 +60,11 @@ namespace InventoryManagementSystem.Controllers
             var executedBy = User.Identity?.Name ?? "Admin";
             var (success, message, result) = await _customerService.SaveCustomerAsync(customer, executedBy);
 
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest" || Request.Headers["Accept"].ToString().Contains("application/json"))
+            {
+                return Json(new { success, message, customer = result });
+            }
+
             if (success)
             {
                 TempData["ToastMessage"] = message;

@@ -15,6 +15,10 @@ namespace InventoryManagementSystem.ViewModels
         public string? EmployeeId { get; set; }
         public string? PaymentStatus { get; set; }
         public string? StockStatus { get; set; }
+        public string? ReturnStatus { get; set; } // None, Partially Returned, Fully Returned
+        public string? ReturnDestination { get; set; } // Returned, Damaged, UnderRepair
+        public string? InvoiceNumber { get; set; }
+        public string? IMEI { get; set; }
         public string? SearchTerm { get; set; }
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 20;
@@ -24,12 +28,23 @@ namespace InventoryManagementSystem.ViewModels
 
     public class ReportSummaryStats
     {
-        public decimal TotalSalesRevenue { get; set; }
+        public decimal GrossSales { get; set; }
+        public decimal TotalReturnsAmount { get; set; }
+        public decimal NetRevenue { get; set; }
+        public decimal TotalSalesRevenue { get; set; } // Alias for NetRevenue
         public int TotalOrders { get; set; }
+        public int CompletedInvoicesCount { get; set; }
+        public int PartiallyReturnedCount { get; set; }
+        public int FullyReturnedCount { get; set; }
         public int TotalItemsSold { get; set; }
         public int TotalStockInQty { get; set; }
         public int TotalStockOutQty { get; set; }
         public decimal CurrentInventoryValue { get; set; }
+        public decimal SellableInventoryValue { get; set; }
+        public decimal DamagedInventoryValue { get; set; }
+        public decimal UnderRepairInventoryValue { get; set; }
+        public int DamagedInventoryCount { get; set; }
+        public int UnderRepairInventoryCount { get; set; }
         public decimal PotentialSalesValue { get; set; }
         public int TotalInventoryQty { get; set; }
         public int LowStockCount { get; set; }
@@ -40,6 +55,7 @@ namespace InventoryManagementSystem.ViewModels
         public int TotalProductsCount { get; set; }
         public int TotalCategoriesCount { get; set; }
         public decimal TotalProfitPotential { get; set; }
+        public decimal NetProfit { get; set; }
     }
 
     public class ReportRowItem
@@ -67,6 +83,9 @@ namespace InventoryManagementSystem.ViewModels
         public decimal Discount { get; set; }
         public decimal TaxAmount { get; set; }
         public decimal GrandTotal { get; set; }
+        public decimal RefundedAmount { get; set; }
+        public decimal NetAmount { get; set; }
+        public string ReturnStatus { get; set; } = "None";
         public decimal CostValue { get; set; }
         public decimal SalesValue { get; set; }
         public decimal ProfitValue { get; set; }

@@ -37,6 +37,7 @@ namespace InventoryManagementSystem.Services
 
         public async Task CreateProductAsync(Product product)
         {
+            SanitizeProduct(product);
             product.CreatedDate = DateTime.UtcNow;
             product.UpdatedDate = DateTime.UtcNow;
             await _productRepository.CreateAsync(product);
@@ -50,8 +51,17 @@ namespace InventoryManagementSystem.Services
                 return;
             }
 
+            SanitizeProduct(product);
             product.UpdatedDate = DateTime.UtcNow;
             await _productRepository.UpdateAsync(product.Id, product);
+        }
+
+        private static void SanitizeProduct(Product product)
+        {
+            if (product != null && (string.IsNullOrWhiteSpace(product.CategoryId) || !MongoDB.Bson.ObjectId.TryParse(product.CategoryId, out _)))
+            {
+                product.CategoryId = null;
+            }
         }
 
         public async Task<bool> UpdateStockAsync(string id, int newStock)

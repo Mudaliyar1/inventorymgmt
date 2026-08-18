@@ -78,6 +78,7 @@ namespace InventoryManagementSystem.Services
             var categoryDict = categories.ToDictionary(c => c.Id, c => c.Name);
             var products = (await _productRepository.GetAllAsync()).ToList();
             var productDict = products.ToDictionary(p => p.Id, p => p);
+            var devices = (await _deviceRepository.GetAllAsync()).ToList();
 
             var filterParts = new List<string> { $"Date: {dateLabel}" };
             if (!string.IsNullOrWhiteSpace(request.SearchTerm)) filterParts.Add($"Search: '{request.SearchTerm}'");
@@ -86,13 +87,24 @@ namespace InventoryManagementSystem.Services
             if (!string.IsNullOrWhiteSpace(request.TransactionType)) filterParts.Add($"Type: {request.TransactionType}");
             if (!string.IsNullOrWhiteSpace(request.PaymentStatus)) filterParts.Add($"Payment: {request.PaymentStatus}");
             if (!string.IsNullOrWhiteSpace(request.StockStatus) && request.StockStatus != "All") filterParts.Add($"Stock: {request.StockStatus}");
+            if (!string.IsNullOrWhiteSpace(request.ReturnStatus) && request.ReturnStatus != "All") filterParts.Add($"Return Status: {request.ReturnStatus}");
+            if (!string.IsNullOrWhiteSpace(request.ReturnDestination) && request.ReturnDestination != "All") filterParts.Add($"Destination: {request.ReturnDestination}");
             result.AppliedFiltersText = string.Join(" | ", filterParts);
+
+            var inStockDevices = devices.Where(d => d.Status == "InStock").ToList();
+            var damagedDevices = devices.Where(d => d.Status == "Damaged").ToList();
+            var repairDevices = devices.Where(d => d.Status == "UnderRepair").ToList();
 
             var globalStats = new ReportSummaryStats
             {
                 TotalProductsCount = products.Count,
                 TotalCategoriesCount = categories.Count,
                 CurrentInventoryValue = products.Sum(p => p.CurrentStock * p.PurchasePrice),
+                SellableInventoryValue = inStockDevices.Any() ? inStockDevices.Sum(d => d.PurchasePrice) : products.Sum(p => p.CurrentStock * p.PurchasePrice),
+                DamagedInventoryCount = damagedDevices.Count,
+                DamagedInventoryValue = damagedDevices.Sum(d => d.PurchasePrice),
+                UnderRepairInventoryCount = repairDevices.Count,
+                UnderRepairInventoryValue = repairDevices.Sum(d => d.PurchasePrice),
                 PotentialSalesValue = products.Sum(p => p.CurrentStock * p.SellingPrice),
                 TotalInventoryQty = products.Sum(p => p.CurrentStock),
                 LowStockCount = products.Count(p => p.CurrentStock > 0 && p.CurrentStock <= p.MinimumStock),
@@ -177,7 +189,7 @@ namespace InventoryManagementSystem.Services
         private async Task BuildImeiInventoryReportAsync(ReportFilterRequest req, ReportResultData res, ReportSummaryStats stats)
         {
             res.ReportTitle = "Mobile Shop IMEI-Level Physical Device Stock Report";
-            res.Headers = new List<string> { "#", "IMEI 1", "IMEI 2", "Brand & Model", "Variant / Color", "Status", "Purchase Price", "Selling Price", "Invoice #", "Customer Phone", "Received Date" };
+            res.Headers = new List<string> { "#", "IMEI 1", "IMEI 2", "Brand & Model", "Variant / Color", "Status", "Purchase Cost", "Selling Price", "Invoice #", "Customer Info", "Stock Date" };
 
             var devices = await _deviceRepository.GetAllAsync();
             var devList = devices.ToList();
@@ -190,13 +202,18 @@ namespace InventoryManagementSystem.Services
                     (d.IMEI2 != null && d.IMEI2.ToLower().Contains(s)) ||
                     (d.Brand != null && d.Brand.ToLower().Contains(s)) ||
                     (d.ModelName != null && d.ModelName.ToLower().Contains(s)) ||
-                    (d.CustomerName != null && d.CustomerName.ToLower().Contains(s))
+                    (d.CustomerName != null && d.CustomerName.ToLower().Contains(s)) ||
+                    (d.InvoiceNumber != null && d.InvoiceNumber.ToLower().Contains(s))
                 ).ToList();
             }
 
             if (!string.IsNullOrWhiteSpace(req.StockStatus) && req.StockStatus != "All")
             {
                 devList = devList.Where(d => string.Equals(d.Status, req.StockStatus, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+            if (!string.IsNullOrWhiteSpace(req.ReturnDestination) && req.ReturnDestination != "All")
+            {
+                devList = devList.Where(d => string.Equals(d.Status, req.ReturnDestination, StringComparison.OrdinalIgnoreCase)).ToList();
             }
 
             res.SummaryStats = stats;
@@ -208,6 +225,8 @@ namespace InventoryManagementSystem.Services
 
             foreach (var d in paged)
             {
+                string badgeColor = d.Status == "InStock" ? "bg-success" : (d.Status == "Sold" ? "bg-primary" : (d.Status == "Damaged" ? "bg-danger" : "bg-warning text-dark"));
+
                 res.Rows.Add(new ReportRowItem
                 {
                     Id = d.Id,
@@ -216,9 +235,10 @@ namespace InventoryManagementSystem.Services
                     ProductInfo = $"{d.Brand} {d.ModelName}",
                     CategoryName = $"{d.Variant} {d.Color}",
                     BadgeText = d.Status,
-                    BadgeClass = d.Status == "InStock" ? "bg-success" : (d.Status == "Sold" ? "bg-primary" : "bg-warning text-dark"),
+                    BadgeClass = badgeColor,
                     CostPrice = d.PurchasePrice,
                     SellingPrice = d.SellingPrice,
+                    ReferenceInfo = d.InvoiceNumber ?? "-",
                     CustomerInfo = !string.IsNullOrWhiteSpace(d.CustomerName) ? $"{d.CustomerName} ({d.CustomerPhone})" : "-",
                     DateString = d.CreatedDate.ToIstString("yyyy-MM-dd HH:mm IST"),
                     UserExecutor = d.CreatedBy ?? "System"
@@ -273,8 +293,8 @@ namespace InventoryManagementSystem.Services
 
         private async Task BuildReturnsReportAsync(ReportFilterRequest req, ReportResultData res, ReportSummaryStats stats)
         {
-            res.ReportTitle = "Device & Accessory Returns Report";
-            res.Headers = new List<string> { "#", "Return #", "Date & Time (IST)", "Customer", "Product / Device", "IMEI", "Reason", "Refund Amount", "Target Status", "Processed By" };
+            res.ReportTitle = "Customer Device & Accessory Returns Audit Report";
+            res.Headers = new List<string> { "#", "Return #", "Invoice #", "Date & Time (IST)", "Customer", "Product / Device", "IMEI", "Reason", "Restock Destination", "Refund Amount", "Processed By" };
 
             var returns = await _returnRepository.GetAllAsync();
             var retList = returns.ToList();
@@ -284,12 +304,27 @@ namespace InventoryManagementSystem.Services
                 var s = req.SearchTerm.Trim().ToLower();
                 retList = retList.Where(r =>
                     (r.ReturnNumber != null && r.ReturnNumber.ToLower().Contains(s)) ||
+                    (r.InvoiceNumber != null && r.InvoiceNumber.ToLower().Contains(s)) ||
                     (r.CustomerName != null && r.CustomerName.ToLower().Contains(s)) ||
                     (r.ProductName != null && r.ProductName.ToLower().Contains(s)) ||
                     (r.IMEI != null && r.IMEI.ToLower().Contains(s))
                 ).ToList();
             }
 
+            if (!string.IsNullOrWhiteSpace(req.ReturnDestination) && req.ReturnDestination != "All")
+            {
+                retList = retList.Where(r => string.Equals(r.DeviceStatusTarget, req.ReturnDestination, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+            if (!string.IsNullOrWhiteSpace(req.InvoiceNumber))
+            {
+                retList = retList.Where(r => r.InvoiceNumber.ToLower().Contains(req.InvoiceNumber.Trim().ToLower())).ToList();
+            }
+            if (!string.IsNullOrWhiteSpace(req.IMEI))
+            {
+                retList = retList.Where(r => r.IMEI != null && r.IMEI.Contains(req.IMEI.Trim())).ToList();
+            }
+
+            stats.TotalReturnsAmount = retList.Sum(r => r.RefundAmount);
             res.SummaryStats = stats;
             res.TotalCount = retList.Count;
             int pages = (int)System.Math.Ceiling((double)res.TotalCount / res.PageSize);
@@ -299,17 +334,22 @@ namespace InventoryManagementSystem.Services
 
             foreach (var r in paged)
             {
+                string destBadge = r.DeviceStatusTarget == "Returned" || r.DeviceStatusTarget == "InStock" ? "bg-success" : (r.DeviceStatusTarget == "Damaged" ? "bg-danger" : "bg-warning text-dark");
+
                 res.Rows.Add(new ReportRowItem
                 {
                     Id = r.Id,
                     PrimaryText = r.ReturnNumber,
+                    ReferenceInfo = r.InvoiceNumber ?? "-",
                     DateString = r.ReturnDate.ToIstString("yyyy-MM-dd HH:mm IST"),
                     CustomerInfo = $"{r.CustomerName} ({r.CustomerPhone})",
                     ProductInfo = r.ProductName,
                     SecondaryText = r.IMEI ?? "-",
-                    BadgeText = r.Reason,
-                    BadgeClass = "bg-secondary",
+                    Reason = r.Reason,
+                    BadgeText = r.DeviceStatusTarget ?? "Returned",
+                    BadgeClass = destBadge,
                     GrandTotal = r.RefundAmount,
+                    RefundedAmount = r.RefundAmount,
                     UserExecutor = r.ExecutedBy ?? "System"
                 });
             }
@@ -492,7 +532,7 @@ namespace InventoryManagementSystem.Services
         private async Task BuildSalesReportAsync(ReportFilterRequest req, ReportResultData res, DateTime start, DateTime end, List<Product> products, Dictionary<string, string> catDict, ReportSummaryStats stats)
         {
             res.ReportTitle = "Detailed Sales & POS Revenue Report";
-            res.Headers = new List<string> { "#", "Invoice #", "Date & Time (IST)", "Customer", "Items / IMEIs Purchased", "Subtotal", "Discount", "GST Tax", "Grand Total", "Payment Status", "Cashier / User" };
+            res.Headers = new List<string> { "#", "Invoice #", "Date & Time (IST)", "Customer", "Items / IMEIs Purchased", "Gross Amount", "Discount", "GST Tax", "Refunded", "Net Amount", "Status", "Cashier / User" };
 
             var (sales, totalCount) = await _saleRepository.GetFilteredSalesAsync(
                 req.SearchTerm, customerName: null, start, end, cashier: req.EmployeeId, 1, 50000);
@@ -503,17 +543,35 @@ namespace InventoryManagementSystem.Services
             {
                 salesList = salesList.Where(s => string.Equals(s.PaymentStatus, req.PaymentStatus, StringComparison.OrdinalIgnoreCase)).ToList();
             }
+            if (!string.IsNullOrWhiteSpace(req.ReturnStatus) && req.ReturnStatus != "All")
+            {
+                salesList = salesList.Where(s => string.Equals(s.ReturnStatus, req.ReturnStatus, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+            if (!string.IsNullOrWhiteSpace(req.InvoiceNumber))
+            {
+                salesList = salesList.Where(s => s.InvoiceNumber.ToLower().Contains(req.InvoiceNumber.Trim().ToLower())).ToList();
+            }
+            if (!string.IsNullOrWhiteSpace(req.IMEI))
+            {
+                salesList = salesList.Where(s => s.Items.Any(i => (i.IMEI1 != null && i.IMEI1.Contains(req.IMEI)) || (i.IMEI2 != null && i.IMEI2.Contains(req.IMEI)))).ToList();
+            }
             if (!string.IsNullOrWhiteSpace(req.ProductId))
             {
                 salesList = salesList.Where(s => s.Items.Any(i => i.ProductId == req.ProductId)).ToList();
             }
 
-            stats.TotalSalesRevenue = salesList.Sum(s => s.GrandTotal);
+            stats.GrossSales = salesList.Sum(s => s.GrandTotal);
+            stats.TotalReturnsAmount = salesList.Sum(s => s.TotalRefundedAmount);
+            stats.NetRevenue = System.Math.Max(0m, stats.GrossSales - stats.TotalReturnsAmount);
+            stats.TotalSalesRevenue = stats.NetRevenue;
             stats.TotalOrders = salesList.Count;
-            stats.TotalItemsSold = salesList.Sum(s => s.Items.Sum(i => i.Quantity));
+            stats.CompletedInvoicesCount = salesList.Count(s => s.ReturnStatus != "Fully Returned");
+            stats.PartiallyReturnedCount = salesList.Count(s => s.ReturnStatus == "Partially Returned");
+            stats.FullyReturnedCount = salesList.Count(s => s.ReturnStatus == "Fully Returned");
+            stats.TotalItemsSold = salesList.Sum(s => s.Items.Sum(i => i.Quantity - i.ReturnedQuantity));
             stats.TotalDiscounts = salesList.Sum(s => s.Discount + s.ExchangeDiscount);
             stats.TotalGstTax = salesList.Sum(s => s.GstAmount);
-            stats.AverageOrderValue = stats.TotalOrders > 0 ? stats.TotalSalesRevenue / stats.TotalOrders : 0.0m;
+            stats.AverageOrderValue = stats.TotalOrders > 0 ? stats.NetRevenue / stats.TotalOrders : 0.0m;
             res.SummaryStats = stats;
 
             res.TotalCount = salesList.Count;
@@ -524,7 +582,11 @@ namespace InventoryManagementSystem.Services
 
             foreach (var s in paged)
             {
-                var itemsSummary = string.Join(", ", s.Items.Select(i => $"{i.ProductName}" + (!string.IsNullOrWhiteSpace(i.IMEI1) ? $" (IMEI: {i.IMEI1})" : $" x{i.Quantity}")));
+                var itemsSummary = string.Join(", ", s.Items.Select(i => $"{i.ProductName}" + (!string.IsNullOrWhiteSpace(i.IMEI1) ? $" (IMEI: {i.IMEI1})" : $" x{i.Quantity}") + (i.IsReturned ? " [RETURNED]" : "")));
+
+                string badgeText = s.ReturnStatus != "None" ? s.ReturnStatus : s.PaymentStatus;
+                string badgeClass = s.ReturnStatus == "Fully Returned" ? "bg-danger" : (s.ReturnStatus == "Partially Returned" ? "bg-warning text-dark" : "bg-success");
+
                 res.Rows.Add(new ReportRowItem
                 {
                     Id = s.Id,
@@ -536,8 +598,11 @@ namespace InventoryManagementSystem.Services
                     Discount = s.Discount + s.ExchangeDiscount,
                     TaxAmount = s.GstAmount,
                     GrandTotal = s.GrandTotal,
-                    BadgeText = s.PaymentStatus,
-                    BadgeClass = string.Equals(s.PaymentStatus, "Paid", StringComparison.OrdinalIgnoreCase) ? "bg-success" : "bg-warning text-dark",
+                    RefundedAmount = s.TotalRefundedAmount,
+                    NetAmount = s.NetTotal,
+                    ReturnStatus = s.ReturnStatus,
+                    BadgeText = badgeText,
+                    BadgeClass = badgeClass,
                     UserExecutor = string.IsNullOrWhiteSpace(s.CreatedBy) ? "System" : s.CreatedBy
                 });
             }

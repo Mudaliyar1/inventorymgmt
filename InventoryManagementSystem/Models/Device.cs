@@ -12,7 +12,9 @@ namespace InventoryManagementSystem.Models
 
         [BsonElement("ProductId")]
         [BsonRepresentation(BsonType.ObjectId)]
-        public string ProductId { get; set; } = string.Empty;
+        [BsonIgnoreIfNull]
+        [BsonIgnoreIfDefault]
+        public string? ProductId { get; set; }
 
         [BsonElement("ProductCode")]
         public string ProductCode { get; set; } = string.Empty;
@@ -37,10 +39,12 @@ namespace InventoryManagementSystem.Models
         public string IMEI1 { get; set; } = string.Empty;
 
         [BsonElement("IMEI2")]
-        public string IMEI2 { get; set; } = string.Empty;
+        [BsonIgnoreIfNull]
+        public string? IMEI2 { get; set; }
 
         [BsonElement("SerialNumber")]
-        public string SerialNumber { get; set; } = string.Empty;
+        [BsonIgnoreIfNull]
+        public string? SerialNumber { get; set; }
 
         // Commercial Details
         [BsonElement("PurchasePrice")]
@@ -55,7 +59,10 @@ namespace InventoryManagementSystem.Models
 
         // Supplier Tracking
         [BsonElement("SupplierId")]
-        public string SupplierId { get; set; } = string.Empty;
+        [BsonRepresentation(BsonType.ObjectId)]
+        [BsonIgnoreIfNull]
+        [BsonIgnoreIfDefault]
+        public string? SupplierId { get; set; }
 
         [BsonElement("SupplierName")]
         public string SupplierName { get; set; } = string.Empty;
@@ -74,7 +81,10 @@ namespace InventoryManagementSystem.Models
         public string InvoiceNumber { get; set; } = string.Empty;
 
         [BsonElement("CustomerId")]
-        public string CustomerId { get; set; } = string.Empty;
+        [BsonRepresentation(BsonType.ObjectId)]
+        [BsonIgnoreIfNull]
+        [BsonIgnoreIfDefault]
+        public string? CustomerId { get; set; }
 
         [BsonElement("CustomerName")]
         public string CustomerName { get; set; } = string.Empty;
@@ -88,6 +98,37 @@ namespace InventoryManagementSystem.Models
 
         [BsonElement("WarrantyEndDate")]
         public DateTime? WarrantyEndDate { get; set; }
+
+        // Trade-In & Origin Tracking
+        [BsonElement("Source")]
+        public string Source { get; set; } = "Stock In"; // Stock In, Trade-In, Return
+
+        [BsonElement("ExchangeNumber")]
+        public string ExchangeNumber { get; set; } = string.Empty;
+
+        [BsonElement("Condition")]
+        public string Condition { get; set; } = "Good";
+
+        [BsonElement("BatteryHealthPercentage")]
+        public int? BatteryHealthPercentage { get; set; }
+
+        [BsonElement("Ram")]
+        public string Ram { get; set; } = string.Empty;
+
+        [BsonElement("Storage")]
+        public string Storage { get; set; } = string.Empty;
+
+        [BsonElement("Processor")]
+        public string Processor { get; set; } = string.Empty;
+
+        [BsonElement("DisplaySpecs")]
+        public string DisplaySpecs { get; set; } = string.Empty;
+
+        [BsonElement("CameraSpecs")]
+        public string CameraSpecs { get; set; } = string.Empty;
+
+        [BsonElement("BatteryCapacity")]
+        public string BatteryCapacity { get; set; } = string.Empty;
 
         [BsonElement("Notes")]
         public string Notes { get; set; } = string.Empty;

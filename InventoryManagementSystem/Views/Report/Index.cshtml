@@ -71,21 +71,9 @@
     <div class="col-xl-3 col-sm-6">
         <div class="stat-card">
             <div>
-                <div class="sc-label">Period Revenue</div>
-                <div class="sc-value" id="cardRevenue" style="font-size:22px">₹0.00</div>
-                <span class="sc-trend trend-flat"><i class="bi bi-calendar"></i> Filtered Sales</span>
-            </div>
-            <div class="sc-icon ic-green">
-                <i class="bi bi-currency-rupee"></i>
-            </div>
-        </div>
-    </div>
-    <div class="col-xl-3 col-sm-6">
-        <div class="stat-card">
-            <div>
-                <div class="sc-label">Total Invoices</div>
-                <div class="sc-value" id="cardOrders" style="font-size:22px">0</div>
-                <span class="sc-trend trend-flat"><i class="bi bi-receipt"></i> Completed Checkouts</span>
+                <div class="sc-label">Gross Sales</div>
+                <div class="sc-value" id="cardGrossSales" style="font-size:22px">₹0.00</div>
+                <span class="sc-trend trend-flat"><i class="bi bi-receipt"></i> Original Checkout Total</span>
             </div>
             <div class="sc-icon ic-blue">
                 <i class="bi bi-receipt-cutoff"></i>
@@ -95,24 +83,36 @@
     <div class="col-xl-3 col-sm-6">
         <div class="stat-card">
             <div>
-                <div class="sc-label">Current Inventory Value</div>
-                <div class="sc-value" id="cardAssetValue" style="font-size:22px">₹0.00</div>
-                <span class="sc-trend trend-flat"><i class="bi bi-box"></i> Stock Cost Valuation</span>
+                <div class="sc-label">Returns &amp; Refunds</div>
+                <div class="sc-value text-danger" id="cardReturnsRefunds" style="font-size:22px">₹0.00</div>
+                <span class="sc-trend trend-flat text-danger"><i class="bi bi-arrow-return-left"></i> Real-time Refunds Reversal</span>
             </div>
-            <div class="sc-icon ic-sky">
-                <i class="bi bi-box-seam"></i>
+            <div class="sc-icon ic-amber" style="background:rgba(239, 68, 68, 0.1);color:#ef4444">
+                <i class="bi bi-arrow-counterclockwise"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-sm-6">
+        <div class="stat-card">
+            <div>
+                <div class="sc-label">Net Revenue</div>
+                <div class="sc-value text-success" id="cardRevenue" style="font-size:22px">₹0.00</div>
+                <span class="sc-trend trend-flat text-success"><i class="bi bi-check-circle"></i> Gross Sales − Refunds</span>
+            </div>
+            <div class="sc-icon ic-green">
+                <i class="bi bi-currency-rupee"></i>
             </div>
         </div>
     </div>
     <div class="col-xl-3 col-sm-6">
         <div class="stat-card" id="cardLowStockBorder">
             <div>
-                <div class="sc-label">Stock Alerts</div>
-                <div class="sc-value" id="cardLowStock" style="font-size:22px">0 Low / 0 Out</div>
-                <span class="sc-trend trend-flat"><i class="bi bi-exclamation-triangle"></i> Needs Restock</span>
+                <div class="sc-label">Stock &amp; Valuation Assets</div>
+                <div class="sc-value" id="cardAssetValue" style="font-size:22px">₹0.00</div>
+                <span class="sc-trend trend-flat" id="cardAssetSub"><i class="bi bi-box"></i> Sellable Stock Cost</span>
             </div>
-            <div class="sc-icon ic-amber">
-                <i class="bi bi-exclamation-triangle-fill"></i>
+            <div class="sc-icon ic-sky">
+                <i class="bi bi-box-seam"></i>
             </div>
         </div>
     </div>
@@ -183,20 +183,6 @@
                 </div>
             </div>
 
-            <!-- Transaction Type -->
-            <div class="col-md-3">
-                <div class="fg">
-                    <label class="fg-label">Transaction / Movement Type</label>
-                    <select id="transactionType" name="TransactionType" class="fg-control">
-                        <option value="">All Movement Types</option>
-                        <option value="Stock In">Stock In</option>
-                        <option value="Stock Out">Stock Out</option>
-                        <option value="POS Sale">POS Sale</option>
-                        <option value="Adjustment">Adjustment</option>
-                    </select>
-                </div>
-            </div>
-
             <!-- User / Employee Filter -->
             <div class="col-md-3">
                 <div class="fg">
@@ -225,15 +211,28 @@
                 </div>
             </div>
 
-            <!-- Stock Status -->
+            <!-- Return Status -->
             <div class="col-md-3">
                 <div class="fg">
-                    <label class="fg-label">Stock Status</label>
-                    <select id="stockStatus" name="StockStatus" class="fg-control">
-                        <option value="All">All Stock Levels</option>
-                        <option value="InStock">In Stock (> Min)</option>
-                        <option value="LowStock">Low Stock (<= Min)</option>
-                        <option value="OutOfStock">Out of Stock (= 0)</option>
+                    <label class="fg-label">Return Status</label>
+                    <select id="returnStatus" name="ReturnStatus" class="fg-control">
+                        <option value="All">All Invoices (Sales &amp; Returns)</option>
+                        <option value="None">Normal Sales (No Returns)</option>
+                        <option value="Partially Returned">Partially Returned</option>
+                        <option value="Fully Returned">Fully Refunded / Returned</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Device Restock Destination -->
+            <div class="col-md-3">
+                <div class="fg">
+                    <label class="fg-label">Return Destination / Device Status</label>
+                    <select id="returnDestination" name="ReturnDestination" class="fg-control">
+                        <option value="All">All Statuses / Destinations</option>
+                        <option value="Returned">Restocked to Inventory (InStock)</option>
+                        <option value="Damaged">Marked Damaged / Defective</option>
+                        <option value="UnderRepair">Sent to Repair Workshop</option>
                     </select>
                 </div>
             </div>
@@ -241,8 +240,8 @@
             <!-- Keyword Search -->
             <div class="col-md-3">
                 <div class="fg">
-                    <label class="fg-label">Search Keyword</label>
-                    <input type="text" id="searchTerm" name="SearchTerm" class="fg-control" placeholder="Search SKU, Product, Invoice..." />
+                    <label class="fg-label">Search Keyword / IMEI / Invoice</label>
+                    <input type="text" id="searchTerm" name="SearchTerm" class="fg-control" placeholder="Search SKU, IMEI, Invoice..." />
                 </div>
             </div>
         </div>
@@ -436,11 +435,15 @@
                 document.getElementById('previewCountBadge').innerText = `${data.totalCount} Records Found`;
 
                 // Update Executive Dashboard Cards
-                const stats = data.summaryStats;
-                document.getElementById('cardRevenue').innerText = fmtCurr(stats.totalSalesRevenue);
-                document.getElementById('cardOrders').innerText = `${fmtNum(stats.totalOrders)} Orders`;
-                document.getElementById('cardAssetValue').innerText = fmtCurr(stats.currentInventoryValue);
-                document.getElementById('cardLowStock').innerText = `${fmtNum(stats.lowStockCount)} Low / ${fmtNum(stats.outOfStockCount)} Out`;
+                const stats = data.summaryStats || {};
+                const grossVal = stats.grossSales || stats.totalSalesRevenue || 0;
+                const returnsVal = stats.totalReturnsAmount || 0;
+                const netVal = stats.netRevenue !== undefined ? stats.netRevenue : (grossVal - returnsVal);
+
+                if (document.getElementById('cardGrossSales')) document.getElementById('cardGrossSales').innerText = fmtCurr(grossVal);
+                if (document.getElementById('cardReturnsRefunds')) document.getElementById('cardReturnsRefunds').innerText = fmtCurr(returnsVal);
+                if (document.getElementById('cardRevenue')) document.getElementById('cardRevenue').innerText = fmtCurr(netVal);
+                if (document.getElementById('cardAssetValue')) document.getElementById('cardAssetValue').innerText = fmtCurr(stats.sellableInventoryValue || stats.currentInventoryValue);
 
                 // Table Headers
                 const theadRow = document.getElementById('tableHeaderRow');
@@ -466,12 +469,28 @@
                                 <td><span class="font-monospace text-primary fw-bold">${escapeHtml(row.primaryText)}</span></td>
                                 <td>${escapeHtml(row.dateString)}</td>
                                 <td>${escapeHtml(row.customerInfo)}</td>
-                                <td class="text-truncate" style="max-width:200px">${escapeHtml(row.secondaryText)}</td>
-                                <td>${fmtCurr(row.subTotal)}</td>
+                                <td class="text-truncate" style="max-width:220px">${escapeHtml(row.secondaryText)}</td>
+                                <td>${fmtCurr(row.grandTotal)}</td>
                                 <td>${fmtCurr(row.discount)}</td>
                                 <td>${fmtCurr(row.taxAmount)}</td>
-                                <td><span class="fw-bold text-success">${fmtCurr(row.grandTotal)}</span></td>
+                                <td><span class="fw-bold text-danger">${fmtCurr(row.refundedAmount || 0)}</span></td>
+                                <td><span class="fw-bold text-success">${fmtCurr(row.netAmount !== undefined ? row.netAmount : (row.grandTotal - (row.refundedAmount || 0)))}</span></td>
                                 <td><span class="badge ${row.badgeClass}">${escapeHtml(row.badgeText)}</span></td>
+                                <td>${escapeHtml(row.userExecutor)}</td>
+                            </tr>`;
+                    } else if (rType === 'returns' || rType === 'return') {
+                        return `
+                            <tr>
+                                <td>${rowNum}</td>
+                                <td><span class="font-monospace text-primary fw-bold">${escapeHtml(row.primaryText)}</span></td>
+                                <td><span class="font-monospace text-info">${escapeHtml(row.referenceInfo || '-')}</span></td>
+                                <td>${escapeHtml(row.dateString)}</td>
+                                <td>${escapeHtml(row.customerInfo)}</td>
+                                <td>${escapeHtml(row.productInfo)}</td>
+                                <td><span class="font-monospace text-warning">${escapeHtml(row.secondaryText)}</span></td>
+                                <td><span class="badge bg-secondary">${escapeHtml(row.reason)}</span></td>
+                                <td><span class="badge ${row.badgeClass}">${escapeHtml(row.badgeText)}</span></td>
+                                <td><span class="fw-bold text-danger">${fmtCurr(row.refundedAmount || row.grandTotal)}</span></td>
                                 <td>${escapeHtml(row.userExecutor)}</td>
                             </tr>`;
                     } else if (rType === 'inventory') {

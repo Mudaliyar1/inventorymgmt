@@ -11,5 +11,7 @@ namespace InventoryManagementSystem.Interfaces
         Task<RepairTicket?> GetRepairByIdAsync(string id);
         Task<(bool Success, string Message, RepairTicket? Ticket)> CreateRepairTicketAsync(RepairTicket ticket, string executedBy);
         Task<bool> UpdateRepairStatusAsync(string ticketId, string status, string? technicianName, decimal finalCost, string notes, string executedBy);
+        Task<(bool Success, string Message, RepairTicket? Ticket)> UpdateRepairTicketAsync(RepairTicket ticket, string updatedBy);
+        Task<(bool Success, string Message)> DeleteRepairTicketAsync(string id, string deletedBy);
     }
 }

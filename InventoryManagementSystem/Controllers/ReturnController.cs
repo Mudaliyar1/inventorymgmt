@@ -53,6 +53,11 @@ namespace InventoryManagementSystem.Controllers
             var executedBy = User.Identity?.Name ?? "Admin";
             var (success, message, result) = await _returnService.ProcessReturnAsync(returnRecord, executedBy);
 
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest" || Request.Headers["Accept"].ToString().Contains("application/json"))
+            {
+                return Json(new { success, message, record = result });
+            }
+
             if (success)
             {
                 TempData["ToastMessage"] = message;
@@ -94,15 +99,82 @@ namespace InventoryManagementSystem.Controllers
                 invoiceNumber = sale.InvoiceNumber,
                 customerName = sale.CustomerName,
                 customerPhone = sale.CustomerPhone,
+                returnStatus = sale.ReturnStatus,
+                totalRefundedAmount = sale.TotalRefundedAmount,
+                grandTotal = sale.GrandTotal,
+                netTotal = sale.NetTotal,
                 items = sale.Items.Select(i => new {
                     productId = i.ProductId,
                     productName = i.ProductName,
                     imei = i.IMEI1,
+                    imei1 = i.IMEI1,
+                    imei2 = i.IMEI2,
                     quantity = i.Quantity,
                     sellingPrice = i.SellingPrice,
-                    total = i.Total
+                    total = i.Total,
+                    isReturned = i.IsReturned,
+                    returnedQuantity = i.ReturnedQuantity
                 })
             });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetDetails(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return Json(new { success = false, message = "Return ID is required." });
+
+            var record = await _returnService.GetReturnByIdAsync(id.Trim());
+            if (record == null) return Json(new { success = false, message = "Return record not found." });
+
+            return Json(new {
+                success = true,
+                id = record.Id,
+                returnNumber = record.ReturnNumber,
+                returnDate = record.ReturnDate.ToString("yyyy-MM-dd HH:mm IST"),
+                invoiceNumber = record.InvoiceNumber,
+                customerName = record.CustomerName,
+                customerPhone = record.CustomerPhone,
+                productName = record.ProductName,
+                productCode = record.ProductCode,
+                imei = record.IMEI,
+                quantity = record.Quantity,
+                originalSellingPrice = record.OriginalSellingPrice,
+                refundAmount = record.RefundAmount,
+                reason = record.Reason,
+                condition = record.Condition,
+                deviceStatusTarget = record.DeviceStatusTarget,
+                notes = record.Notes,
+                executedBy = record.ExecutedBy
+            });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateReturn([FromForm] ReturnRecord returnRecord)
+        {
+            var updatedBy = User.Identity?.Name ?? "Admin";
+            var (success, message, result) = await _returnService.UpdateReturnAsync(returnRecord, updatedBy);
+
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest" || Request.Headers["Accept"].ToString().Contains("application/json"))
+            {
+                return Json(new { success, message, record = result });
+            }
+
+            TempData["ToastMessage"] = message;
+            TempData["ToastType"] = success ? "success" : "danger";
+            return RedirectToAction("Index");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteReturn(string id)
+        {
+            var deletedBy = User.Identity?.Name ?? "Admin";
+            var (success, message) = await _returnService.DeleteReturnAsync(id, deletedBy);
+
+            TempData["ToastMessage"] = message;
+            TempData["ToastType"] = success ? "success" : "danger";
+            return RedirectToAction("Index");
         }
     }
 }

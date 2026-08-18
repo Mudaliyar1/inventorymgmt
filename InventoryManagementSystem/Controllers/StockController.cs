@@ -127,72 +127,81 @@ namespace InventoryManagementSystem.Controllers
         [HttpPost]
         public async Task<IActionResult> StockInDeviceBatch([FromBody] BatchDeviceStockInRequest request)
         {
-            if (request == null || string.IsNullOrWhiteSpace(request.ProductId) || request.Devices == null || !request.Devices.Any())
+            try
             {
-                return Json(new { success = false, message = "No valid product or devices provided in batch." });
-            }
-
-            var executedBy = User.Identity?.Name ?? "Admin";
-            int addedCount = 0;
-            var errors = new List<string>();
-
-            var seenImeis = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var item in request.Devices)
-            {
-                var imei1 = item.IMEI1?.Trim() ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(imei1)) continue;
-
-                if (seenImeis.Contains(imei1))
+                if (request == null || string.IsNullOrWhiteSpace(request.ProductId) || request.Devices == null || !request.Devices.Any())
                 {
-                    errors.Add($"Duplicate IMEI '{imei1}' found within current batch.");
-                    continue;
+                    return Json(new { success = false, message = "No valid product or devices provided in batch." });
                 }
-                seenImeis.Add(imei1);
 
-                if (!string.IsNullOrWhiteSpace(item.IMEI2))
+                var executedBy = User.Identity?.Name ?? "Admin";
+                int addedCount = 0;
+                var errors = new List<string>();
+
+                var seenImeis = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var item in request.Devices)
                 {
-                    var imei2 = item.IMEI2.Trim();
-                    if (seenImeis.Contains(imei2))
+                    var imei1 = item.IMEI1?.Trim() ?? string.Empty;
+                    if (string.IsNullOrWhiteSpace(imei1)) continue;
+
+                    if (seenImeis.Contains(imei1))
                     {
-                        errors.Add($"Duplicate IMEI 2 '{imei2}' found within current batch.");
+                        errors.Add($"Duplicate IMEI '{imei1}' found within current batch.");
                         continue;
                     }
-                    seenImeis.Add(imei2);
+                    seenImeis.Add(imei1);
+
+                    string? imei2Clean = !string.IsNullOrWhiteSpace(item.IMEI2) ? item.IMEI2.Trim() : null;
+                    if (imei2Clean != null)
+                    {
+                        if (seenImeis.Contains(imei2Clean))
+                        {
+                            errors.Add($"Duplicate IMEI 2 '{imei2Clean}' found within current batch.");
+                            continue;
+                        }
+                        seenImeis.Add(imei2Clean);
+                    }
+
+                    string? serialClean = !string.IsNullOrWhiteSpace(item.SerialNumber) ? item.SerialNumber.Trim() : null;
+
+                    var device = new Device
+                    {
+                        ProductId = request.ProductId,
+                        SupplierName = request.SupplierName,
+                        Variant = request.Variant,
+                        Color = request.Color,
+                        PurchasePrice = request.PurchasePrice,
+                        SellingPrice = request.SellingPrice,
+                        IMEI1 = imei1,
+                        IMEI2 = imei2Clean,
+                        SerialNumber = serialClean
+                    };
+
+                    var (success, msg) = await _stockService.StockInDeviceAsync(device, executedBy);
+                    if (success)
+                    {
+                        addedCount++;
+                    }
+                    else
+                    {
+                        errors.Add($"IMEI '{imei1}': {msg}");
+                    }
                 }
 
-                var device = new Device
+                if (addedCount > 0)
                 {
-                    ProductId = request.ProductId,
-                    SupplierName = request.SupplierName,
-                    Variant = request.Variant,
-                    Color = request.Color,
-                    PurchasePrice = request.PurchasePrice,
-                    SellingPrice = request.SellingPrice,
-                    IMEI1 = imei1,
-                    IMEI2 = item.IMEI2?.Trim() ?? string.Empty,
-                    SerialNumber = item.SerialNumber?.Trim() ?? string.Empty
-                };
+                    var responseMsg = $"Successfully received {addedCount} physical mobile units into stock!";
+                    if (errors.Any()) responseMsg += $" ({errors.Count} items skipped due to duplicates/validation).";
+                    return Json(new { success = true, addedCount, message = responseMsg, errors });
+                }
 
-                var (success, msg) = await _stockService.StockInDeviceAsync(device, executedBy);
-                if (success)
-                {
-                    addedCount++;
-                }
-                else
-                {
-                    errors.Add($"IMEI '{imei1}': {msg}");
-                }
+                return Json(new { success = false, message = errors.FirstOrDefault() ?? "Failed to process batch stock-in.", errors });
             }
-
-            if (addedCount > 0)
+            catch (Exception ex)
             {
-                var responseMsg = $"Successfully received {addedCount} physical mobile units into stock!";
-                if (errors.Any()) responseMsg += $" ({errors.Count} items skipped due to duplicates/validation).";
-                return Json(new { success = true, addedCount, message = responseMsg, errors });
+                return Json(new { success = false, message = "Error processing batch stock-in: " + ex.Message });
             }
-
-            return Json(new { success = false, message = errors.FirstOrDefault() ?? "Failed to process batch stock-in.", errors });
         }
 
         [HttpGet]

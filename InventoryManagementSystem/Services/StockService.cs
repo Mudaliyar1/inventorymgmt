@@ -52,6 +52,21 @@ namespace InventoryManagementSystem.Services
                 return (false, "Invalid device or product selection.");
             }
 
+            // Sanitize IMEI2 and SerialNumber so empty strings are stored as null (avoiding duplicate empty string index error)
+            device.IMEI1 = device.IMEI1?.Trim() ?? string.Empty;
+            device.IMEI2 = string.IsNullOrWhiteSpace(device.IMEI2) ? null : device.IMEI2.Trim();
+            device.SerialNumber = string.IsNullOrWhiteSpace(device.SerialNumber) ? null : device.SerialNumber.Trim();
+
+            // Validate IMEI numeric format
+            if (!string.IsNullOrWhiteSpace(device.IMEI1) && !InventoryManagementSystem.Helpers.ValidationHelper.IsValidImei(device.IMEI1))
+            {
+                return (false, $"Invalid IMEI 1 format '{device.IMEI1}'. IMEI must be a 14 to 16 digit number.");
+            }
+            if (!string.IsNullOrWhiteSpace(device.IMEI2) && !InventoryManagementSystem.Helpers.ValidationHelper.IsValidImei(device.IMEI2))
+            {
+                return (false, $"Invalid IMEI 2 format '{device.IMEI2}'. IMEI must be a 14 to 16 digit number.");
+            }
+
             // Check IMEI 1
             if (!string.IsNullOrWhiteSpace(device.IMEI1) && await _deviceRepository.IsImeiExistsAsync(device.IMEI1))
             {
@@ -79,7 +94,18 @@ namespace InventoryManagementSystem.Services
             device.CreatedDate = DateTime.UtcNow;
             device.UpdatedDate = DateTime.UtcNow;
 
-            await _deviceRepository.CreateAsync(device);
+            try
+            {
+                await _deviceRepository.CreateAsync(device);
+            }
+            catch (MongoDB.Driver.MongoWriteException ex) when (ex.WriteError.Category == MongoDB.Driver.ServerErrorCategory.DuplicateKey)
+            {
+                return (false, $"Duplicate IMEI or Serial Number error: {ex.WriteError.Message}");
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Failed to save device IMEI '{device.IMEI1}': {ex.Message}");
+            }
 
             // Increase product stock & log transaction
             await AdjustStockAsync(product.Id, 1, "Stock In", $"Received Physical Device (IMEI: {device.IMEI1}, Supplier: {device.SupplierName})", executedBy);

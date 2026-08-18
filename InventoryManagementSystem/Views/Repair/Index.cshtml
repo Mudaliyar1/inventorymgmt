@@ -5,7 +5,7 @@
 
 <div class="d-flex align-items-center justify-content-between mb-4">
     <div>
-        <h3 class="fw-bold mb-1"><i class="bi bi-wrench-adjustable me-2 text-primary"></i>Service & Repair Ticketing</h3>
+        <h3 class="fw-bold mb-1"><i class="bi bi-wrench-adjustable me-2 text-primary"></i>Service &amp; Repair Ticketing</h3>
         <p class="text-muted small mb-0">Track device repair tickets, technician assignment, job statuses, and service charges</p>
     </div>
     <button type="button" class="btn btn-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#createRepairModal">
@@ -52,12 +52,12 @@
                         <th class="ps-4">Ticket #</th>
                         <th>Received Date</th>
                         <th>Customer</th>
-                        <th>Device Model & IMEI</th>
+                        <th>Device Model &amp; IMEI</th>
                         <th>Problem Reported</th>
                         <th>Technician</th>
                         <th>Est. / Final Cost</th>
                         <th>Status</th>
-                        <th class="pe-4 text-end">Update</th>
+                        <th class="pe-4 text-end" style="width:160px">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -93,7 +93,7 @@
                                     <div class="font-monospace small text-muted">IMEI: @(string.IsNullOrEmpty(t.IMEI) ? "-" : t.IMEI)</div>
                                 </td>
                                 <td>
-                                    <div class="small text-wrap" style="max-width: 200px;">@t.ProblemDescription</div>
+                                    <div class="small text-wrap" style="max-width: 180px;">@t.ProblemDescription</div>
                                 </td>
                                 <td><span class="badge bg-light text-dark border">@(string.IsNullOrEmpty(t.TechnicianName) ? "Unassigned" : t.TechnicianName)</span></td>
                                 <td>
@@ -102,9 +102,24 @@
                                 </td>
                                 <td><span class="badge rounded-pill @badgeClass px-2 py-1">@t.Status</span></td>
                                 <td class="pe-4 text-end">
-                                    <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#updateStatusModal_@t.Id">
-                                        Update
-                                    </button>
+                                    <div class="d-flex gap-1 justify-content-end">
+                                        <button type="button" class="btn btn-sm btn-outline-info rounded-pill py-0 px-2" onclick="openRepairDetails('@t.Id')" title="View Details">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill py-0 px-2" onclick="openEditRepairModal('@t.Id')" title="Edit Ticket">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-warning rounded-pill py-0 px-2" data-bs-toggle="modal" data-bs-target="#updateStatusModal_@t.Id" title="Update Status">
+                                            <i class="bi bi-gear"></i>
+                                        </button>
+                                        <form asp-action="Delete" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete Repair Ticket #@t.TicketNumber?');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@t.Id" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill py-0 px-2" title="Delete Ticket">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
                         }
@@ -138,7 +153,7 @@
                                     <option value="Diagnosing" selected="@(t.Status == "Diagnosing")">Diagnosing Problem</option>
                                     <option value="Repairing" selected="@(t.Status == "Repairing")">Repairing / Replacing Parts</option>
                                     <option value="Ready" selected="@(t.Status == "Ready")">Ready for Customer Pickup</option>
-                                    <option value="Delivered" selected="@(t.Status == "Delivered")">Delivered & Payment Collected</option>
+                                    <option value="Delivered" selected="@(t.Status == "Delivered")">Delivered &amp; Payment Collected</option>
                                     <option value="Cancelled" selected="@(t.Status == "Cancelled")">Cancelled</option>
                                 </select>
                             </div>
@@ -147,7 +162,7 @@
                                 <input type="text" name="technicianName" value="@t.TechnicianName" class="form-control" placeholder="Technician Name">
                             </div>
                             <div class="mb-3">
-                                <label class="form-label small fw-semibold">Final Repair & Labor Cost (₹)</label>
+                                <label class="form-label small fw-semibold">Final Repair &amp; Labor Cost (₹)</label>
                                 <input type="number" step="0.01" name="finalCost" value="@t.FinalCost" class="form-control fw-bold text-success">
                             </div>
                             <div class="mb-3">
@@ -171,7 +186,7 @@
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow rounded-4">
             <div class="modal-header border-0 pb-0">
-                <h5 class="fw-bold modal-title"><i class="bi bi-wrench-adjustable me-2 text-primary"></i>Create Service & Repair Job Ticket</h5>
+                <h5 class="fw-bold modal-title"><i class="bi bi-wrench-adjustable me-2 text-primary"></i>Create Service &amp; Repair Job Ticket</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form asp-action="Create" method="post">
@@ -184,7 +199,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-semibold">Customer Phone <span class="text-danger">*</span></label>
-                            <input type="tel" name="CustomerPhone" required class="form-control" placeholder="Customer Phone">
+                            <input type="tel" name="CustomerPhone" required class="form-control phone-input" placeholder="Customer Phone">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-semibold">Device Brand <span class="text-danger">*</span></label>
@@ -196,7 +211,7 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label small fw-semibold">IMEI Number</label>
-                            <input type="text" name="IMEI" class="form-control font-monospace" placeholder="15-digit IMEI">
+                            <input type="text" name="IMEI" class="form-control font-monospace imei-input" placeholder="15-digit IMEI">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-semibold">Estimated Repair Cost (₹)</label>
@@ -220,3 +235,186 @@
         </div>
     </div>
 </div>
+
+<!-- Modal: View Repair Ticket Details -->
+<div class="modal fade" id="viewRepairModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="fw-bold modal-title"><i class="bi bi-info-circle me-2 text-info"></i>Repair Ticket Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-3" id="viewRepairModalBody">
+                <div class="text-center py-4"><div class="spinner-border text-primary"></div></div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Edit Repair Ticket -->
+<div class="modal fade" id="editRepairModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="fw-bold modal-title"><i class="bi bi-pencil-square me-2 text-primary"></i>Edit Repair Ticket</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="Edit" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Id" id="editRepairId" />
+                <div class="modal-body py-3">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Customer Name <span class="text-danger">*</span></label>
+                            <input type="text" name="CustomerName" id="editRepairCustomerName" class="form-control" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Customer Phone <span class="text-danger">*</span></label>
+                            <input type="tel" name="CustomerPhone" id="editRepairCustomerPhone" class="form-control phone-input" required />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Device Brand</label>
+                            <input type="text" name="DeviceBrand" id="editRepairDeviceBrand" class="form-control" required />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Device Model</label>
+                            <input type="text" name="DeviceModel" id="editRepairDeviceModel" class="form-control" required />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">IMEI Number</label>
+                            <input type="text" name="IMEI" id="editRepairIMEI" class="form-control font-monospace imei-input" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Job Status</label>
+                            <select name="Status" id="editRepairStatus" class="form-select">
+                                <option value="Received">Received</option>
+                                <option value="Diagnosing">Diagnosing</option>
+                                <option value="Repairing">Repairing</option>
+                                <option value="Ready">Ready</option>
+                                <option value="Delivered">Delivered</option>
+                                <option value="Cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Estimated Cost (₹)</label>
+                            <input type="number" step="0.01" name="EstimatedCost" id="editRepairEstimatedCost" class="form-control" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Final Cost (₹)</label>
+                            <input type="number" step="0.01" name="FinalCost" id="editRepairFinalCost" class="form-control fw-bold text-success" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Assigned Technician</label>
+                            <input type="text" name="TechnicianName" id="editRepairTechnicianName" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Advance Paid (₹)</label>
+                            <input type="number" step="0.01" name="AdvancePaid" id="editRepairAdvancePaid" class="form-control" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">Problem / Issue Reported</label>
+                            <textarea name="ProblemDescription" id="editRepairProblemDescription" class="form-control" rows="2" required></textarea>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">Technician Notes</label>
+                            <textarea name="Notes" id="editRepairNotes" class="form-control" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4"><i class="bi bi-check2-circle me-1"></i> Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+async function openRepairDetails(id) {
+    const modalBody = document.getElementById('viewRepairModalBody');
+    modalBody.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+    
+    const modalEl = document.getElementById('viewRepairModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    try {
+        const res = await fetch(`/Repair/GetDetails?id=${id}`);
+        const data = await res.json();
+        if (data.success) {
+            modalBody.innerHTML = `
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <h6 class="fw-bold text-primary mb-2"><i class="bi bi-ticket-perforated me-1"></i>Ticket Info</h6>
+                            <div><strong>Ticket #:</strong> <code class="fw-bold">${data.ticketNumber}</code></div>
+                            <div><strong>Created:</strong> ${data.createdDate}</div>
+                            ${data.completedDate ? `<div><strong>Completed:</strong> ${data.completedDate}</div>` : ''}
+                            <div><strong>Status:</strong> <span class="badge bg-primary">${data.status}</span></div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <h6 class="fw-bold text-success mb-2"><i class="bi bi-person me-1"></i>Customer Details</h6>
+                            <div><strong>Customer:</strong> ${data.customerName}</div>
+                            <div><strong>Phone:</strong> ${data.customerPhone}</div>
+                            <div><strong>Technician:</strong> ${data.technicianName || 'Unassigned'}</div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="p-3 bg-light rounded-3">
+                            <h6 class="fw-bold text-dark mb-2"><i class="bi bi-phone me-1"></i>Device & Costs</h6>
+                            <div><strong>Device:</strong> ${data.deviceBrand} ${data.deviceModel}</div>
+                            ${data.imei ? `<div><strong>IMEI:</strong> <code class="text-primary fw-bold">${data.imei}</code></div>` : ''}
+                            <div><strong>Problem:</strong> ${data.problemDescription}</div>
+                            <div><strong>Est. Cost:</strong> ₹${data.estimatedCost.toFixed(2)} | <strong>Final Cost:</strong> <span class="fw-bold text-success">₹${data.finalCost.toFixed(2)}</span></div>
+                            ${data.advancePaid ? `<div><strong>Advance Paid:</strong> ₹${data.advancePaid.toFixed(2)}</div>` : ''}
+                            ${data.notes ? `<div class="mt-2"><strong>Notes:</strong> ${data.notes}</div>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            modalBody.innerHTML = `<div class="alert alert-danger">${data.message || 'Failed to load details.'}</div>`;
+        }
+    } catch (err) {
+        modalBody.innerHTML = `<div class="alert alert-danger">Error fetching ticket details: ${err}</div>`;
+    }
+}
+
+async function openEditRepairModal(id) {
+    try {
+        const res = await fetch(`/Repair/GetDetails?id=${id}`);
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('editRepairId').value = data.id;
+            document.getElementById('editRepairCustomerName').value = data.customerName || '';
+            document.getElementById('editRepairCustomerPhone').value = data.customerPhone || '';
+            document.getElementById('editRepairDeviceBrand').value = data.deviceBrand || '';
+            document.getElementById('editRepairDeviceModel').value = data.deviceModel || '';
+            document.getElementById('editRepairIMEI').value = data.imei || '';
+            document.getElementById('editRepairStatus').value = data.status || 'Received';
+            document.getElementById('editRepairEstimatedCost').value = data.estimatedCost || 0;
+            document.getElementById('editRepairFinalCost').value = data.finalCost || 0;
+            document.getElementById('editRepairTechnicianName').value = data.technicianName || '';
+            document.getElementById('editRepairAdvancePaid').value = data.advancePaid || 0;
+            document.getElementById('editRepairProblemDescription').value = data.problemDescription || '';
+            document.getElementById('editRepairNotes').value = data.notes || '';
+
+            const modalEl = document.getElementById('editRepairModal');
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        } else {
+            alert(data.message || 'Failed to load repair details.');
+        }
+    } catch (err) {
+        alert('Error loading repair record for editing.');
+    }
+}
+</script>
+}

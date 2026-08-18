@@ -98,7 +98,19 @@
                     {
                         <tr>
                             <td style="color:var(--text-muted)">@i</td>
-                            <td class="td-strong">@item.ProductName</td>
+                            <td class="td-strong">
+                                @item.ProductName
+                                @if (!string.IsNullOrEmpty(item.IMEI1))
+                                {
+                                    <div style="font-size:11px;color:var(--primary-text);font-family:monospace;margin-top:2px">
+                                        <i class="bi bi-upc-scan me-1"></i>IMEI 1: @item.IMEI1
+                                        @if (!string.IsNullOrEmpty(item.IMEI2))
+                                        {
+                                            <span class="ms-2">| IMEI 2: @item.IMEI2</span>
+                                        }
+                                    </div>
+                                }
+                            </td>
                             <td><span class="code-pill">@item.ProductCode</span></td>
                             <td class="text-end" style="color:var(--text-secondary)">₹@item.SellingPrice.ToString("F2")</td>
                             <td class="text-center" style="font-weight:600">@item.Quantity</td>

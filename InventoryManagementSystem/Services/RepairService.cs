@@ -1,3 +1,4 @@
+using InventoryManagementSystem.Helpers;
 using InventoryManagementSystem.Interfaces;
 using InventoryManagementSystem.Models;
 using System;
@@ -47,6 +48,16 @@ namespace InventoryManagementSystem.Services
             if (string.IsNullOrWhiteSpace(ticket.ProblemDescription))
             {
                 return (false, "Problem description is required.", null);
+            }
+
+            // Contact & IMEI Validation
+            if (!ValidationHelper.IsValidPhone(ticket.CustomerPhone))
+            {
+                return (false, "Invalid Customer Contact Number format. Phone number must be 10 numeric digits.", null);
+            }
+            if (!string.IsNullOrWhiteSpace(ticket.IMEI) && !ValidationHelper.IsValidImei(ticket.IMEI))
+            {
+                return (false, "Invalid Device IMEI format. IMEI must be a 14 to 16 digit number.", null);
             }
 
             ticket.TicketNumber = $"REP-{DateTime.UtcNow:yyyyMMdd}-{Random.Shared.Next(1000, 9999)}";
@@ -109,6 +120,62 @@ namespace InventoryManagementSystem.Services
                 $"Updated repair ticket #{ticket.TicketNumber} status to '{status}' (Technician: {ticket.TechnicianName})");
 
             return true;
+        }
+
+        public async Task<(bool Success, string Message, RepairTicket? Ticket)> UpdateRepairTicketAsync(RepairTicket ticket, string updatedBy)
+        {
+            try
+            {
+                if (ticket == null || string.IsNullOrWhiteSpace(ticket.Id)) return (false, "Invalid ticket ID.", null);
+
+                var existing = await _repairRepository.GetByIdAsync(ticket.Id);
+                if (existing == null) return (false, "Repair ticket not found.", null);
+
+                if (!ValidationHelper.IsValidPhone(ticket.CustomerPhone))
+                {
+                    return (false, "Invalid Customer Phone format.", null);
+                }
+
+                existing.CustomerName = ticket.CustomerName ?? existing.CustomerName;
+                existing.CustomerPhone = ticket.CustomerPhone ?? existing.CustomerPhone;
+                existing.DeviceBrand = ticket.DeviceBrand ?? existing.DeviceBrand;
+                existing.DeviceModel = ticket.DeviceModel ?? existing.DeviceModel;
+                existing.ProblemDescription = ticket.ProblemDescription ?? existing.ProblemDescription;
+                existing.DeviceCondition = ticket.DeviceCondition ?? existing.DeviceCondition;
+                existing.EstimatedCost = ticket.EstimatedCost;
+                existing.FinalCost = ticket.FinalCost;
+                existing.AdvancePaid = ticket.AdvancePaid;
+                existing.TechnicianName = ticket.TechnicianName ?? existing.TechnicianName;
+                existing.Notes = ticket.Notes ?? existing.Notes;
+                existing.Status = ticket.Status ?? existing.Status;
+
+                await _repairRepository.UpdateAsync(existing.Id, existing);
+                await _auditLogService.LogActivityAsync("REPAIR_UPDATED", updatedBy, existing.TicketNumber, $"Updated repair ticket #{existing.TicketNumber}.");
+                return (true, $"Repair ticket #{existing.TicketNumber} updated successfully.", existing);
+            }
+            catch (Exception ex)
+            {
+                return (false, "Error updating repair ticket: " + ex.Message, null);
+            }
+        }
+
+        public async Task<(bool Success, string Message)> DeleteRepairTicketAsync(string id, string deletedBy)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(id)) return (false, "Invalid ticket ID.");
+
+                var existing = await _repairRepository.GetByIdAsync(id);
+                if (existing == null) return (false, "Repair ticket not found.");
+
+                await _repairRepository.DeleteAsync(id);
+                await _auditLogService.LogActivityAsync("REPAIR_DELETED", deletedBy, existing.TicketNumber, $"Deleted repair ticket #{existing.TicketNumber}.");
+                return (true, $"Repair ticket #{existing.TicketNumber} deleted successfully.");
+            }
+            catch (Exception ex)
+            {
+                return (false, "Error deleting repair ticket: " + ex.Message);
+            }
         }
     }
 }

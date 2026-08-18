@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using InventoryManagementSystem.Models;
 
 namespace InventoryManagementSystem.ViewModels
 {
@@ -21,6 +22,12 @@ namespace InventoryManagementSystem.ViewModels
         [Required(ErrorMessage = "Category is required.")]
         [Display(Name = "Category")]
         public string CategoryId { get; set; } = string.Empty;
+
+        public string ProductType { get; set; } = "Smartphone";
+        public string Brand { get; set; } = string.Empty;
+        public string ModelName { get; set; } = string.Empty;
+        public string Variant { get; set; } = string.Empty;
+        public string Color { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Purchase Price is required.")]
         [Range(0.01, 10000000.0, ErrorMessage = "Price must be greater than zero.")]
@@ -46,6 +53,8 @@ namespace InventoryManagementSystem.ViewModels
 
         [Display(Name = "Product Image")]
         public IFormFile? ProductImage { get; set; }
+
+        public MobileSpecifications Specs { get; set; } = new MobileSpecifications();
 
         public string Status { get; set; } = "Active";
 

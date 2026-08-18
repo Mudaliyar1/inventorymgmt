@@ -55,11 +55,20 @@ namespace InventoryManagementSystem.Models
         [BsonElement("RefundAmount")]
         public decimal RefundAmount { get; set; }
 
+        [BsonElement("CostPrice")]
+        public decimal CostPrice { get; set; }
+
+        [BsonElement("OriginalSellingPrice")]
+        public decimal OriginalSellingPrice { get; set; }
+
         [BsonElement("Status")]
         public string Status { get; set; } = "Completed"; // Approved, Completed, Cancelled
 
         [BsonElement("DeviceStatusTarget")]
         public string DeviceStatusTarget { get; set; } = "Returned"; // Returned, Damaged, UnderRepair
+
+        [BsonElement("Notes")]
+        public string Notes { get; set; } = string.Empty;
 
         [BsonElement("ExecutedBy")]
         public string ExecutedBy { get; set; } = string.Empty;

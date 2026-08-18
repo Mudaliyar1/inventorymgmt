@@ -3,56 +3,87 @@
     ViewData["Title"] = "Mobile Phone Trade-In & Exchange";
 }
 
-<div class="d-flex align-items-center justify-content-between mb-4">
+<div class="ph">
     <div>
-        <h3 class="fw-bold mb-1"><i class="bi bi-arrow-repeat me-2 text-primary"></i>Mobile Trade-In & Exchange</h3>
-        <p class="text-muted small mb-0">Record old phone trade-in valuations and offset credit against new phone checkout</p>
+        <h1 class="ph-title"><i class="bi bi-arrow-repeat me-2" style="color:var(--primary)"></i>Mobile Trade-In &amp; Exchange</h1>
+        <p class="ph-sub">Process used mobile phone valuations, inspect device health, and transfer trade-in inventory.</p>
     </div>
-    <button type="button" class="btn btn-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#processExchangeModal">
-        <i class="bi bi-plus-circle me-1"></i> New Phone Trade-In
-    </button>
+    <div class="ph-actions">
+        <button type="button" class="btn-d btn-primary" data-bs-toggle="modal" data-bs-target="#processExchangeModal">
+            <i class="bi bi-plus-lg me-1"></i> Record New Trade-In
+        </button>
+    </div>
 </div>
 
-<!-- Search Bar -->
-<div class="card border-0 shadow-sm rounded-4 mb-4">
-    <div class="card-body p-3">
-        <form method="get" class="row g-2 align-items-center">
-            <div class="col-md-9">
-                <div class="input-group">
-                    <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
-                    <input type="text" name="search" value="@ViewBag.Search" class="form-control bg-light border-0" placeholder="Search Exchange #, Old IMEI, Brand/Model, or Customer...">
+<!-- Filters Bar -->
+<div class="card-d card-p mb-4">
+    <form method="get" class="row g-3 align-items-center">
+        <div class="col-md-3">
+            <div class="fg mb-0">
+                <label class="fg-label">Keyword Search</label>
+                <div class="fg-prefix-wrap">
+                    <span class="fg-prefix"><i class="bi bi-search"></i></span>
+                    <input type="text" name="search" value="@ViewBag.Search" class="fg-control" placeholder="Exchange #, IMEI, Phone, Customer...">
                 </div>
             </div>
-            <div class="col-md-3 d-flex gap-1">
-                <button type="submit" class="btn btn-dark w-100 rounded-pill"><i class="bi bi-funnel me-1"></i>Filter</button>
-                <a href="@Url.Action("Index")" class="btn btn-outline-secondary rounded-circle"><i class="bi bi-arrow-counterclockwise"></i></a>
+        </div>
+        <div class="col-md-2">
+            <div class="fg mb-0">
+                <label class="fg-label">Brand</label>
+                <input type="text" name="brand" value="@ViewBag.Brand" class="fg-control" placeholder="Apple, Samsung...">
             </div>
-        </form>
-    </div>
+        </div>
+        <div class="col-md-2">
+            <div class="fg mb-0">
+                <label class="fg-label">Color</label>
+                <input type="text" name="color" value="@ViewBag.Color" class="fg-control" placeholder="Black, Gold...">
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="fg mb-0">
+                <label class="fg-label">Destination Status</label>
+                <select name="destinationStatus" class="fg-control">
+                    <option value="">All Statuses</option>
+                    <option value="InStock" selected="@(ViewBag.DestinationStatus == "InStock")">In Stock (Sellable)</option>
+                    <option value="UnderRepair" selected="@(ViewBag.DestinationStatus == "UnderRepair")">Under Repair</option>
+                    <option value="Damaged" selected="@(ViewBag.DestinationStatus == "Damaged")">Damaged / Scrap</option>
+                    <option value="Pending" selected="@(ViewBag.DestinationStatus == "Pending")">Pending Inspection</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-3 d-flex align-items-end gap-2">
+            <button type="submit" class="btn-d btn-primary flex-grow-1"><i class="bi bi-funnel"></i> Apply Filter</button>
+            <a href="@Url.Action("Index")" class="btn-d btn-outline" title="Reset Filters"><i class="bi bi-arrow-counterclockwise"></i></a>
+        </div>
+    </form>
 </div>
 
-<!-- Table Card -->
-<div class="card border-0 shadow-sm rounded-4">
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="bg-light text-muted small uppercase">
+<!-- Table -->
+<div class="card-d">
+    <div class="tbl-wrap">
+        <div class="tbl-scroll">
+            <table class="tbl">
+                <thead>
                     <tr>
-                        <th class="ps-4">Exchange #</th>
-                        <th>Date & Time</th>
+                        <th style="width:130px">Exchange #</th>
+                        <th>Date &amp; Time</th>
                         <th>Customer</th>
-                        <th>Old Phone Details</th>
-                        <th>Old IMEI 1</th>
+                        <th>Device &amp; Specs</th>
+                        <th>Color</th>
+                        <th>IMEI 1 / Serial</th>
                         <th>Condition</th>
-                        <th>Valuation Credit</th>
-                        <th>Executed By</th>
+                        <th>Battery</th>
+                        <th>Valuation (₹)</th>
+                        <th>Destination</th>
+                        <th>Cashier</th>
+                        <th class="col-actions" style="width:100px">Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     @if (Model == null || !Model.Any())
                     {
                         <tr>
-                            <td colspan="8" class="text-center py-5 text-muted">No trade-in exchanges recorded yet.</td>
+                            <td colspan="12" class="text-center py-5 text-muted">No mobile trade-in exchange records found.</td>
                         </tr>
                     }
                     else
@@ -60,20 +91,78 @@
                         foreach (var e in Model)
                         {
                             <tr>
-                                <td class="ps-4 font-monospace fw-bold text-primary">@e.ExchangeNumber</td>
-                                <td class="small">@e.Date.ToString("yyyy-MM-dd HH:mm IST")</td>
+                                <td class="td-strong font-monospace" style="color:var(--primary-text)">@e.ExchangeNumber</td>
+                                <td style="font-size:12px;color:var(--text-secondary)">@e.Date.ToIstString("yyyy-MM-dd HH:mm IST")</td>
                                 <td>
-                                    <div class="fw-semibold">@e.CustomerName</div>
-                                    <div class="small text-muted">@e.CustomerPhone</div>
+                                    <div class="td-strong">@e.CustomerName</div>
+                                    <div style="font-size:11px;color:var(--text-muted)">@e.CustomerPhone</div>
                                 </td>
                                 <td>
-                                    <div class="fw-bold text-dark">@e.OldBrand @e.OldModel</div>
-                                    <div class="small text-muted">@e.OldStorage</div>
+                                    <div class="td-strong">@e.OldBrand @e.OldModel</div>
+                                    <div style="font-size:11px;color:var(--text-muted)">@e.OldStorage @(string.IsNullOrEmpty(e.OldRam) ? "" : "/ " + e.OldRam)</div>
                                 </td>
-                                <td class="font-monospace small">@(string.IsNullOrEmpty(e.OldImei1) ? "-" : e.OldImei1)</td>
-                                <td><span class="badge bg-info-subtle text-info border border-info-subtle">@e.Condition</span></td>
-                                <td class="fw-bold text-success fs-6">₹@e.FinalExchangeValue.ToString("N2")</td>
-                                <td class="small text-muted">@e.ExecutedBy</td>
+                                <td>
+                                    <span class="badge-d badge-blue" style="font-family:monospace">@e.OldColor</span>
+                                </td>
+                                <td>
+                                    <div style="font-family:monospace;font-size:12px;color:var(--primary-text)">@e.OldImei1</div>
+                                    @if (!string.IsNullOrEmpty(e.OldImei2))
+                                    {
+                                        <div style="font-family:monospace;font-size:10px;color:var(--text-muted)">SIM2: @e.OldImei2</div>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge-d badge-gray">@e.Condition</span>
+                                </td>
+                                <td>
+                                    @if (e.BatteryHealthPercentage.HasValue)
+                                    {
+                                        <span class="badge-d @(e.BatteryHealthPercentage >= 80 ? "badge-green" : e.BatteryHealthPercentage >= 60 ? "badge-amber" : "badge-red")">
+                                            <i class="bi bi-battery-charging me-1"></i>@e.BatteryHealthPercentage%
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span style="font-size:11px;color:var(--text-muted)">N/A</span>
+                                    }
+                                </td>
+                                <td class="td-strong" style="color:var(--success);font-size:15px">₹@e.FinalExchangeValue.ToString("N2")</td>
+                                <td>
+                                    @if (e.InventoryDestinationStatus == "InStock")
+                                    {
+                                        <span class="badge-d badge-green"><i class="bi bi-check-circle-fill me-1"></i> In Stock</span>
+                                    }
+                                    else if (e.InventoryDestinationStatus == "UnderRepair")
+                                    {
+                                        <span class="badge-d badge-amber"><i class="bi bi-wrench me-1"></i> Under Repair</span>
+                                    }
+                                    else if (e.InventoryDestinationStatus == "Damaged")
+                                    {
+                                        <span class="badge-d badge-red"><i class="bi bi-x-octagon-fill me-1"></i> Damaged</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge-d badge-purple"><i class="bi bi-hourglass-split me-1"></i> Pending</span>
+                                    }
+                                </td>
+                                <td style="font-size:12px;color:var(--text-secondary)">@e.ExecutedBy</td>
+                                <td class="col-actions">
+                                    <div class="d-flex gap-1">
+                                        <button type="button" class="btn-d btn-outline btn-sm-d" onclick="openDetailsModal('@e.Id')" title="View Full Inspection Sheet">
+                                            <i class="bi bi-eye"></i> Details
+                                        </button>
+                                        <button type="button" class="btn-d btn-outline btn-sm-d" onclick="openEditExchangeModal('@e.Id')" title="Edit Trade-In Record">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </button>
+                                        <form asp-action="DeleteExchange" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete Trade-In #@e.ExchangeNumber?');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@e.Id" />
+                                            <button type="submit" class="btn-d btn-outline btn-sm-d" style="color:var(--danger)" title="Delete Trade-In Record">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
                             </tr>
                         }
                     }
@@ -83,66 +172,1241 @@
     </div>
 </div>
 
-<!-- Modal: Process Exchange -->
+<!-- Modal: New Trade-In Inspection Form -->
 <div class="modal fade" id="processExchangeModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow rounded-4">
-            <div class="modal-header border-0 pb-0">
-                <h5 class="fw-bold modal-title"><i class="bi bi-arrow-repeat me-2 text-primary"></i>Record Mobile Phone Trade-In</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary)">
+            <div class="modal-header" style="border-bottom:1px solid var(--border)">
+                <h5 class="modal-title fw-bold" style="color:var(--primary-text)">
+                    <i class="bi bi-arrow-repeat me-2"></i>Record Mobile Phone Trade-In &amp; Inspection
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form asp-action="ProcessExchange" method="post">
+            <form asp-action="ProcessExchange" method="post" id="tradeInForm">
                 @Html.AntiForgeryToken()
-                <div class="modal-body py-3">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Old Phone Brand <span class="text-danger">*</span></label>
-                            <input type="text" name="OldBrand" required class="form-control" placeholder="e.g. Apple, OnePlus, Xiaomi">
+                <div class="modal-body p-4" style="max-height:75vh;overflow-y:auto">
+                    <!-- Form Navigation Tabs -->
+                    <ul class="nav nav-tabs mb-4" id="tradeInTabs" role="tablist" style="border-bottom-color:var(--border)">
+                        <li class="nav-item">
+                            <button class="nav-link active fw-bold" id="cust-tab" data-bs-toggle="tab" data-bs-target="#cust-tab-pane" type="button"><i class="bi bi-person me-1"></i> 1. Customer</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link fw-bold" id="device-tab" data-bs-toggle="tab" data-bs-target="#device-tab-pane" type="button"><i class="bi bi-phone me-1"></i> 2. Old Device Specs</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link fw-bold" id="condition-tab" data-bs-toggle="tab" data-bs-target="#condition-tab-pane" type="button"><i class="bi bi-cpu me-1"></i> 3. Condition Inspection</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link fw-bold" id="security-tab" data-bs-toggle="tab" data-bs-target="#security-tab-pane" type="button"><i class="bi bi-shield-lock me-1"></i> 4. Security Locks</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link fw-bold" id="accessories-tab" data-bs-toggle="tab" data-bs-target="#accessories-tab-pane" type="button"><i class="bi bi-box-seam me-1"></i> 5. Accessories</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link fw-bold" id="valuation-tab" data-bs-toggle="tab" data-bs-target="#valuation-tab-pane" type="button"><i class="bi bi-cash-stack me-1"></i> 6. Valuation &amp; Destination</button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="tradeInTabsContent">
+                        <!-- TAB 1: Customer Information -->
+                        <div class="tab-pane fade show active" id="cust-tab-pane">
+                            <div class="s-title mb-3"><i class="bi bi-person-vcard me-2" style="color:var(--primary)"></i>Customer Information</div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Customer Full Name <span class="req">*</span></label>
+                                        <input type="text" name="CustomerName" required class="fg-control" placeholder="e.g. Vijay Kumar" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Contact Phone Number <span class="req">*</span></label>
+                                         <input type="tel" name="CustomerPhone" required class="fg-control phone-input" placeholder="e.g. 9876543210" maxlength="10" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Customer Email Address</label>
+                                        <input type="email" name="CustomerEmail" class="fg-control" placeholder="customer@domain.com" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Customer Residential Address</label>
+                                        <input type="text" name="CustomerAddress" class="fg-control" placeholder="Street, City, State, Pincode" />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Old Phone Model <span class="text-danger">*</span></label>
-                            <input type="text" name="OldModel" required class="form-control" placeholder="e.g. iPhone 11, Nord CE 2">
+
+                        <!-- TAB 2: Device Identification -->
+                        <div class="tab-pane fade" id="device-tab-pane">
+                            <div class="s-title mb-3"><i class="bi bi-phone me-2" style="color:var(--primary)"></i>Old Device Specifications</div>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="fg">
+                                        <label class="fg-label">Brand <span class="req">*</span></label>
+                                        <select id="brandSelect" class="fg-control" onchange="onBrandSelectChange(this)" required>
+                                            <option value="">— Select Brand —</option>
+                                            <option value="Apple">Apple</option>
+                                            <option value="Samsung">Samsung</option>
+                                            <option value="OnePlus">OnePlus</option>
+                                            <option value="Xiaomi">Xiaomi / Redmi / POCO</option>
+                                            <option value="Realme">Realme</option>
+                                            <option value="Vivo">Vivo</option>
+                                            <option value="Oppo">Oppo</option>
+                                            <option value="Google">Google Pixel</option>
+                                            <option value="Motorola">Motorola</option>
+                                            <option value="Nothing">Nothing</option>
+                                            <option value="Nokia">Nokia</option>
+                                            <option value="Other">Other Brand...</option>
+                                        </select>
+                                        <input type="hidden" name="OldBrand" id="finalBrandInput" required />
+                                    </div>
+                                </div>
+                                <div class="col-md-4" id="customBrandBox" style="display:none">
+                                    <div class="fg">
+                                        <label class="fg-label">Specify Custom Brand <span class="req">*</span></label>
+                                        <input type="text" id="customBrandInput" class="fg-control" placeholder="e.g. Lava, Micromax, Honor, Tecno" oninput="updateBrandValue()" />
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="fg">
+                                        <label class="fg-label">Model Name <span class="req">*</span></label>
+                                        <input type="text" name="OldModel" required class="fg-control" placeholder="e.g. iPhone 11, Galaxy S21" />
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="fg">
+                                        <label class="fg-label">Edition / Variant</label>
+                                        <input type="text" name="OldStorage" class="fg-control" placeholder="e.g. 128GB / 6GB RAM" />
+                                    </div>
+                                </div>
+
+                                <!-- Color Selection (Mandatory Requirements) -->
+                                <div class="col-md-4">
+                                    <div class="fg">
+                                        <label class="fg-label">Phone Physical Color <span class="req">*</span></label>
+                                        <select id="colorSelect" class="fg-control" onchange="onColorSelectChange(this)" required>
+                                            <option value="">— Select Color —</option>
+                                            <option value="Black">Black</option>
+                                            <option value="White">White</option>
+                                            <option value="Blue">Blue</option>
+                                            <option value="Green">Green</option>
+                                            <option value="Red">Red</option>
+                                            <option value="Gold">Gold</option>
+                                            <option value="Silver">Silver</option>
+                                            <option value="Purple">Purple</option>
+                                            <option value="Graphite">Graphite</option>
+                                            <option value="Midnight">Midnight</option>
+                                            <option value="Starlight">Starlight</option>
+                                            <option value="Titanium">Titanium</option>
+                                            <option value="Other">Other Custom Color...</option>
+                                        </select>
+                                        <input type="hidden" name="OldColor" id="finalColorInput" required />
+                                    </div>
+                                </div>
+                                <div class="col-md-4" id="customColorBox" style="display:none">
+                                    <div class="fg">
+                                        <label class="fg-label">Specify Custom Color <span class="req">*</span></label>
+                                        <input type="text" id="customColorInput" class="fg-control" placeholder="e.g. Sierra Blue, Sunset Gold" oninput="updateColorValue()" />
+                                    </div>
+                                </div>
+
+                                <div class="col-md-4">
+                                    <div class="fg">
+                                        <label class="fg-label">RAM Capacity</label>
+                                        <input type="text" name="OldRam" class="fg-control" placeholder="e.g. 4GB, 6GB, 8GB" />
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Primary IMEI (IMEI 1) <span class="req">*</span></label>
+                                        <input type="text" name="OldImei1" required class="fg-control font-monospace" placeholder="15-digit primary IMEI 1" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Secondary IMEI (IMEI 2 - Dual SIM)</label>
+                                        <input type="text" name="OldImei2" class="fg-control font-monospace" placeholder="15-digit secondary IMEI 2 (Optional)" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Serial Number</label>
+                                        <input type="text" name="SerialNumber" class="fg-control font-monospace" placeholder="Factory Serial Number (Optional)" />
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="fg">
+                                        <label class="fg-label">Device Type</label>
+                                        <select name="DeviceType" class="fg-control">
+                                            <option value="Smartphone" selected>Smartphone</option>
+                                            <option value="Feature Phone">Feature Phone</option>
+                                            <option value="Tablet">Tablet / iPad</option>
+                                            <option value="Smartwatch">Smartwatch</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="fg">
+                                        <label class="fg-label">SIM Network Type</label>
+                                        <select name="SimType" class="fg-control">
+                                            <option value="Dual SIM" selected>Dual SIM (eSIM / Physical)</option>
+                                            <option value="Single SIM">Single SIM</option>
+                                            <option value="eSIM Only">eSIM Only</option>
+                                            <option value="Wi-Fi Only">Wi-Fi Only (No SIM)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Storage / RAM</label>
-                            <input type="text" name="OldStorage" class="form-control" placeholder="e.g. 128GB / 6GB">
+
+                        <!-- TAB 3: Condition Inspection -->
+                        <div class="tab-pane fade" id="condition-tab-pane">
+                            <div class="s-title mb-3"><i class="bi bi-cpu me-2" style="color:var(--primary)"></i>Physical Condition &amp; Technical Inspection</div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Overall Physical Condition <span class="req">*</span></label>
+                                        <select name="Condition" required class="fg-control">
+                                            <option value="Flawless / Like New">Flawless / Like New (No scratches/dents)</option>
+                                            <option value="Good Condition" selected>Good Condition (Minor body wear)</option>
+                                            <option value="Fair Condition">Fair Condition (Visible scratches/scuffs)</option>
+                                            <option value="Damaged">Damaged / Display Cracked</option>
+                                            <option value="Non-Working">Non-Working / Dead Motherboard</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="fg">
+                                        <label class="fg-label">Battery Health Percentage (%)</label>
+                                        <div class="fg-prefix-wrap">
+                                            <input type="number" name="BatteryHealthPercentage" min="0" max="100" class="fg-control" placeholder="e.g. 87" />
+                                            <span class="fg-prefix">%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="fg">
+                                        <label class="fg-label">Battery State</label>
+                                        <select name="BatteryCondition" class="fg-control">
+                                            <option value="Excellent">Excellent (&gt; 85%)</option>
+                                            <option value="Good" selected>Good (75% - 85%)</option>
+                                            <option value="Weak">Weak (&lt; 75%)</option>
+                                            <option value="Needs Replacement">Needs Replacement</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="col-12"><hr class="s-divider my-2" /><span class="td-strong" style="color:var(--primary-text)">Component Inspection Checklist:</span></div>
+
+                                <div class="col-md-3">
+                                    <div class="fg">
+                                        <label class="fg-label">Screen &amp; Display</label>
+                                        <select name="ScreenCondition" class="fg-control">
+                                            <option value="Excellent">Excellent (Original)</option>
+                                            <option value="Good" selected>Good (Minor scratches)</option>
+                                            <option value="Scratched">Heavy Scratches</option>
+                                            <option value="Cracked">Glass Cracked</option>
+                                            <option value="Display Issue">Display Dots / Lines</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="fg">
+                                        <label class="fg-label">Body &amp; Housing</label>
+                                        <select name="BodyCondition" class="fg-control">
+                                            <option value="Excellent">Excellent</option>
+                                            <option value="Good" selected>Good</option>
+                                            <option value="Scratches">Scratches</option>
+                                            <option value="Dents">Dents / Scuffs</option>
+                                            <option value="Heavy Damage">Heavy Frame Damage</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="fg">
+                                        <label class="fg-label">Front &amp; Rear Camera</label>
+                                        <select name="CameraCondition" class="fg-control">
+                                            <option value="Working" selected>Working (Clear)</option>
+                                            <option value="Minor Issue">Minor Blur / Dust</option>
+                                            <option value="Faulty">Faulty / Lens Cracked</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="fg">
+                                        <label class="fg-label">Speakers &amp; Earpiece</label>
+                                        <select name="SpeakerCondition" class="fg-control">
+                                            <option value="Working" selected>Working (Clear Sound)</option>
+                                            <option value="Minor Issue">Distorted / Low Volume</option>
+                                            <option value="Faulty">Faulty (No Sound)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="fg">
+                                        <label class="fg-label">Microphone</label>
+                                        <select name="MicrophoneCondition" class="fg-control">
+                                            <option value="Working" selected>Working (Clear Audio)</option>
+                                            <option value="Minor Issue">Low Input Voice</option>
+                                            <option value="Faulty">Faulty (Muted Mic)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="fg">
+                                        <label class="fg-label">Charging Port</label>
+                                        <select name="ChargingPortCondition" class="fg-control">
+                                            <option value="Working" selected>Working (Fast Charge)</option>
+                                            <option value="Loose">Loose Contact</option>
+                                            <option value="Damaged">Damaged / Not Charging</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="fg">
+                                        <label class="fg-label">Physical Buttons</label>
+                                        <select name="ButtonsCondition" class="fg-control">
+                                            <option value="Working" selected>Working (Tactile)</option>
+                                            <option value="Damaged">Stuck / Damaged</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="fg">
+                                        <label class="fg-label">Face ID / Biometrics</label>
+                                        <select name="FaceIdFingerprintCondition" class="fg-control">
+                                            <option value="Working" selected>Working</option>
+                                            <option value="Not Working">Not Working / Disabled</option>
+                                            <option value="Not Available">Not Available</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Old Phone IMEI 1</label>
-                            <input type="text" name="OldImei1" class="form-control font-monospace" placeholder="15-digit IMEI">
+
+                        <!-- TAB 4: Security Locks -->
+                        <div class="tab-pane fade" id="security-tab-pane">
+                            <div class="s-title mb-3"><i class="bi bi-shield-lock me-2" style="color:var(--primary)"></i>Device Account Locks &amp; Unlocking Status</div>
+                            
+                            <div class="alert-d alert-warning mb-4">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                <strong>Important Security Protocol</strong>: Devices with active Apple Activation Lock (iCloud) or Google FRP Account Lock will be flagged with <code>HasAccountLock = true</code> and assigned to <strong>Pending Inspection</strong> status until unlocked.
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="fg">
+                                        <label class="fg-label">Device Screen Passcode Unlocked?</label>
+                                        <select name="IsDeviceUnlocked" class="fg-control">
+                                            <option value="true" selected>Yes (Screen Passcode Removed)</option>
+                                            <option value="false">No (Locked with Passcode)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="fg">
+                                        <label class="fg-label">Apple Activation Lock (iCloud / Find My)</label>
+                                        <select name="AppleActivationLock" class="fg-control">
+                                            <option value="Clear" selected>Clear (Signed Out)</option>
+                                            <option value="Enabled">Enabled (iCloud Locked ⚠️)</option>
+                                            <option value="Not Checked">Not Checked / N/A</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="fg">
+                                        <label class="fg-label">Google Account Lock (FRP)</label>
+                                        <select name="GoogleFRPAccountLock" class="fg-control">
+                                            <option value="Clear" selected>Clear (Signed Out)</option>
+                                            <option value="Enabled">Enabled (FRP Locked ⚠️)</option>
+                                            <option value="Not Checked">Not Checked / N/A</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Physical Condition <span class="text-danger">*</span></label>
-                            <select name="Condition" required class="form-select">
-                                <option value="Flawless / Like New">Flawless / Like New (No scratches)</option>
-                                <option value="Good Condition">Good Condition (Minor body wear)</option>
-                                <option value="Fair Condition">Fair Condition (Scratches/dents)</option>
-                                <option value="Screen Cracked">Screen Cracked / Display issue</option>
-                            </select>
+
+                        <!-- TAB 5: Accessories Received -->
+                        <div class="tab-pane fade" id="accessories-tab-pane">
+                            <div class="s-title mb-3"><i class="bi bi-box-seam me-2" style="color:var(--primary)"></i>Accessories &amp; Items Included in Trade-In</div>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <div class="d-flex flex-wrap gap-4 p-3 rounded" style="background:var(--bg);border:1px solid var(--border)">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="AccessoriesReceived" value="Original Box" id="acc1">
+                                            <label class="form-check-label text-light" for="acc1"><i class="bi bi-box me-1"></i> Original Box</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="AccessoriesReceived" value="Original Charger" id="acc2" checked>
+                                            <label class="form-check-label text-light" for="acc2"><i class="bi bi-plug me-1"></i> Charger</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="AccessoriesReceived" value="USB Cable" id="acc3" checked>
+                                            <label class="form-check-label text-light" for="acc3"><i class="bi bi-usb-c me-1"></i> USB Cable</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="AccessoriesReceived" value="Earphones" id="acc4">
+                                            <label class="form-check-label text-light" for="acc4"><i class="bi bi-headphones me-1"></i> Earphones</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="AccessoriesReceived" value="Case" id="acc5">
+                                            <label class="form-check-label text-light" for="acc5"><i class="bi bi-shield me-1"></i> Protective Case</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="AccessoriesReceived" value="Original Invoice" id="acc6">
+                                            <label class="form-check-label text-light" for="acc6"><i class="bi bi-file-earmark-text me-1"></i> Purchase Invoice</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="AccessoriesReceived" value="SIM Ejector" id="acc7">
+                                            <label class="form-check-label text-light" for="acc7"><i class="bi bi-pin-angle me-1"></i> SIM Ejector Pin</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="fg">
+                                        <label class="fg-label">Other Accessories / Additional Notes</label>
+                                        <input type="text" name="OtherAccessoriesNotes" class="fg-control" placeholder="e.g. Tempered glass applied, original bill available..." />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Final Valuation Credit (₹) <span class="text-danger">*</span></label>
-                            <input type="number" step="0.01" name="FinalExchangeValue" required class="form-control fw-bold text-success" placeholder="e.g. 8500.00">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Customer Full Name <span class="text-danger">*</span></label>
-                            <input type="text" name="CustomerName" required class="form-control" placeholder="Customer Name">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Customer Phone Number <span class="text-danger">*</span></label>
-                            <input type="tel" name="CustomerPhone" required class="form-control" placeholder="Customer Phone">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label small fw-semibold">Remarks & Inspector Notes</label>
-                            <textarea name="Remarks" rows="2" class="form-control" placeholder="Original box available, charger included, screen guard present..."></textarea>
+
+                        <!-- TAB 6: Valuation & Destination -->
+                        <div class="tab-pane fade" id="valuation-tab-pane">
+                            <div class="s-title mb-3"><i class="bi bi-cash-stack me-2" style="color:var(--primary)"></i>Trade-In Valuation &amp; Inventory Routing</div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Estimated Valuation (₹)</label>
+                                        <div class="fg-prefix-wrap">
+                                            <span class="fg-prefix">₹</span>
+                                            <input type="number" step="0.01" name="EstimatedValue" class="fg-control" placeholder="e.g. 5000.00" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Final Valuation Credit (Acquisition Cost) (₹) <span class="req">*</span></label>
+                                        <div class="fg-prefix-wrap">
+                                            <span class="fg-prefix">₹</span>
+                                            <input type="number" step="0.01" name="FinalExchangeValue" required class="fg-control fw-bold" style="color:var(--success);font-size:18px" placeholder="e.g. 4545.00" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Inventory Destination Status <span class="req">*</span></label>
+                                        <select name="InventoryDestinationStatus" required class="fg-control">
+                                            <option value="InStock" selected>In Stock (Available for POS Sale)</option>
+                                            <option value="UnderRepair">Under Repair (Sent to Service)</option>
+                                            <option value="Damaged">Damaged (Scrap / Parts)</option>
+                                            <option value="Pending">Pending Inspection</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Inspector Name</label>
+                                        <input type="text" name="InspectorName" value="@User.Identity?.Name" class="fg-control" />
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="fg">
+                                        <label class="fg-label">Remarks &amp; Detailed Inspector Notes</label>
+                                        <textarea name="Remarks" rows="2" class="fg-control" placeholder="Enter physical inspection summary and details..."></textarea>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary rounded-pill px-4">Submit Trade-In Valuation</button>
+                <div class="modal-footer justify-content-between" style="border-top:1px solid var(--border)">
+                    <div>
+                        <button type="button" class="btn-d btn-outline" data-bs-dismiss="modal">Cancel</button>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn-d btn-outline" id="prevTabBtn" onclick="navigateWizard(-1)" disabled>
+                            <i class="bi bi-chevron-left me-1"></i> Previous
+                        </button>
+                        <button type="button" class="btn-d btn-primary" id="nextTabBtn" onclick="navigateWizard(1)">
+                            Next: Old Device Specs <i class="bi bi-chevron-right ms-1"></i>
+                        </button>
+                        <button type="submit" class="btn-d btn-success" id="submitTradeInBtn" style="display:none">
+                            <i class="bi bi-check2-circle me-1"></i> Accept Trade-In &amp; Transfer to Inventory
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<!-- Modal: View Trade-In Details -->
+<div class="modal fade" id="tradeInDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary)">
+            <div class="modal-header" style="border-bottom:1px solid var(--border)">
+                <h5 class="modal-title fw-bold" style="color:var(--primary-text)"><i class="bi bi-file-earmark-medical me-2"></i>Trade-In Inspection Sheet &amp; History</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" id="detailsModalBody">
+                <div class="text-center py-4"><div class="spinner-border text-primary"></div></div>
+            </div>
+            <div class="modal-footer" style="border-top:1px solid var(--border)">
+                <button type="button" class="btn-d btn-outline" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Edit Trade-In Record -->
+<div class="modal fade" id="editExchangeModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary)">
+            <div class="modal-header" style="border-bottom:1px solid var(--border)">
+                <h5 class="modal-title fw-bold" style="color:var(--primary-text)"><i class="bi bi-pencil-square me-2"></i>Edit Trade-In Record (Full Field Coverage)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="UpdateExchange" method="post" id="editTradeInForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Id" id="editExchangeId" />
+                
+                <div class="modal-body p-4" style="max-height:75vh;overflow-y:auto">
+                    <!-- Edit Form Tabs -->
+                    <ul class="nav nav-tabs mb-4" id="editTradeInTabs" role="tablist" style="border-bottom-color:var(--border)">
+                        <li class="nav-item">
+                            <button class="nav-link active fw-bold" id="edit-cust-tab" data-bs-toggle="tab" data-bs-target="#edit-cust-tab-pane" type="button"><i class="bi bi-person me-1"></i> 1. Customer</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link fw-bold" id="edit-device-tab" data-bs-toggle="tab" data-bs-target="#edit-device-tab-pane" type="button"><i class="bi bi-phone me-1"></i> 2. Device Specs</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link fw-bold" id="edit-condition-tab" data-bs-toggle="tab" data-bs-target="#edit-condition-tab-pane" type="button"><i class="bi bi-cpu me-1"></i> 3. Inspection Checklist</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link fw-bold" id="edit-security-tab" data-bs-toggle="tab" data-bs-target="#edit-security-tab-pane" type="button"><i class="bi bi-shield-lock me-1"></i> 4. Security Locks</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link fw-bold" id="edit-accessories-tab" data-bs-toggle="tab" data-bs-target="#edit-accessories-tab-pane" type="button"><i class="bi bi-box-seam me-1"></i> 5. Accessories</button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link fw-bold" id="edit-valuation-tab" data-bs-toggle="tab" data-bs-target="#edit-valuation-tab-pane" type="button"><i class="bi bi-cash-stack me-1"></i> 6. Valuation &amp; Destination</button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="editTradeInTabsContent">
+                        <!-- TAB 1: Customer Info -->
+                        <div class="tab-pane fade show active" id="edit-cust-tab-pane">
+                            <div class="s-title mb-3"><i class="bi bi-person-vcard me-2" style="color:var(--primary)"></i>Customer Information</div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Customer Name <span class="req">*</span></label>
+                                        <input type="text" name="CustomerName" id="editCustomerName" required class="fg-control" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Contact Phone Number <span class="req">*</span></label>
+                                        <input type="tel" name="CustomerPhone" id="editCustomerPhone" required class="fg-control phone-input" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Customer Email Address</label>
+                                        <input type="email" name="CustomerEmail" id="editCustomerEmail" class="fg-control email-input" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Customer Address</label>
+                                        <input type="text" name="CustomerAddress" id="editCustomerAddress" class="fg-control" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 2: Device Specs -->
+                        <div class="tab-pane fade" id="edit-device-tab-pane">
+                            <div class="s-title mb-3"><i class="bi bi-phone me-2" style="color:var(--primary)"></i>Old Device Specifications</div>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="fg">
+                                        <label class="fg-label">Brand <span class="req">*</span></label>
+                                        <input type="text" name="OldBrand" id="editOldBrand" required class="fg-control" />
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="fg">
+                                        <label class="fg-label">Model Name <span class="req">*</span></label>
+                                        <input type="text" name="OldModel" id="editOldModel" required class="fg-control" />
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="fg">
+                                        <label class="fg-label">Color <span class="req">*</span></label>
+                                        <input type="text" name="OldColor" id="editOldColor" required class="fg-control" />
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="fg">
+                                        <label class="fg-label">Storage / Variant</label>
+                                        <input type="text" name="OldStorage" id="editOldStorage" class="fg-control" />
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="fg">
+                                        <label class="fg-label">RAM Capacity</label>
+                                        <input type="text" name="OldRam" id="editOldRam" class="fg-control" />
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="fg">
+                                        <label class="fg-label">Device Type</label>
+                                        <select name="DeviceType" id="editDeviceType" class="fg-control">
+                                            <option value="Smartphone">Smartphone</option>
+                                            <option value="Feature Phone">Feature Phone</option>
+                                            <option value="Tablet">Tablet / iPad</option>
+                                            <option value="Smartwatch">Smartwatch</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Primary IMEI (IMEI 1) <span class="req">*</span></label>
+                                        <input type="text" name="OldImei1" id="editOldImei1" required class="fg-control imei-input font-monospace" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Secondary IMEI (IMEI 2)</label>
+                                        <input type="text" name="OldImei2" id="editOldImei2" class="fg-control imei-input font-monospace" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Serial Number</label>
+                                        <input type="text" name="SerialNumber" id="editSerialNumber" class="fg-control font-monospace" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">SIM Network Type</label>
+                                        <select name="SimType" id="editSimType" class="fg-control">
+                                            <option value="Dual SIM">Dual SIM (eSIM / Physical)</option>
+                                            <option value="Single SIM">Single SIM</option>
+                                            <option value="eSIM Only">eSIM Only</option>
+                                            <option value="Wi-Fi Only">Wi-Fi Only (No SIM)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 3: Technical Inspection -->
+                        <div class="tab-pane fade" id="edit-condition-tab-pane">
+                            <div class="s-title mb-3"><i class="bi bi-cpu me-2" style="color:var(--primary)"></i>Condition &amp; Inspection Checklist</div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Overall Physical Condition <span class="req">*</span></label>
+                                        <select name="Condition" id="editCondition" required class="fg-control">
+                                            <option value="Flawless / Like New">Flawless / Like New</option>
+                                            <option value="Good Condition">Good Condition</option>
+                                            <option value="Fair Condition">Fair Condition</option>
+                                            <option value="Damaged">Damaged / Display Cracked</option>
+                                            <option value="Non-Working">Non-Working / Dead Motherboard</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="fg">
+                                        <label class="fg-label">Battery Health Percentage (%)</label>
+                                        <input type="number" name="BatteryHealthPercentage" id="editBatteryHealthPercentage" min="0" max="100" class="fg-control" placeholder="e.g. 88" />
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="fg">
+                                        <label class="fg-label">Battery Condition</label>
+                                        <select name="BatteryCondition" id="editBatteryCondition" class="fg-control">
+                                            <option value="Excellent">Excellent (&gt; 85%)</option>
+                                            <option value="Good">Good (75% - 85%)</option>
+                                            <option value="Weak">Weak (&lt; 75%)</option>
+                                            <option value="Needs Replacement">Needs Replacement</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="col-12"><hr class="s-divider my-2" /><span class="td-strong" style="color:var(--primary-text)">Component Inspection Checklist:</span></div>
+
+                                <div class="col-md-3">
+                                    <div class="fg">
+                                        <label class="fg-label">Screen &amp; Display</label>
+                                        <select name="ScreenCondition" id="editScreenCondition" class="fg-control">
+                                            <option value="Excellent">Excellent</option>
+                                            <option value="Good">Good</option>
+                                            <option value="Scratched">Heavy Scratches</option>
+                                            <option value="Cracked">Glass Cracked</option>
+                                            <option value="Display Issue">Display Lines / Dots</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="fg">
+                                        <label class="fg-label">Body &amp; Housing</label>
+                                        <select name="BodyCondition" id="editBodyCondition" class="fg-control">
+                                            <option value="Excellent">Excellent</option>
+                                            <option value="Good">Good</option>
+                                            <option value="Scratches">Scratches</option>
+                                            <option value="Dents">Dents / Scuffs</option>
+                                            <option value="Heavy Damage">Heavy Damage</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="fg">
+                                        <label class="fg-label">Camera</label>
+                                        <select name="CameraCondition" id="editCameraCondition" class="fg-control">
+                                            <option value="Working">Working</option>
+                                            <option value="Minor Issue">Minor Blur</option>
+                                            <option value="Faulty">Faulty</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="fg">
+                                        <label class="fg-label">Speakers</label>
+                                        <select name="SpeakerCondition" id="editSpeakerCondition" class="fg-control">
+                                            <option value="Working">Working</option>
+                                            <option value="Minor Issue">Distorted</option>
+                                            <option value="Faulty">Faulty</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="fg">
+                                        <label class="fg-label">Microphone</label>
+                                        <select name="MicrophoneCondition" id="editMicrophoneCondition" class="fg-control">
+                                            <option value="Working">Working</option>
+                                            <option value="Minor Issue">Low Input Voice</option>
+                                            <option value="Faulty">Faulty</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="fg">
+                                        <label class="fg-label">Charging Port</label>
+                                        <select name="ChargingPortCondition" id="editChargingPortCondition" class="fg-control">
+                                            <option value="Working">Working</option>
+                                            <option value="Loose">Loose Contact</option>
+                                            <option value="Damaged">Damaged</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="fg">
+                                        <label class="fg-label">Physical Buttons</label>
+                                        <select name="ButtonsCondition" id="editButtonsCondition" class="fg-control">
+                                            <option value="Working">Working</option>
+                                            <option value="Damaged">Stuck / Damaged</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="fg">
+                                        <label class="fg-label">Face ID / Biometrics</label>
+                                        <select name="FaceIdFingerprintCondition" id="editFaceIdFingerprintCondition" class="fg-control">
+                                            <option value="Working">Working</option>
+                                            <option value="Not Working">Not Working</option>
+                                            <option value="Not Available">Not Available</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 4: Security Locks -->
+                        <div class="tab-pane fade" id="edit-security-tab-pane">
+                            <div class="s-title mb-3"><i class="bi bi-shield-lock me-2" style="color:var(--primary)"></i>Device Account Locks &amp; Security</div>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="fg">
+                                        <label class="fg-label">Passcode Unlocked?</label>
+                                        <select name="IsDeviceUnlocked" id="editIsDeviceUnlocked" class="fg-control">
+                                            <option value="true">Yes (Screen Passcode Removed)</option>
+                                            <option value="false">No (Locked with Passcode)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="fg">
+                                        <label class="fg-label">Apple Activation Lock (iCloud)</label>
+                                        <select name="AppleActivationLock" id="editAppleActivationLock" class="fg-control">
+                                            <option value="Clear">Clear (Signed Out)</option>
+                                            <option value="Enabled">Enabled (iCloud Locked ⚠️)</option>
+                                            <option value="Not Checked">Not Checked</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="fg">
+                                        <label class="fg-label">Google Account Lock (FRP)</label>
+                                        <select name="GoogleFRPAccountLock" id="editGoogleFRPAccountLock" class="fg-control">
+                                            <option value="Clear">Clear (Signed Out)</option>
+                                            <option value="Enabled">Enabled (FRP Locked ⚠️)</option>
+                                            <option value="Not Checked">Not Checked</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 5: Accessories Received -->
+                        <div class="tab-pane fade" id="edit-accessories-tab-pane">
+                            <div class="s-title mb-3"><i class="bi bi-box-seam me-2" style="color:var(--primary)"></i>Accessories Included</div>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <div class="d-flex flex-wrap gap-4 p-3 rounded" style="background:var(--bg);border:1px solid var(--border)">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="AccessoriesReceived" value="Original Box" id="editAcc1">
+                                            <label class="form-check-label text-light" for="editAcc1">Original Box</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="AccessoriesReceived" value="Original Charger" id="editAcc2">
+                                            <label class="form-check-label text-light" for="editAcc2">Charger</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="AccessoriesReceived" value="USB Cable" id="editAcc3">
+                                            <label class="form-check-label text-light" for="editAcc3">USB Cable</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="AccessoriesReceived" value="Earphones" id="editAcc4">
+                                            <label class="form-check-label text-light" for="editAcc4">Earphones</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="AccessoriesReceived" value="Case" id="editAcc5">
+                                            <label class="form-check-label text-light" for="editAcc5">Protective Case</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="AccessoriesReceived" value="Original Invoice" id="editAcc6">
+                                            <label class="form-check-label text-light" for="editAcc6">Purchase Invoice</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="AccessoriesReceived" value="SIM Ejector" id="editAcc7">
+                                            <label class="form-check-label text-light" for="editAcc7">SIM Ejector Pin</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="fg">
+                                        <label class="fg-label">Other Accessories / Additional Notes</label>
+                                        <input type="text" name="OtherAccessoriesNotes" id="editOtherAccessoriesNotes" class="fg-control" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 6: Valuation & Destination -->
+                        <div class="tab-pane fade" id="edit-valuation-tab-pane">
+                            <div class="s-title mb-3"><i class="bi bi-cash-stack me-2" style="color:var(--primary)"></i>Valuation &amp; Inventory Routing</div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Estimated Valuation (₹)</label>
+                                        <input type="number" step="0.01" name="EstimatedValue" id="editEstimatedValue" class="fg-control" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Final Valuation Credit (Acquisition Cost) (₹) <span class="req">*</span></label>
+                                        <input type="number" step="0.01" name="FinalExchangeValue" id="editFinalExchangeValue" required class="fg-control fw-bold" style="color:var(--success)" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Inventory Destination Status <span class="req">*</span></label>
+                                        <select name="InventoryDestinationStatus" id="editInventoryDestinationStatus" required class="fg-control">
+                                            <option value="InStock">In Stock (Available for POS Sale)</option>
+                                            <option value="UnderRepair">Under Repair (Sent to Service)</option>
+                                            <option value="Damaged">Damaged (Scrap / Parts)</option>
+                                            <option value="Pending">Pending Inspection</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="fg">
+                                        <label class="fg-label">Inspector Name</label>
+                                        <input type="text" name="InspectorName" id="editInspectorName" class="fg-control" />
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="fg">
+                                        <label class="fg-label">Remarks &amp; Inspector Notes</label>
+                                        <textarea name="Remarks" id="editRemarks" rows="3" class="fg-control"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer justify-content-end" style="border-top:1px solid var(--border)">
+                    <button type="button" class="btn-d btn-outline" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn-d btn-primary"><i class="bi bi-check2-circle me-1"></i> Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        const wizardTabIds = ['cust-tab', 'device-tab', 'condition-tab', 'security-tab', 'accessories-tab', 'valuation-tab'];
+        const wizardTabLabels = [
+            'Next: 2. Old Device Specs',
+            'Next: 3. Condition Inspection',
+            'Next: 4. Security Locks',
+            'Next: 5. Accessories',
+            'Next: 6. Valuation & Destination',
+            'Accept Trade-In'
+        ];
+
+        let currentTabIdx = 0;
+
+        function updateWizardButtons() {
+            const prevBtn = document.getElementById('prevTabBtn');
+            const nextBtn = document.getElementById('nextTabBtn');
+            const submitBtn = document.getElementById('submitTradeInBtn');
+
+            prevBtn.disabled = (currentTabIdx === 0);
+
+            if (currentTabIdx === wizardTabIds.length - 1) {
+                nextBtn.style.display = 'none';
+                submitBtn.style.display = 'inline-flex';
+            } else {
+                nextBtn.style.display = 'inline-flex';
+                submitBtn.style.display = 'none';
+                nextBtn.innerHTML = `${wizardTabLabels[currentTabIdx]} <i class="bi bi-chevron-right ms-1"></i>`;
+            }
+        }
+
+        function navigateWizard(direction) {
+            if (direction > 0) {
+                // Validate inputs in current active tab before moving forward
+                const currentPaneId = wizardTabIds[currentTabIdx].replace('-tab', '-tab-pane');
+                const currentPane = document.getElementById(currentPaneId);
+                if (currentPane) {
+                    const inputs = currentPane.querySelectorAll('input, select, textarea');
+                    for (let input of inputs) {
+                        if (!input.checkValidity()) {
+                            input.reportValidity();
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            const newIdx = currentTabIdx + direction;
+            if (newIdx >= 0 && newIdx < wizardTabIds.length) {
+                const tabBtn = document.getElementById(wizardTabIds[newIdx]);
+                if (tabBtn) {
+                    const bsTab = bootstrap.Tab.getOrCreateInstance(tabBtn);
+                    bsTab.show();
+                }
+            }
+        }
+
+        // Sync button states when user manually clicks tab headers
+        document.querySelectorAll('#tradeInTabs button[data-bs-toggle="tab"]').forEach((btn, idx) => {
+            btn.addEventListener('shown.bs.tab', (e) => {
+                const targetId = e.target.id;
+                const foundIdx = wizardTabIds.indexOf(targetId);
+                if (foundIdx !== -1) {
+                    currentTabIdx = foundIdx;
+                    updateWizardButtons();
+                }
+            });
+        });
+
+        function onBrandSelectChange(select) {
+            const val = select.value;
+            const customBox = document.getElementById('customBrandBox');
+            const customInput = document.getElementById('customBrandInput');
+            const finalInput = document.getElementById('finalBrandInput');
+
+            if (val === 'Other') {
+                customBox.style.display = 'block';
+                customInput.required = true;
+                finalInput.value = customInput.value.trim();
+            } else {
+                customBox.style.display = 'none';
+                customInput.required = false;
+                finalInput.value = val;
+            }
+        }
+
+        function updateBrandValue() {
+            const select = document.getElementById('brandSelect');
+            if (select.value === 'Other') {
+                document.getElementById('finalBrandInput').value = document.getElementById('customBrandInput').value.trim();
+            }
+        }
+
+        function onColorSelectChange(select) {
+            const val = select.value;
+            const customBox = document.getElementById('customColorBox');
+            const customInput = document.getElementById('customColorInput');
+            const finalInput = document.getElementById('finalColorInput');
+
+            if (val === 'Other') {
+                customBox.style.display = 'block';
+                customInput.required = true;
+                finalInput.value = customInput.value.trim();
+            } else {
+                customBox.style.display = 'none';
+                customInput.required = false;
+                finalInput.value = val;
+            }
+        }
+
+        function updateColorValue() {
+            const select = document.getElementById('colorSelect');
+            if (select.value === 'Other') {
+                document.getElementById('finalColorInput').value = document.getElementById('customColorInput').value.trim();
+            }
+        }
+
+        async function openDetailsModal(id) {
+            const modalBody = document.getElementById('detailsModalBody');
+            modalBody.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div><div class="mt-2 text-muted">Loading complete trade-in inspection sheet...</div></div>';
+            
+            const modal = new bootstrap.Modal(document.getElementById('tradeInDetailsModal'));
+            modal.show();
+
+            try {
+                const res = await fetch(`@Url.Action("GetDetails", "Exchange")?id=${id}`);
+                const data = await res.json();
+                if (data.success) {
+                    let lockTag = data.hasAccountLock 
+                        ? `<span class="badge-d badge-red"><i class="bi bi-lock-fill me-1"></i> Locked (iCloud/FRP Flagged)</span>` 
+                        : `<span class="badge-d badge-green"><i class="bi bi-unlock-fill me-1"></i> Unlocked / Clear</span>`;
+
+                    let accBadges = (data.accessoriesReceived || []).map(a => `<span class="badge-d badge-gray me-1 mb-1">${a}</span>`).join('');
+
+                    modalBody.innerHTML = `
+                        <div class="row g-4">
+                            <!-- HEADER BAR -->
+                            <div class="col-12">
+                                <div class="card-d card-p d-flex flex-wrap justify-content-between align-items-center">
+                                    <div>
+                                        <span class="badge-d badge-purple fs-6">Trade-In #${data.exchangeNumber}</span>
+                                        <span class="ms-2 text-muted" style="font-size:12px"><i class="bi bi-clock me-1"></i>${data.date}</span>
+                                    </div>
+                                    <div>
+                                        <span class="me-3"><strong>Inspector:</strong> ${data.inspectorName || data.executedBy}</span>
+                                        <span><strong>Inspection Status:</strong> <span class="badge-d badge-green">${data.inspectionStatus || 'Passed'}</span></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- CUSTOMER INFO -->
+                            <div class="col-md-6">
+                                <div class="card-d card-p h-100">
+                                    <div class="s-title"><i class="bi bi-person me-2" style="color:var(--primary)"></i>1. Customer Details</div>
+                                    <div class="mb-1"><strong>Full Name:</strong> ${data.customerName}</div>
+                                    <div class="mb-1"><strong>Phone Number:</strong> <code style="color:var(--primary-text)">${data.customerPhone}</code></div>
+                                    <div class="mb-1"><strong>Email Address:</strong> ${data.customerEmail || 'N/A'}</div>
+                                    <div><strong>Address:</strong> ${data.customerAddress || 'N/A'}</div>
+                                </div>
+                            </div>
+
+                            <!-- DEVICE SPECS -->
+                            <div class="col-md-6">
+                                <div class="card-d card-p h-100">
+                                    <div class="s-title"><i class="bi bi-phone me-2" style="color:var(--success)"></i>2. Old Device Specifications</div>
+                                    <div class="mb-1"><strong>Brand &amp; Model:</strong> ${data.brand} ${data.model}</div>
+                                    <div class="mb-1"><strong>Physical Color:</strong> <span class="badge-d badge-blue">${data.color}</span></div>
+                                    <div class="mb-1"><strong>Storage &amp; RAM:</strong> ${data.storage} ${data.ram ? '(' + data.ram + ' RAM)' : ''}</div>
+                                    <div class="mb-1"><strong>Device Type &amp; SIM:</strong> ${data.deviceType || 'Smartphone'} (${data.simType || 'Dual SIM'})</div>
+                                    <div class="mb-1"><strong>Primary IMEI (SIM 1):</strong> <code style="color:var(--primary-text);font-weight:bold">${data.imei1}</code></div>
+                                    ${data.imei2 ? `<div class="mb-1"><strong>Secondary IMEI (SIM 2):</strong> <code style="color:var(--text-muted)">${data.imei2}</code></div>` : ''}
+                                    ${data.serialNumber ? `<div><strong>Serial Number:</strong> <code>${data.serialNumber}</code></div>` : ''}
+                                </div>
+                            </div>
+
+                            <!-- TECHNICAL INSPECTION & CONDITION -->
+                            <div class="col-md-6">
+                                <div class="card-d card-p h-100">
+                                    <div class="s-title"><i class="bi bi-cpu me-2" style="color:var(--warning)"></i>3. Physical Condition &amp; Component Health</div>
+                                    <div class="mb-2"><strong>Overall Grade:</strong> <span class="badge-d badge-gray">${data.condition}</span></div>
+                                    <div class="mb-2"><strong>Battery Health:</strong> ${data.batteryHealthPercentage ? data.batteryHealthPercentage + '%' : 'N/A'} (${data.batteryCondition || 'Good'})</div>
+                                    <div class="p-2 rounded mb-2" style="background:var(--bg);font-size:12px">
+                                        <div>• <strong>Screen/Display:</strong> ${data.screenCondition || 'Good'}</div>
+                                        <div>• <strong>Body/Housing:</strong> ${data.bodyCondition || 'Good'}</div>
+                                        <div>• <strong>Camera (Front/Rear):</strong> ${data.cameraCondition || 'Working'}</div>
+                                        <div>• <strong>Speaker &amp; Earpiece:</strong> ${data.speakerCondition || 'Working'}</div>
+                                        <div>• <strong>Microphone:</strong> ${data.microphoneCondition || 'Working'}</div>
+                                        <div>• <strong>Charging Port:</strong> ${data.chargingPortCondition || 'Working'}</div>
+                                        <div>• <strong>Physical Buttons:</strong> ${data.buttonsCondition || 'Working'}</div>
+                                        <div>• <strong>Face ID / Biometrics:</strong> ${data.faceIdFingerprintCondition || 'Working'}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- SECURITY LOCKS & ACCESSORIES -->
+                            <div class="col-md-6">
+                                <div class="card-d card-p h-100">
+                                    <div class="s-title"><i class="bi bi-shield-lock me-2" style="color:var(--info)"></i>4. Security Locks &amp; Accessories</div>
+                                    <div class="mb-2"><strong>Overall Security:</strong> ${lockTag}</div>
+                                    <div class="mb-1"><strong>Passcode Unlocked?</strong> ${data.isDeviceUnlocked ? '<span class="text-success">Yes (Screen Passcode Removed)</span>' : '<span class="text-danger">No (Locked)</span>'}</div>
+                                    <div class="mb-1"><strong>Apple Activation Lock (iCloud):</strong> <span class="badge-d ${data.appleActivationLock === 'Enabled' ? 'badge-red' : 'badge-green'}">${data.appleActivationLock || 'Clear'}</span></div>
+                                    <div class="mb-3"><strong>Google Account Lock (FRP):</strong> <span class="badge-d ${data.googleFRPAccountLock === 'Enabled' ? 'badge-red' : 'badge-green'}">${data.googleFRPAccountLock || 'Clear'}</span></div>
+                                    <hr class="s-divider my-2" />
+                                    <div class="mb-1"><strong>Accessories Included:</strong></div>
+                                    <div class="mb-2">${accBadges || '<span class="text-muted">No accessories included</span>'}</div>
+                                    ${data.otherAccessoriesNotes ? `<div><strong>Accessory Notes:</strong> ${data.otherAccessoriesNotes}</div>` : ''}
+                                </div>
+                            </div>
+
+                            <!-- VALUATION & INVENTORY ROUTING -->
+                            <div class="col-12">
+                                <div class="card-d card-p">
+                                    <div class="s-title"><i class="bi bi-cash-stack me-2" style="color:var(--success)"></i>5. Trade-In Valuation &amp; Inventory Transfer</div>
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <div><strong>Estimated Valuation:</strong> ₹${(data.estimatedValue || 0).toFixed(2)}</div>
+                                            <div><strong>Final Valuation Credit:</strong> <span class="td-strong" style="color:var(--success);font-size:20px">₹${data.finalExchangeValue.toFixed(2)}</span></div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div><strong>Inventory Status:</strong> <span class="badge-d badge-blue">${data.inventoryDestinationStatus}</span></div>
+                                            <div><strong>Created / Processed By:</strong> ${data.executedBy}</div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div><strong>Remarks / Inspector Notes:</strong></div>
+                                            <div class="text-muted" style="font-size:13px">${data.remarks || 'No additional notes entered.'}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    modalBody.innerHTML = `<div class="alert-d alert-danger">${data.message || 'Error loading details.'}</div>`;
+                }
+            } catch (err) {
+                modalBody.innerHTML = `<div class="alert-d alert-danger">Failed to fetch trade-in details: ${err}</div>`;
+            }
+        }
+
+        async function openEditExchangeModal(id) {
+            try {
+                const resp = await fetch(`/Exchange/GetDetails?id=${id}`);
+                const data = await resp.json();
+                if (!data.success) {
+                    alert(data.message || 'Record not found');
+                    return;
+                }
+
+                // 1. Customer Info
+                document.getElementById('editExchangeId').value = data.id || '';
+                document.getElementById('editCustomerName').value = data.customerName || '';
+                document.getElementById('editCustomerPhone').value = data.customerPhone || '';
+                document.getElementById('editCustomerEmail').value = data.customerEmail || '';
+                document.getElementById('editCustomerAddress').value = data.customerAddress || '';
+
+                // 2. Device Specs
+                document.getElementById('editOldBrand').value = data.brand || '';
+                document.getElementById('editOldModel').value = data.model || '';
+                document.getElementById('editOldColor').value = data.color || '';
+                document.getElementById('editOldStorage').value = data.storage || '';
+                document.getElementById('editOldRam').value = data.ram || '';
+                document.getElementById('editOldImei1').value = data.imei1 || '';
+                document.getElementById('editOldImei2').value = data.imei2 || '';
+                document.getElementById('editSerialNumber').value = data.serialNumber || '';
+                document.getElementById('editDeviceType').value = data.deviceType || 'Smartphone';
+                document.getElementById('editSimType').value = data.simType || 'Dual SIM';
+
+                // 3. Inspection Checklist
+                document.getElementById('editCondition').value = data.condition || 'Good Condition';
+                document.getElementById('editBatteryHealthPercentage').value = data.batteryHealthPercentage !== null ? data.batteryHealthPercentage : '';
+                document.getElementById('editBatteryCondition').value = data.batteryCondition || 'Good';
+                document.getElementById('editScreenCondition').value = data.screenCondition || 'Good';
+                document.getElementById('editBodyCondition').value = data.bodyCondition || 'Good';
+                document.getElementById('editCameraCondition').value = data.cameraCondition || 'Working';
+                document.getElementById('editSpeakerCondition').value = data.speakerCondition || 'Working';
+                document.getElementById('editMicrophoneCondition').value = data.microphoneCondition || 'Working';
+                document.getElementById('editChargingPortCondition').value = data.chargingPortCondition || 'Working';
+                document.getElementById('editButtonsCondition').value = data.buttonsCondition || 'Working';
+                document.getElementById('editFaceIdFingerprintCondition').value = data.faceIdFingerprintCondition || 'Working';
+
+                // 4. Security Locks
+                document.getElementById('editIsDeviceUnlocked').value = data.isDeviceUnlocked !== undefined ? data.isDeviceUnlocked.toString() : 'true';
+                document.getElementById('editAppleActivationLock').value = data.appleActivationLock || 'Clear';
+                document.getElementById('editGoogleFRPAccountLock').value = data.googleFRPAccountLock || 'Clear';
+
+                // 5. Accessories
+                const accList = data.accessoriesReceived || [];
+                document.querySelectorAll('#editExchangeModal input[name="AccessoriesReceived"]').forEach(cb => {
+                    cb.checked = accList.includes(cb.value);
+                });
+                document.getElementById('editOtherAccessoriesNotes').value = data.otherAccessoriesNotes || '';
+
+                // 6. Valuation & Destination
+                document.getElementById('editEstimatedValue').value = data.estimatedValue || 0;
+                document.getElementById('editFinalExchangeValue').value = data.finalExchangeValue || 0;
+                document.getElementById('editInventoryDestinationStatus').value = data.inventoryDestinationStatus || 'InStock';
+                document.getElementById('editInspectorName').value = data.inspectorName || '';
+                document.getElementById('editRemarks').value = data.remarks || '';
+
+                // Show first tab in Edit Modal by default
+                const firstEditTab = document.getElementById('edit-cust-tab');
+                if (firstEditTab) bootstrap.Tab.getOrCreateInstance(firstEditTab).show();
+
+                const modalEl = document.getElementById('editExchangeModal');
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+            } catch (err) {
+                alert('Failed to load trade-in record for editing.');
+            }
+        }
+
+        // Auto-switch to tab containing invalid input if submit fails
+        document.getElementById('tradeInForm').addEventListener('submit', function(e) {
+            const colorSel = document.getElementById('colorSelect').value;
+            if (!colorSel) {
+                alert('Please select a physical Color for the old phone on Tab 2 (Device Specs).');
+                e.preventDefault();
+                navigateWizard(1);
+                return false;
+            }
+
+            const invalidInput = this.querySelector(':invalid');
+            if (invalidInput) {
+                const pane = invalidInput.closest('.tab-pane');
+                if (pane) {
+                    const tabBtn = document.querySelector(`button[data-bs-target="#${pane.id}"]`);
+                    if (tabBtn) {
+                        bootstrap.Tab.getOrCreateInstance(tabBtn).show();
+                        setTimeout(() => {
+                            invalidInput.focus();
+                            invalidInput.reportValidity();
+                        }, 200);
+                    }
+                }
+            }
+        });
+
+        // Initialize button state when modal opens
+        document.getElementById('processExchangeModal').addEventListener('shown.bs.modal', function () {
+            currentTabIdx = 0;
+            const firstTab = document.getElementById(wizardTabIds[0]);
+            if (firstTab) bootstrap.Tab.getOrCreateInstance(firstTab).show();
+            updateWizardButtons();
+        });
+    </script>
+}

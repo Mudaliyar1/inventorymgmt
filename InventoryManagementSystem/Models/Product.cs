@@ -21,7 +21,9 @@ namespace InventoryManagementSystem.Models
 
         [BsonElement("CategoryId")]
         [BsonRepresentation(BsonType.ObjectId)]
-        public string CategoryId { get; set; } = string.Empty;
+        [BsonIgnoreIfNull]
+        [BsonIgnoreIfDefault]
+        public string? CategoryId { get; set; }
 
         // Mobile Shop Specific Classification
         [BsonElement("ProductType")]
@@ -42,7 +44,11 @@ namespace InventoryManagementSystem.Models
         [BsonElement("Color")]
         public string Color { get; set; } = string.Empty;
 
-        // Mobile Device Specifications
+        // Embedded Detailed Hardware Specifications Sub-Model
+        [BsonElement("Specs")]
+        public MobileSpecifications Specs { get; set; } = new MobileSpecifications();
+
+        // Legacy / Convenience Hardware Specification Shortcuts
         [BsonElement("Ram")]
         public string Ram { get; set; } = string.Empty;
 
@@ -50,22 +56,52 @@ namespace InventoryManagementSystem.Models
         public string Storage { get; set; } = string.Empty;
 
         [BsonElement("Processor")]
-        public string Processor { get; set; } = string.Empty;
+        public string Processor
+        {
+            get => !string.IsNullOrWhiteSpace(Specs?.ProcessorName) ? Specs.ProcessorName : _processor;
+            set { _processor = value; if (Specs != null && string.IsNullOrWhiteSpace(Specs.ProcessorName)) Specs.ProcessorName = value; }
+        }
+        private string _processor = string.Empty;
 
         [BsonElement("DisplaySize")]
-        public string DisplaySize { get; set; } = string.Empty;
+        public string DisplaySize
+        {
+            get => !string.IsNullOrWhiteSpace(Specs?.DisplaySize) ? Specs.DisplaySize : _displaySize;
+            set { _displaySize = value; if (Specs != null && string.IsNullOrWhiteSpace(Specs.DisplaySize)) Specs.DisplaySize = value; }
+        }
+        private string _displaySize = string.Empty;
 
         [BsonElement("BatteryCapacity")]
-        public string BatteryCapacity { get; set; } = string.Empty;
+        public string BatteryCapacity
+        {
+            get => (Specs != null && Specs.BatteryCapacityMah > 0) ? $"{Specs.BatteryCapacityMah} mAh" : _batteryCapacity;
+            set { _batteryCapacity = value; }
+        }
+        private string _batteryCapacity = string.Empty;
 
         [BsonElement("OperatingSystem")]
-        public string OperatingSystem { get; set; } = string.Empty;
+        public string OperatingSystem
+        {
+            get => !string.IsNullOrWhiteSpace(Specs?.OperatingSystem) ? Specs.OperatingSystem : _operatingSystem;
+            set { _operatingSystem = value; if (Specs != null && string.IsNullOrWhiteSpace(Specs.OperatingSystem)) Specs.OperatingSystem = value; }
+        }
+        private string _operatingSystem = string.Empty;
 
         [BsonElement("NetworkSupport")]
-        public string NetworkSupport { get; set; } = string.Empty;
+        public string NetworkSupport
+        {
+            get => (Specs != null && Specs.Network5G) ? "5G / 4G / VoLTE" : _networkSupport;
+            set { _networkSupport = value; }
+        }
+        private string _networkSupport = string.Empty;
 
         [BsonElement("SimType")]
-        public string SimType { get; set; } = string.Empty;
+        public string SimType
+        {
+            get => !string.IsNullOrWhiteSpace(Specs?.SimType) ? Specs.SimType : _simType;
+            set { _simType = value; if (Specs != null && string.IsNullOrWhiteSpace(Specs.SimType)) Specs.SimType = value; }
+        }
+        private string _simType = string.Empty;
 
         // Commercials
         [BsonElement("PurchasePrice")]

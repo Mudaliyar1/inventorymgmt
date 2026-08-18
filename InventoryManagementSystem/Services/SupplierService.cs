@@ -1,3 +1,4 @@
+using InventoryManagementSystem.Helpers;
 using InventoryManagementSystem.Interfaces;
 using InventoryManagementSystem.Models;
 using System;
@@ -41,6 +42,16 @@ namespace InventoryManagementSystem.Services
         {
             if (supplier == null) return (false, "Supplier data is missing.", null);
             if (string.IsNullOrWhiteSpace(supplier.CompanyName)) return (false, "Company Name is required.", null);
+
+            // Contact Phone & Email Validation
+            if (!string.IsNullOrWhiteSpace(supplier.Phone) && !ValidationHelper.IsValidPhone(supplier.Phone))
+            {
+                return (false, "Invalid Contact Number format. Phone number must be 10 numeric digits.", null);
+            }
+            if (!string.IsNullOrWhiteSpace(supplier.Email) && !ValidationHelper.IsValidEmail(supplier.Email))
+            {
+                return (false, "Invalid Email address format. Example: supplier@domain.com", null);
+            }
 
             var existing = await _supplierRepository.GetByNameAsync(supplier.CompanyName);
 

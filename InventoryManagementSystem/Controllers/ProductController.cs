@@ -19,20 +19,25 @@ namespace InventoryManagementSystem.Controllers
         private readonly IImageService _imageService;
         private readonly IAuditLogService _auditLogService;
         private readonly INotificationRepository _notificationRepository;
+        private readonly IMobileSpecSearchService _specSearchService;
 
         public ProductController(
             IProductService productService,
             ICategoryService categoryService,
             IImageService imageService,
             IAuditLogService auditLogService,
-            INotificationRepository notificationRepository)
+            INotificationRepository notificationRepository,
+            IMobileSpecSearchService specSearchService)
         {
             _productService = productService;
             _categoryService = categoryService;
             _imageService = imageService;
             _auditLogService = auditLogService;
             _notificationRepository = notificationRepository;
+            _specSearchService = specSearchService;
         }
+
+
 
         public async Task<IActionResult> Index(string? search, string? categoryId, string? sortBy, bool isDescending = false, int page = 1)
         {
@@ -108,18 +113,24 @@ namespace InventoryManagementSystem.Controllers
             }
 
             var product = new Product
-                {
-                    Name = model.Name,
-                    Code = model.Code.ToUpper(),
-                    Barcode = model.Barcode,
-                    CategoryId = model.CategoryId,
-                    PurchasePrice = model.PurchasePrice,
-                    SellingPrice = model.SellingPrice,
-                    CurrentStock = model.InitialStock,
-                    MinimumStock = model.MinimumStock,
-                    Description = model.Description,
-                    Status = model.Status
-                };
+            {
+                Name = model.Name,
+                Code = model.Code.ToUpper(),
+                Barcode = model.Barcode,
+                CategoryId = model.CategoryId,
+                ProductType = model.ProductType ?? "Smartphone",
+                Brand = model.Brand ?? string.Empty,
+                ModelName = model.ModelName ?? string.Empty,
+                Variant = model.Variant ?? string.Empty,
+                Color = model.Color ?? string.Empty,
+                PurchasePrice = model.PurchasePrice,
+                SellingPrice = model.SellingPrice,
+                CurrentStock = model.InitialStock,
+                MinimumStock = model.MinimumStock,
+                Description = model.Description,
+                Status = model.Status,
+                Specs = model.Specs ?? new MobileSpecifications()
+            };
 
             // Image Upload
             if (model.ProductImage != null && model.ProductImage.Length > 0)
@@ -179,12 +190,18 @@ namespace InventoryManagementSystem.Controllers
                 Code = product.Code,
                 Barcode = product.Barcode,
                 CategoryId = product.CategoryId,
+                ProductType = product.ProductType ?? "Smartphone",
+                Brand = product.Brand,
+                ModelName = product.ModelName,
+                Variant = product.Variant,
+                Color = product.Color,
                 PurchasePrice = product.PurchasePrice,
                 SellingPrice = product.SellingPrice,
                 MinimumStock = product.MinimumStock,
                 Description = product.Description,
                 Status = product.Status,
-                CurrentImageUrl = product.ImageUrl
+                CurrentImageUrl = product.ImageUrl,
+                Specs = product.Specs ?? new MobileSpecifications()
             };
 
             await PopulateCategoriesList(model);
@@ -237,11 +254,17 @@ namespace InventoryManagementSystem.Controllers
             existingProduct.Code = model.Code.ToUpper();
             existingProduct.Barcode = model.Barcode;
             existingProduct.CategoryId = model.CategoryId;
+            existingProduct.ProductType = model.ProductType ?? "Smartphone";
+            existingProduct.Brand = model.Brand ?? string.Empty;
+            existingProduct.ModelName = model.ModelName ?? string.Empty;
+            existingProduct.Variant = model.Variant ?? string.Empty;
+            existingProduct.Color = model.Color ?? string.Empty;
             existingProduct.PurchasePrice = model.PurchasePrice;
             existingProduct.SellingPrice = model.SellingPrice;
             existingProduct.MinimumStock = model.MinimumStock;
             existingProduct.Description = model.Description ?? string.Empty;
             existingProduct.Status = model.Status;
+            existingProduct.Specs = model.Specs ?? new MobileSpecifications();
 
             if (model.ProductImage != null && model.ProductImage.Length > 0)
             {
@@ -307,6 +330,60 @@ namespace InventoryManagementSystem.Controllers
             TempData["ToastType"] = "success";
 
             return RedirectToAction(nameof(Index));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> SearchSpecsOnline(string brand, string modelName, string variant, bool allowThirdPartyFallback = false, string? customUrl = null)
+        {
+            var user = User.Identity?.Name ?? "Admin";
+            await _auditLogService.LogActivityAsync(
+                "PRODUCT_SPECIFICATION_SEARCH_STARTED",
+                user,
+                $"Brand: {brand}, Model: {modelName}",
+                $"Search started. Target: Official Manufacturer First. FallbackAllowed: {allowThirdPartyFallback}, CustomUrl: {customUrl}");
+
+            var result = await _specSearchService.SearchSpecificationsAsync(brand, modelName, variant, allowThirdPartyFallback, customUrl);
+
+            if (result.Success)
+            {
+                await _auditLogService.LogActivityAsync(
+                    "PRODUCT_SPECIFICATION_SEARCH_COMPLETED",
+                    user,
+                    $"Brand: {brand}, Model: {modelName}",
+                    $"Specs retrieved successfully. SourceType: {result.PrimarySourceType}, ExactMatched: {result.ExactModelMatched}, Confidence: {result.ConfidenceMatch}");
+            }
+            else
+            {
+                await _auditLogService.LogActivityAsync(
+                    "PRODUCT_SPECIFICATION_SEARCH_FAILED",
+                    user,
+                    $"Brand: {brand}, Model: {modelName}",
+                    $"Search failed: {result.ErrorMessage}");
+            }
+
+            return Json(result);
+        }
+
+        public class LogSpecAppliedRequest
+        {
+            public string Brand { get; set; } = string.Empty;
+            public string ModelName { get; set; } = string.Empty;
+            public string Variant { get; set; } = string.Empty;
+            public string SourceUrl { get; set; } = string.Empty;
+            public string SourceType { get; set; } = "Official Manufacturer";
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> LogSpecsApplied([FromBody] LogSpecAppliedRequest req)
+        {
+            var user = User.Identity?.Name ?? "Admin";
+            await _auditLogService.LogActivityAsync(
+                "PRODUCT_SPECIFICATIONS_APPLIED",
+                user,
+                $"Brand: {req.Brand}, Model: {req.ModelName}",
+                $"Admin confirmed and applied specs to form. SourceType: {req.SourceType}, SourceURL: {req.SourceUrl}");
+
+            return Json(new { success = true });
         }
 
         private async Task PopulateCategoriesList(ProductCreateViewModel model)

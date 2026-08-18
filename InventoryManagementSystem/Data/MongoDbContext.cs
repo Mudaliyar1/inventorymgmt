@@ -65,6 +65,9 @@ namespace InventoryManagementSystem.Data
                 await Products.Indexes.CreateManyAsync(new[] { productCodeIndex, productCatIndex, productStatusIndex, productBrandIndex });
 
                 // Devices (IMEI) Indexes
+                try { await Devices.Indexes.DropOneAsync("IMEI2_1"); } catch { }
+                try { await Devices.Indexes.DropOneAsync("SerialNumber_1"); } catch { }
+
                 var deviceImei1Index = new CreateIndexModel<Device>(
                     Builders<Device>.IndexKeys.Ascending(d => d.IMEI1),
                     new CreateIndexOptions { Unique = true, Sparse = true });

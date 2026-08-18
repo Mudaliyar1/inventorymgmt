@@ -5,8 +5,8 @@
 
 <div class="ph">
     <div>
-        <h1 class="ph-title">Edit Mobile Product</h1>
-        <p class="ph-sub">Update mobile model specifications, pricing and category.</p>
+        <h1 class="ph-title"><i class="bi bi-pencil-square me-2" style="color:var(--primary)"></i>Edit Mobile Product</h1>
+        <p class="ph-sub">Update mobile model specifications, pricing, hardware features and category.</p>
     </div>
     <div class="ph-actions">
         <a href="@Url.Action("Index","Product")" class="btn-d btn-outline">
@@ -15,24 +15,95 @@
     </div>
 </div>
 
-<form asp-action="Edit" method="post" enctype="multipart/form-data">
+<form asp-action="Edit" method="post" enctype="multipart/form-data" id="productEditForm">
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="Id" />
     <input type="hidden" asp-for="CurrentImageUrl" />
 
+    <!-- Automatic Mobile Specification Finder Banner -->
+    <div class="card-d mb-4 border-primary shadow-sm" style="background: linear-gradient(135deg, rgba(25, 135, 84, 0.05), rgba(13, 202, 240, 0.05)); border: 1px solid rgba(25, 135, 84, 0.3);">
+        <div class="card-body p-3">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                <div>
+                    <h6 class="mb-1 text-success font-weight-bold"><i class="bi bi-shield-check me-2"></i>Official-Manufacturer-First Specification Finder</h6>
+                    <p class="text-muted small mb-0">Search official technical specs automatically or paste a direct specification URL below.</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-info" onclick="toggleDirectUrlMode()">
+                        <i class="bi bi-link-45deg me-1"></i> Paste Spec URL
+                    </button>
+                    <button type="button" class="btn btn-sm btn-success" onclick="searchOnlineSpecs(false)">
+                        <i class="bi bi-search me-1"></i> Search Official Specs
+                    </button>
+                </div>
+            </div>
+
+            <!-- Standard Search Inputs -->
+            <div class="row g-2 align-items-center" id="standardSearchInputs">
+                <div class="col-md-4">
+                    <input type="text" id="autoSearchBrand" class="fg-control form-control-sm" placeholder="Brand (e.g. vivo, Apple, Samsung, Xiaomi)" value="@Model.Specs?.ProcessorBrand">
+                </div>
+                <div class="col-md-5">
+                    <input type="text" id="autoSearchModel" class="fg-control form-control-sm" placeholder="Model Name (e.g. X200, iPhone 15, S24 Ultra)" value="@Model.Name">
+                </div>
+                <div class="col-md-3">
+                    <input type="text" id="autoSearchVariant" class="fg-control form-control-sm" placeholder="Variant (e.g. 12GB / 256GB)">
+                </div>
+            </div>
+
+            <!-- Direct URL Entry Input Banner (Toggleable) -->
+            <div class="row g-2 align-items-center mt-2 d-none" id="directUrlBannerInput">
+                <div class="col-md-9">
+                    <input type="url" id="directBannerUrl" class="form-control form-control-sm" placeholder="Paste Direct Specification Page URL (e.g. https://www.vivo.com/in/products/x200 or https://www.gsmarena.com/...)">
+                </div>
+                <div class="col-md-3">
+                    <button type="button" class="btn btn-info text-white btn-sm w-100" onclick="extractFromBannerUrl()">
+                        <i class="bi bi-download me-1"></i> Extract Specs from URL
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row g-4">
-        <!-- Left Column -->
+        <!-- Main Form Column -->
         <div class="col-lg-8">
             <div class="card-d card-p-lg mb-4">
-                <div class="s-title"><i class="bi bi-phone me-2 text-primary"></i>Mobile Device Specifications</div>
+                <div class="s-title"><i class="bi bi-phone me-2" style="color:var(--primary)"></i>Mobile Device &amp; Product Information</div>
                 <div asp-validation-summary="ModelOnly" class="alert-d alert-danger mb-4"></div>
 
                 <div class="row g-3">
                     <div class="col-12">
                         <div class="fg">
                             <label class="fg-label" asp-for="Name">Product / Model Title <span class="req">*</span></label>
-                            <input asp-for="Name" id="Name" class="fg-control" placeholder="e.g. Samsung Galaxy S23 Ultra" required>
+                            <input asp-for="Name" id="Name" class="fg-control" placeholder="e.g. Samsung Galaxy S24 Ultra" required>
                             <span asp-validation-for="Name" class="fg-error"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="Brand">Brand</label>
+                            <input asp-for="Brand" id="Brand" class="fg-control" placeholder="e.g. Samsung, Apple, Vivo">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="ModelName">Model Name</label>
+                            <input asp-for="ModelName" id="ModelName" class="fg-control" placeholder="e.g. Galaxy S24 Ultra">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="Variant">RAM / Storage Variant</label>
+                            <input asp-for="Variant" id="Variant" class="fg-control" placeholder="e.g. 12GB RAM / 256GB">
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="Color">Color</label>
+                            <input asp-for="Color" id="Color" class="fg-control" placeholder="e.g. Titanium Black">
                         </div>
                     </div>
 
@@ -45,7 +116,7 @@
                                 </button>
                             </div>
                             <div class="fg-action-wrap">
-                                <input asp-for="Code" id="Code" class="fg-control" placeholder="e.g. SAM-S23-256" required>
+                                <input asp-for="Code" id="Code" class="fg-control" placeholder="e.g. SAM-S24U-256" required>
                                 <button type="button" class="fg-action-btn" onclick="generateSKU()" title="Generate SKU Code">
                                     <i class="bi bi-magic"></i> Generate
                                 </button>
@@ -123,10 +194,226 @@
                     </div>
 
                     <div class="col-12">
-                        <div class="fg">
+                        <div class="fg mb-0">
                             <label class="fg-label" asp-for="Description">Description & Key Specs</label>
-                            <textarea asp-for="Description" class="fg-control" rows="3"
-                                      placeholder="Add product description, specifications or features…"></textarea>
+                            <textarea asp-for="Description" class="fg-control" rows="2" placeholder="Add product description, specifications or features…"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile Hardware Specifications Card -->
+            <div class="card-d card-p-lg mb-4">
+                <div class="s-title"><i class="bi bi-cpu me-2" style="color:var(--primary)"></i>Mobile Hardware Specifications</div>
+                
+                <ul class="nav nav-tabs mb-3" id="specsTab" role="tablist" style="border-bottom-color:var(--border)">
+                    <li class="nav-item">
+                        <button class="nav-link active fw-bold" id="proc-tab" data-bs-toggle="tab" data-bs-target="#proc-tab-pane" type="button"><i class="bi bi-cpu me-1"></i> Performance</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link fw-bold" id="disp-tab" data-bs-toggle="tab" data-bs-target="#disp-tab-pane" type="button"><i class="bi bi-display me-1"></i> Display &amp; Camera</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link fw-bold" id="batt-tab" data-bs-toggle="tab" data-bs-target="#batt-tab-pane" type="button"><i class="bi bi-battery-charging me-1"></i> Battery &amp; Network</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link fw-bold" id="os-tab" data-bs-toggle="tab" data-bs-target="#os-tab-pane" type="button"><i class="bi bi-shield-check me-1"></i> OS &amp; Security</button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="specsTabContent">
+                    <!-- Tab 1: Performance -->
+                    <div class="tab-pane fade show active" id="proc-tab-pane">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Processor Brand</label>
+                                    <input type="text" asp-for="Specs.ProcessorBrand" class="fg-control" placeholder="e.g. Qualcomm, Apple, MediaTek" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Processor / Chipset Name</label>
+                                    <input type="text" asp-for="Specs.ProcessorName" class="fg-control" placeholder="e.g. Snapdragon 8 Gen 3, A16 Bionic" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">CPU Cores &amp; Speed</label>
+                                    <input type="text" asp-for="Specs.CpuCores" class="fg-control" placeholder="e.g. Octa-Core 3.3 GHz" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">GPU</label>
+                                    <input type="text" asp-for="Specs.Gpu" class="fg-control" placeholder="e.g. Adreno 750" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">RAM Type</label>
+                                    <input type="text" asp-for="Specs.RamType" class="fg-control" placeholder="e.g. LPDDR5X" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Storage Type</label>
+                                    <input type="text" asp-for="Specs.StorageType" class="fg-control" placeholder="e.g. UFS 4.0, NVMe" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: Display & Camera -->
+                    <div class="tab-pane fade" id="disp-tab-pane">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Display Size (inches)</label>
+                                    <input type="text" asp-for="Specs.DisplaySize" class="fg-control" placeholder="e.g. 6.8 inches" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Display Type</label>
+                                    <input type="text" asp-for="Specs.DisplayType" class="fg-control" placeholder="e.g. Dynamic AMOLED 2X" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Refresh Rate</label>
+                                    <input type="text" asp-for="Specs.RefreshRate" class="fg-control" placeholder="e.g. 120Hz" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Primary Rear Camera (MP)</label>
+                                    <input type="text" asp-for="Specs.PrimaryRearCameraMp" class="fg-control" placeholder="e.g. 200 MP + 50 MP + 12 MP" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Front Selfie Camera (MP)</label>
+                                    <input type="text" asp-for="Specs.FrontCameraMp" class="fg-control" placeholder="e.g. 12 MP" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Camera Features</label>
+                                    <input type="text" asp-for="Specs.CameraFeatures" class="fg-control" placeholder="e.g. OIS, 8K Video, 100x Zoom" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 3: Battery & Network -->
+                    <div class="tab-pane fade" id="batt-tab-pane">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Battery Capacity (mAh)</label>
+                                    <input type="number" asp-for="Specs.BatteryCapacityMah" class="fg-control" placeholder="5000" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Fast Charging (Wattage)</label>
+                                    <input type="text" asp-for="Specs.FastChargingWattage" class="fg-control" placeholder="e.g. 45W Fast Charging" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Charging Port</label>
+                                    <select asp-for="Specs.ChargingPortType" class="fg-control">
+                                        <option value="USB Type-C">USB Type-C</option>
+                                        <option value="Lightning">Lightning</option>
+                                        <option value="Micro-USB">Micro-USB</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="fg">
+                                    <label class="fg-label">5G Network Support?</label>
+                                    <select asp-for="Specs.Network5G" class="fg-control">
+                                        <option value="true">Yes — 5G Supported</option>
+                                        <option value="false">No — 4G LTE Only</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="fg">
+                                    <label class="fg-label">SIM Type</label>
+                                    <select asp-for="Specs.SimType" class="fg-control">
+                                        <option value="Dual SIM">Dual SIM (Nano + Nano)</option>
+                                        <option value="eSIM + Physical SIM">eSIM + Physical SIM</option>
+                                        <option value="Single SIM">Single SIM</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="fg">
+                                    <label class="fg-label">NFC Support?</label>
+                                    <select asp-for="Specs.Nfc" class="fg-control">
+                                        <option value="true">Yes (Tap &amp; Pay)</option>
+                                        <option value="false">No NFC</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="fg">
+                                    <label class="fg-label">Wireless Charging?</label>
+                                    <select asp-for="Specs.WirelessCharging" class="fg-control">
+                                        <option value="false">No Wireless Charging</option>
+                                        <option value="true">Yes Wireless Charging</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 4: OS & Security -->
+                    <div class="tab-pane fade" id="os-tab-pane">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Operating System</label>
+                                    <select asp-for="Specs.OperatingSystem" class="fg-control">
+                                        <option value="Android">Android</option>
+                                        <option value="iOS">iOS</option>
+                                        <option value="KaiOS">KaiOS</option>
+                                        <option value="Other">Other OS</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">OS Version</label>
+                                    <input type="text" asp-for="Specs.OsVersion" class="fg-control" placeholder="e.g. Android 14, iOS 17" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Fingerprint Sensor</label>
+                                    <select asp-for="Specs.FingerprintSensor" class="fg-control">
+                                        <option value="In-Display Ultrasonic">In-Display Ultrasonic</option>
+                                        <option value="Side-Mounted">Side-Mounted</option>
+                                        <option value="Rear-Mounted">Rear-Mounted</option>
+                                        <option value="None">None</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="fg">
+                                    <label class="fg-label">Water/Dust Resistance Rating</label>
+                                    <input type="text" asp-for="Specs.WaterResistance" class="fg-control" placeholder="e.g. IP68 Water/Dust Resistant" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="fg">
+                                    <label class="fg-label">Audio &amp; Speakers</label>
+                                    <input type="text" asp-for="Specs.AudioFeatures" class="fg-control" placeholder="e.g. Stereo Speakers, Dolby Atmos" />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -161,7 +448,6 @@
         </div>
     </div>
 
-    <!-- Actions -->
     <div class="d-flex align-items-center justify-content-end gap-3 mt-4">
         <a href="@Url.Action("Index","Product")" class="btn-d btn-outline">Cancel</a>
         <button type="submit" class="btn-d btn-primary">
@@ -169,6 +455,280 @@
         </button>
     </div>
 </form>
+
+<!-- Review Specifications Modal -->
+<div class="modal fade" id="specReviewModal" tabindex="-1" aria-labelledby="specReviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <div>
+                    <h5 class="modal-title font-weight-bold" id="specReviewModalLabel">
+                        <i class="bi bi-card-checklist text-primary me-2"></i>Review Extracted Specifications (100% Model Parity)
+                    </h5>
+                    <div class="mt-1 d-flex flex-wrap gap-1 align-items-center">
+                        <span class="badge bg-primary text-white" id="modalStatsPill">Specifications Found: 0 / 44</span>
+                        <span class="badge bg-success text-white" id="modalOfficialCountPill">Official: 0</span>
+                        <span class="badge bg-warning text-dark d-none" id="modalThirdPartyCountPill">Third-Party: 0</span>
+                        <span class="badge bg-secondary text-white" id="modalUnavailablePill">Unavailable: 44</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Source Provenance & Status Header -->
+                <div class="mb-3 p-3 rounded border" id="modalHeaderBox" style="background:#f8f9fa;">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                        <div>
+                            <span class="badge rounded-pill bg-success fs-6 px-3 py-2" id="modalSourceBadge">🟢 Official Manufacturer</span>
+                            <span class="badge bg-secondary ms-2" id="modalConfidenceBadge">High Match</span>
+                        </div>
+                        <div class="text-end small">
+                            <strong id="modalSourceSite">Official Manufacturer Website</strong>
+                            <div id="modalSourceLinks" class="mt-1"></div>
+                        </div>
+                    </div>
+                    <div class="text-muted small" id="modalConfidenceReason">Extracted directly from manufacturer's official published page.</div>
+                </div>
+
+                <!-- Fallback Warning Box -->
+                <div id="modalFallbackNoticeBox" class="alert alert-warning d-none py-2 px-3 small">
+                    <div class="fw-bold mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Official specification page could not be retrieved.</div>
+                    <p class="mb-2">The official website did not return an exact match or blocked automated access. Choose an option below:</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="searchOnlineSpecs(false)"><i class="bi bi-arrow-clockwise me-1"></i>Try Again</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="showCustomUrlInput()"><i class="bi bi-link-45deg me-1"></i>Enter Official URL</button>
+                        <button type="button" class="btn btn-sm btn-warning" onclick="searchOnlineSpecs(true)"><i class="bi bi-globe me-1"></i>Search Third-Party Sources</button>
+                        <button type="button" class="btn btn-sm btn-outline-dark" data-bs-dismiss="modal"><i class="bi bi-pencil-square me-1"></i>Enter Manually</button>
+                    </div>
+                </div>
+
+                <!-- Custom URL Entry Input Box -->
+                <div id="customUrlBox" class="card p-3 mb-3 d-none border-info bg-light">
+                    <label class="form-label small fw-bold">Enter Official Specification Page URL:</label>
+                    <div class="input-group input-group-sm">
+                        <input type="url" id="customUrlInput" class="form-control" placeholder="https://www.vivo.com/in/products/x200">
+                        <button class="btn btn-info text-white" type="button" onclick="fetchCustomUrlSpecs()">Extract Specs from URL</button>
+                    </div>
+                </div>
+
+                <div class="alert alert-info py-2 px-3 small">
+                    <i class="bi bi-info-circle me-1"></i> Review and edit any of the 44 specification fields below. Unpublished fields remain <strong>Not Available</strong>. Clicking <strong>Apply to Form</strong> populates client form without writing to MongoDB.
+                </div>
+
+                <form id="modalSpecForm">
+                    <div class="row g-3">
+                        <!-- 1. Processor & Performance -->
+                        <div class="col-12"><h6 class="text-primary border-bottom pb-1 fw-bold"><i class="bi bi-cpu me-1"></i>1. Processor &amp; Performance</h6></div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Processor Brand</label>
+                            <input type="text" id="m_ProcBrand" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Processor Name</label>
+                            <input type="text" id="m_ProcName" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Chipset Model</label>
+                            <input type="text" id="m_Chipset" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">CPU Cores</label>
+                            <input type="text" id="m_CpuCores" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">CPU Clock Speed</label>
+                            <input type="text" id="m_CpuClockSpeed" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">GPU Model</label>
+                            <input type="text" id="m_Gpu" class="form-control form-control-sm">
+                        </div>
+
+                        <!-- 2. Memory & Storage -->
+                        <div class="col-12"><h6 class="text-primary border-bottom pb-1 fw-bold mt-2"><i class="bi bi-memory me-1"></i>2. Memory &amp; Storage</h6></div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">RAM Type</label>
+                            <input type="text" id="m_RamType" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Storage Type</label>
+                            <input type="text" id="m_StorageType" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Expandable Storage?</label>
+                            <input type="text" id="m_ExpandableStorage" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Max Storage Limit</label>
+                            <input type="text" id="m_MaxExpandableStorage" class="form-control form-control-sm">
+                        </div>
+
+                        <!-- 3. Display -->
+                        <div class="col-12"><h6 class="text-primary border-bottom pb-1 fw-bold mt-2"><i class="bi bi-display me-1"></i>3. Display Specifications</h6></div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Display Size</label>
+                            <input type="text" id="m_DispSize" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Display Type</label>
+                            <input type="text" id="m_DispType" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Resolution</label>
+                            <input type="text" id="m_Resolution" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Refresh Rate</label>
+                            <input type="text" id="m_RefreshRate" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Screen Protection</label>
+                            <input type="text" id="m_ScreenProtection" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Touchscreen?</label>
+                            <input type="text" id="m_Touchscreen" class="form-control form-control-sm">
+                        </div>
+
+                        <!-- 4. Cameras -->
+                        <div class="col-12"><h6 class="text-primary border-bottom pb-1 fw-bold mt-2"><i class="bi bi-camera me-1"></i>4. Rear &amp; Front Camera System</h6></div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Rear Camera Count</label>
+                            <input type="number" id="m_RearCamCount" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Primary Rear Camera</label>
+                            <input type="text" id="m_RearCam" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Ultrawide Camera</label>
+                            <input type="text" id="m_UltrawideCam" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Telephoto Camera</label>
+                            <input type="text" id="m_TelephotoCam" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Front Camera Count</label>
+                            <input type="number" id="m_FrontCamCount" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold">Front Selfie Camera</label>
+                            <input type="text" id="m_FrontCam" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label small fw-bold">Camera Features &amp; Video</label>
+                            <input type="text" id="m_CamFeatures" class="form-control form-control-sm">
+                        </div>
+
+                        <!-- 5. Battery & Charging -->
+                        <div class="col-12"><h6 class="text-primary border-bottom pb-1 fw-bold mt-2"><i class="bi bi-battery-charging me-1"></i>5. Battery &amp; Charging</h6></div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Battery Capacity (mAh)</label>
+                            <input type="number" id="m_BattCap" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Fast Charging Wattage</label>
+                            <input type="text" id="m_Wattage" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Wireless Charging?</label>
+                            <input type="text" id="m_WirelessCharging" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Charging Port</label>
+                            <input type="text" id="m_Port" class="form-control form-control-sm">
+                        </div>
+
+                        <!-- 6. Network & SIM -->
+                        <div class="col-12"><h6 class="text-primary border-bottom pb-1 fw-bold mt-2"><i class="bi bi-reception-4 me-1"></i>6. Network &amp; SIM Cards</h6></div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">5G Network?</label>
+                            <input type="text" id="m_Network5G" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold">4G LTE?</label>
+                            <input type="text" id="m_Network4G" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold">VoLTE?</label>
+                            <input type="text" id="m_VoLte" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">SIM Type</label>
+                            <input type="text" id="m_SimType" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-bold">eSIM Support?</label>
+                            <input type="text" id="m_EsimSupport" class="form-control form-control-sm">
+                        </div>
+
+                        <!-- 7. Connectivity & Audio -->
+                        <div class="col-12"><h6 class="text-primary border-bottom pb-1 fw-bold mt-2"><i class="bi bi-wifi me-1"></i>7. Connectivity &amp; Audio</h6></div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Wi-Fi Version</label>
+                            <input type="text" id="m_WifiVer" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Bluetooth Version</label>
+                            <input type="text" id="m_BluetoothVer" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">NFC Support?</label>
+                            <input type="text" id="m_Nfc" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Audio &amp; Speakers</label>
+                            <input type="text" id="m_AudioFeatures" class="form-control form-control-sm">
+                        </div>
+
+                        <!-- 8. OS & Security -->
+                        <div class="col-12"><h6 class="text-primary border-bottom pb-1 fw-bold mt-2"><i class="bi bi-shield-lock me-1"></i>8. Operating System &amp; Security</h6></div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Operating System</label>
+                            <input type="text" id="m_OS" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">OS Version</label>
+                            <input type="text" id="m_OSVer" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Fingerprint Sensor</label>
+                            <input type="text" id="m_Fingerprint" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Face Unlock?</label>
+                            <input type="text" id="m_FaceUnlock" class="form-control form-control-sm">
+                        </div>
+
+                        <!-- 9. Physical & Sensors -->
+                        <div class="col-12"><h6 class="text-primary border-bottom pb-1 fw-bold mt-2"><i class="bi bi-palette me-1"></i>9. Physical Design, Colors &amp; Sensors</h6></div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Water Resistance</label>
+                            <input type="text" id="m_WaterResistance" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Official Colors</label>
+                            <input type="text" id="m_OfficialColors" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Dimensions &amp; Weight</label>
+                            <input type="text" id="m_DimensionsWeight" class="form-control form-control-sm">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold">Sensors</label>
+                            <input type="text" id="m_Sensors" class="form-control form-control-sm">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="applyModalSpecsToForm()"><i class="bi bi-check-lg me-1"></i>Apply to Form</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @section Scripts {
 <partial name="_ValidationScriptsPartial" />
@@ -215,5 +775,301 @@ function generateBarcode() {
     if (window.showToast) window.showToast(`Generated Barcode: ${barcode}`, 'success');
   }
 }
+
+let activeSpecResult = null;
+
+async function searchOnlineSpecs(allowThirdParty = false) {
+    const brand = document.getElementById('autoSearchBrand')?.value || document.getElementById('Brand')?.value || '';
+    const modelName = document.getElementById('autoSearchModel')?.value || document.getElementById('ModelName')?.value || document.getElementById('Name')?.value || '';
+    const variant = document.getElementById('autoSearchVariant')?.value || '';
+
+    if (!brand.trim() && !modelName.trim()) {
+        alert('Please enter at least a Brand or Model Name to search specifications.');
+        return;
+    }
+
+    const modeText = allowThirdParty ? 'Searching trusted third-party reference sources...' : 'Searching official manufacturer website...';
+    if (window.showToast) window.showToast(modeText, 'info');
+
+    try {
+        const url = `/Product/SearchSpecsOnline?brand=${encodeURIComponent(brand)}&modelName=${encodeURIComponent(modelName)}&variant=${encodeURIComponent(variant)}&allowThirdPartyFallback=${allowThirdParty}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        activeSpecResult = data;
+        populateModalWithSpecs(data);
+
+        const modalEl = document.getElementById('specReviewModal');
+        const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        bsModal.show();
+
+    } catch (err) {
+        console.error('Spec search error:', err);
+        alert('Error searching specifications. You can continue by entering details manually.');
+    }
+}
+
+function toggleDirectUrlMode() {
+    const box = document.getElementById('directUrlBannerInput');
+    box.classList.toggle('d-none');
+    if (!box.classList.contains('d-none')) {
+        document.getElementById('directBannerUrl').focus();
+    }
+}
+
+async function extractFromBannerUrl() {
+    const customUrl = document.getElementById('directBannerUrl').value.trim();
+    if (!customUrl) {
+        alert('Please enter or paste a valid specification page URL.');
+        return;
+    }
+
+    const brand = document.getElementById('autoSearchBrand')?.value || document.getElementById('Brand')?.value || '';
+    const modelName = document.getElementById('autoSearchModel')?.value || document.getElementById('ModelName')?.value || document.getElementById('Name')?.value || '';
+
+    if (window.showToast) window.showToast('Extracting specifications from provided URL...', 'info');
+
+    try {
+        const url = `/Product/SearchSpecsOnline?brand=${encodeURIComponent(brand)}&modelName=${encodeURIComponent(modelName)}&customUrl=${encodeURIComponent(customUrl)}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        activeSpecResult = data;
+        populateModalWithSpecs(data);
+
+        const modalEl = document.getElementById('specReviewModal');
+        const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        bsModal.show();
+    } catch (err) {
+        alert('Failed to extract specifications from URL.');
+    }
+}
+
+function showCustomUrlInput() {
+    document.getElementById('customUrlBox').classList.remove('d-none');
+}
+
+async function fetchCustomUrlSpecs() {
+    const customUrl = document.getElementById('customUrlInput').value.trim();
+    if (!customUrl) {
+        alert('Please enter a valid URL.');
+        return;
+    }
+
+    const brand = document.getElementById('autoSearchBrand')?.value || '';
+    const modelName = document.getElementById('autoSearchModel')?.value || '';
+
+    if (window.showToast) window.showToast('Extracting specs from provided URL...', 'info');
+
+    try {
+        const url = `/Product/SearchSpecsOnline?brand=${encodeURIComponent(brand)}&modelName=${encodeURIComponent(modelName)}&customUrl=${encodeURIComponent(customUrl)}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        activeSpecResult = data;
+        populateModalWithSpecs(data);
+    } catch (err) {
+        alert('Failed to extract specifications from URL.');
+    }
+}
+
+function populateModalWithSpecs(data) {
+    const specs = data.extractedSpecs || {};
+    const fallbackBox = document.getElementById('modalFallbackNoticeBox');
+
+    // Update Extraction Statistics Pills
+    const total = data.totalFieldsCount || 44;
+    const populated = data.populatedFieldsCount || 0;
+    const official = data.officialFieldsCount || 0;
+    const thirdParty = data.thirdPartyFieldsCount || 0;
+    const unavailable = data.unavailableFieldsCount || (total - populated);
+
+    document.getElementById('modalStatsPill').innerText = `Specifications Found: ${populated} / ${total}`;
+    document.getElementById('modalOfficialCountPill').innerText = `Official: ${official}`;
+    document.getElementById('modalUnavailablePill').innerText = `Unavailable: ${unavailable}`;
+    
+    if (!data.success) {
+        fallbackBox.classList.remove('d-none');
+        document.getElementById('modalSourceBadge').className = 'badge rounded-pill bg-danger fs-6 px-3 py-2';
+        document.getElementById('modalSourceBadge').innerText = '🔴 Not Found on Official Site';
+        document.getElementById('modalConfidenceReason').innerText = data.errorMessage || 'Official manufacturer page not found.';
+    } else {
+        fallbackBox.classList.add('d-none');
+        const isOfficial = data.primarySourceType === 'Official Manufacturer';
+        document.getElementById('modalSourceBadge').className = isOfficial ? 'badge rounded-pill bg-success fs-6 px-3 py-2' : 'badge rounded-pill bg-warning text-dark fs-6 px-3 py-2';
+        document.getElementById('modalSourceBadge').innerText = isOfficial ? '🟢 Official Manufacturer' : '🟡 Third-Party Source';
+        document.getElementById('modalConfidenceReason').innerText = data.confidenceReason || '';
+    }
+
+    document.getElementById('modalConfidenceBadge').innerText = data.confidenceMatch === 'High' ? 'High Match' : 'Needs Verification';
+
+    const sourceLinksDiv = document.getElementById('modalSourceLinks');
+    if (data.sourceWebsites && data.sourceWebsites.length > 0) {
+        sourceLinksDiv.innerHTML = data.sourceWebsites.map(s => `<a href="${s.url}" target="_blank" class="badge bg-secondary text-decoration-none me-1">${s.siteName} <i class="bi bi-box-arrow-up-right ms-1"></i></a>`).join('');
+    } else {
+        sourceLinksDiv.innerHTML = '<span class="text-muted">No Direct Link</span>';
+    }
+
+    // Populate all 44 fields into review modal inputs
+    document.getElementById('m_ProcBrand').value = specs.processorBrand || '';
+    document.getElementById('m_ProcName').value = specs.processorName || '';
+    document.getElementById('m_Chipset').value = specs.chipsetModel || specs.chipset || '';
+    document.getElementById('m_CpuCores').value = specs.cpuCores || '';
+    document.getElementById('m_CpuClockSpeed').value = specs.cpuClockSpeed || '';
+    document.getElementById('m_Gpu').value = specs.gpu || '';
+
+    document.getElementById('m_RamType').value = specs.ramType || '';
+    document.getElementById('m_StorageType').value = specs.storageType || '';
+    document.getElementById('m_ExpandableStorage').value = specs.expandableStorage ? 'Yes' : 'No';
+    document.getElementById('m_MaxExpandableStorage').value = specs.maxExpandableStorage || '';
+
+    document.getElementById('m_DispSize').value = specs.displaySize || '';
+    document.getElementById('m_DispType').value = specs.displayType || '';
+    document.getElementById('m_Resolution').value = specs.resolution || '';
+    document.getElementById('m_RefreshRate').value = specs.refreshRate || '';
+    document.getElementById('m_ScreenProtection').value = specs.screenProtection || '';
+    document.getElementById('m_Touchscreen').value = specs.touchscreen ? 'Yes' : 'No';
+
+    document.getElementById('m_RearCamCount').value = specs.rearCameraCount || 3;
+    document.getElementById('m_RearCam').value = specs.primaryRearCameraMp || '';
+    document.getElementById('m_UltrawideCam').value = specs.ultrawideCameraMp || '';
+    document.getElementById('m_TelephotoCam').value = specs.telephotoCameraMp || '';
+    document.getElementById('m_FrontCamCount').value = specs.frontCameraCount || 1;
+    document.getElementById('m_FrontCam').value = specs.frontCameraMp || '';
+    document.getElementById('m_CamFeatures').value = specs.cameraFeatures || '';
+
+    document.getElementById('m_BattCap').value = specs.batteryCapacityMah || '';
+    document.getElementById('m_Wattage').value = specs.fastChargingWattage || '';
+    document.getElementById('m_WirelessCharging').value = specs.wirelessCharging ? 'Yes' : 'No';
+    document.getElementById('m_Port').value = specs.chargingPortType || '';
+
+    document.getElementById('m_Network5G').value = specs.network5G ? 'Yes' : 'No';
+    document.getElementById('m_Network4G').value = specs.network4G ? 'Yes' : 'No';
+    document.getElementById('m_VoLte').value = specs.voLte ? 'Yes' : 'No';
+    document.getElementById('m_SimType').value = specs.simType || '';
+    document.getElementById('m_EsimSupport').value = specs.esimSupport ? 'Yes' : 'No';
+
+    document.getElementById('m_WifiVer').value = specs.wifiVersion || '';
+    document.getElementById('m_BluetoothVer').value = specs.bluetoothVersion || '';
+    document.getElementById('m_Nfc').value = specs.nfc ? 'Yes' : 'No';
+    document.getElementById('m_AudioFeatures').value = specs.audioFeatures || '';
+
+    document.getElementById('m_OS').value = specs.operatingSystem || '';
+    document.getElementById('m_OSVer').value = specs.osVersion || '';
+    document.getElementById('m_Fingerprint').value = specs.fingerprintSensor || '';
+    document.getElementById('m_FaceUnlock').value = specs.faceUnlock ? 'Yes' : 'No';
+
+    document.getElementById('m_WaterResistance').value = specs.waterResistance || '';
+    document.getElementById('m_OfficialColors').value = specs.officialColors || '';
+    document.getElementById('m_DimensionsWeight').value = specs.dimensionsWeight || '';
+    document.getElementById('m_Sensors').value = specs.sensors || '';
+}
+
+async function applyModalSpecsToForm() {
+    const setVal = (id, val) => {
+        const el = document.getElementById(id);
+        if (el && val !== undefined && val !== null && val !== '') el.value = val;
+    };
+
+    const brandVal = (activeSpecResult && activeSpecResult.brand) || document.getElementById('autoSearchBrand')?.value || document.getElementById('m_ProcBrand')?.value || '';
+    const modelVal = (activeSpecResult && activeSpecResult.modelName) || document.getElementById('autoSearchModel')?.value || '';
+    const variantVal = (activeSpecResult && activeSpecResult.variant) || document.getElementById('autoSearchVariant')?.value || '';
+    const colorVal = document.getElementById('m_OfficialColors')?.value || '';
+
+    if (brandVal) setVal('Brand', brandVal);
+    if (modelVal) setVal('ModelName', modelVal);
+    if (variantVal) setVal('Variant', variantVal);
+    if (colorVal) setVal('Color', colorVal);
+
+    // Populate Product / Model Title if empty
+    const nameEl = document.getElementById('Name');
+    if (nameEl) {
+        const titleParts = [brandVal, modelVal, variantVal].filter(Boolean).join(' ');
+        if (titleParts && (!nameEl.value.trim() || nameEl.value === 'Smartphone')) {
+            nameEl.value = titleParts;
+        }
+    }
+
+    setVal('Specs_ProcessorBrand', document.getElementById('m_ProcBrand').value);
+    setVal('Specs_ProcessorName', document.getElementById('m_ProcName').value);
+    setVal('Specs_Chipset', document.getElementById('m_Chipset').value);
+    setVal('Specs_CpuCores', document.getElementById('m_CpuCores').value);
+    setVal('Specs_CpuClockSpeed', document.getElementById('m_CpuClockSpeed').value);
+    setVal('Specs_Gpu', document.getElementById('m_Gpu').value);
+
+    setVal('Specs_RamType', document.getElementById('m_RamType').value);
+    setVal('Specs_StorageType', document.getElementById('m_StorageType').value);
+    setVal('Specs_ExpandableStorage', document.getElementById('m_ExpandableStorage').value === 'Yes');
+    setVal('Specs_MaxExpandableStorage', document.getElementById('m_MaxExpandableStorage').value);
+
+    setVal('Specs_DisplaySize', document.getElementById('m_DispSize').value);
+    setVal('Specs_DisplayType', document.getElementById('m_DispType').value);
+    setVal('Specs_Resolution', document.getElementById('m_Resolution').value);
+    setVal('Specs_RefreshRate', document.getElementById('m_RefreshRate').value);
+    setVal('Specs_ScreenProtection', document.getElementById('m_ScreenProtection').value);
+    setVal('Specs_Touchscreen', document.getElementById('m_Touchscreen').value === 'Yes');
+
+    setVal('Specs_RearCameraCount', document.getElementById('m_RearCamCount').value);
+    setVal('Specs_PrimaryRearCameraMp', document.getElementById('m_RearCam').value);
+    setVal('Specs_UltrawideCameraMp', document.getElementById('m_UltrawideCam').value);
+    setVal('Specs_TelephotoCameraMp', document.getElementById('m_TelephotoCam').value);
+    setVal('Specs_FrontCameraCount', document.getElementById('m_FrontCamCount').value);
+    setVal('Specs_FrontCameraMp', document.getElementById('m_FrontCam').value);
+    setVal('Specs_CameraFeatures', document.getElementById('m_CamFeatures').value);
+
+    setVal('Specs_BatteryCapacityMah', document.getElementById('m_BattCap').value);
+    setVal('Specs_FastChargingWattage', document.getElementById('m_Wattage').value);
+    setVal('Specs_WirelessCharging', document.getElementById('m_WirelessCharging').value === 'Yes');
+    setVal('Specs_ChargingPortType', document.getElementById('m_Port').value);
+
+    setVal('Specs_Network5G', document.getElementById('m_Network5G').value === 'Yes');
+    setVal('Specs_Network4G', document.getElementById('m_Network4G').value === 'Yes');
+    setVal('Specs_VoLte', document.getElementById('m_VoLte').value === 'Yes');
+    setVal('Specs_SimType', document.getElementById('m_SimType').value);
+    setVal('Specs_EsimSupport', document.getElementById('m_EsimSupport').value === 'Yes');
+
+    setVal('Specs_WifiVersion', document.getElementById('m_WifiVer').value);
+    setVal('Specs_BluetoothVersion', document.getElementById('m_BluetoothVer').value);
+    setVal('Specs_Nfc', document.getElementById('m_Nfc').value === 'Yes');
+    setVal('Specs_AudioFeatures', document.getElementById('m_AudioFeatures').value);
+
+    setVal('Specs_OperatingSystem', document.getElementById('m_OS').value);
+    setVal('Specs_OsVersion', document.getElementById('m_OSVer').value);
+    setVal('Specs_FingerprintSensor', document.getElementById('m_Fingerprint').value);
+    setVal('Specs_FaceUnlock', document.getElementById('m_FaceUnlock').value === 'Yes');
+
+    setVal('Specs_WaterResistance', document.getElementById('m_WaterResistance').value);
+    setVal('Specs_OfficialColors', document.getElementById('m_OfficialColors').value);
+    setVal('Specs_DimensionsWeight', document.getElementById('m_DimensionsWeight').value);
+    setVal('Specs_Sensors', document.getElementById('m_Sensors').value);
+
+    // Hide Modal
+    const modalEl = document.getElementById('specReviewModal');
+    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+    if (modalInstance) modalInstance.hide();
+
+    // Log Audit Event
+    try {
+        const firstUrl = activeSpecResult && activeSpecResult.sourceWebsites && activeSpecResult.sourceWebsites.length > 0 ? activeSpecResult.sourceWebsites[0].url : 'Web Extractor';
+        const sourceType = activeSpecResult ? activeSpecResult.primarySourceType : 'Official Manufacturer';
+        await fetch('/Product/LogSpecsApplied', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                brand: activeSpecResult ? activeSpecResult.brand : '',
+                modelName: activeSpecResult ? activeSpecResult.modelName : '',
+                variant: activeSpecResult ? activeSpecResult.variant : '',
+                sourceUrl: firstUrl,
+                sourceType: sourceType
+            })
+        });
+    } catch (e) {
+        console.log('LogSpecsApplied failed', e);
+    }
+
+    if (window.showToast) window.showToast('All matching specifications applied to product form! Click Save Changes to persist.', 'success');
+}
 </script>
 }
+
+

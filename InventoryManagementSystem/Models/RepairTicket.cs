@@ -49,6 +49,9 @@ namespace InventoryManagementSystem.Models
         [BsonElement("FinalCost")]
         public decimal FinalCost { get; set; }
 
+        [BsonElement("AdvancePaid")]
+        public decimal AdvancePaid { get; set; }
+
         // Status: Received, Diagnosing, Repairing, Ready, Delivered, Cancelled
         [BsonElement("Status")]
         public string Status { get; set; } = "Received";

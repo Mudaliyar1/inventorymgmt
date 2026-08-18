@@ -102,6 +102,78 @@
                     <div class="td-strong">@Model.MinimumStock units</div>
                 </div>
 
+                <div class="col-12 mt-3 pt-3" style="border-top:1px solid var(--border)">
+                    <div class="s-title mb-3"><i class="bi bi-cpu me-2" style="color:var(--primary)"></i>Mobile Hardware Specifications Sheet</div>
+                    
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">PROCESSOR &amp; CHIPSET</div>
+                            <div class="td-strong"><i class="bi bi-cpu me-1 text-primary"></i>@(string.IsNullOrWhiteSpace(Model.Specs?.ProcessorName) ? (string.IsNullOrWhiteSpace(Model.Processor) ? "Not Specified" : Model.Processor) : $"{Model.Specs?.ProcessorBrand} {Model.Specs?.ProcessorName}")</div>
+                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.Chipset)) { <div style="font-size:12px;color:var(--text-muted)">Chipset: @Model.Specs.Chipset</div> }
+                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.CpuCores)) { <div style="font-size:12px;color:var(--text-muted)">Cores: @Model.Specs.CpuCores (@Model.Specs?.CpuClockSpeed)</div> }
+                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.Gpu)) { <div style="font-size:12px;color:var(--text-muted)">GPU: @Model.Specs.Gpu</div> }
+                        </div>
+
+                        <div class="col-md-4">
+                            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">RAM &amp; STORAGE</div>
+                            <div class="td-strong"><i class="bi bi-memory me-1 text-success"></i>@(string.IsNullOrWhiteSpace(Model.Variant) ? (string.IsNullOrWhiteSpace(Model.Ram) && string.IsNullOrWhiteSpace(Model.Storage) ? "Not Specified" : $"{Model.Ram} / {Model.Storage}") : Model.Variant)</div>
+                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.RamType)) { <div style="font-size:12px;color:var(--text-muted)">RAM Type: @Model.Specs.RamType</div> }
+                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.StorageType)) { <div style="font-size:12px;color:var(--text-muted)">Storage Type: @Model.Specs.StorageType</div> }
+                            @if (Model.Specs != null && Model.Specs.ExpandableStorage) { <div style="font-size:12px;color:var(--text-muted)">Expandable: Up to @(Model.Specs.MaxExpandableStorage ?? "Card Slot")</div> }
+                        </div>
+
+                        <div class="col-md-4">
+                            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">DISPLAY SPECIFICATIONS</div>
+                            <div class="td-strong"><i class="bi bi-display me-1 text-info"></i>@(string.IsNullOrWhiteSpace(Model.Specs?.DisplaySize) ? (string.IsNullOrWhiteSpace(Model.DisplaySize) ? "Not Specified" : Model.DisplaySize) : $"{Model.Specs.DisplaySize} {Model.Specs.DisplayType}")</div>
+                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.Resolution)) { <div style="font-size:12px;color:var(--text-muted)">Resolution: @Model.Specs.Resolution</div> }
+                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.RefreshRate)) { <div style="font-size:12px;color:var(--text-muted)">Refresh Rate: @Model.Specs.RefreshRate</div> }
+                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.ScreenProtection)) { <div style="font-size:12px;color:var(--text-muted)">Protection: @Model.Specs.ScreenProtection</div> }
+                        </div>
+
+                        <div class="col-md-4">
+                            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">CAMERA SETUP</div>
+                            <div class="td-strong"><i class="bi bi-camera me-1 text-danger"></i>Primary: @(string.IsNullOrWhiteSpace(Model.Specs?.PrimaryRearCameraMp) ? "Not Specified" : Model.Specs.PrimaryRearCameraMp)</div>
+                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.UltrawideCameraMp)) { <div style="font-size:12px;color:var(--text-muted)">Ultrawide: @Model.Specs.UltrawideCameraMp</div> }
+                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.TelephotoCameraMp)) { <div style="font-size:12px;color:var(--text-muted)">Telephoto: @Model.Specs.TelephotoCameraMp</div> }
+                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.FrontCameraMp)) { <div style="font-size:12px;color:var(--text-muted)">Selfie: @Model.Specs.FrontCameraMp</div> }
+                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.CameraFeatures)) { <div style="font-size:12px;color:var(--text-muted)">Features: @Model.Specs.CameraFeatures</div> }
+                        </div>
+
+                        <div class="col-md-4">
+                            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">BATTERY &amp; CHARGING</div>
+                            <div class="td-strong"><i class="bi bi-battery-charging me-1 text-warning"></i>@(Model.Specs != null && Model.Specs.BatteryCapacityMah > 0 ? $"{Model.Specs.BatteryCapacityMah} mAh" : (string.IsNullOrWhiteSpace(Model.BatteryCapacity) ? "Not Specified" : Model.BatteryCapacity))</div>
+                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.FastChargingWattage)) { <div style="font-size:12px;color:var(--text-muted)">Fast Charge: @Model.Specs.FastChargingWattage (@Model.Specs.ChargingPortType)</div> }
+                            @if (Model.Specs != null && Model.Specs.WirelessCharging) { <div style="font-size:12px;color:var(--text-muted)">Wireless Charging Supported</div> }
+                        </div>
+
+                        <div class="col-md-4">
+                            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">NETWORK &amp; CONNECTIVITY</div>
+                            <div class="td-strong"><i class="bi bi-wifi me-1 text-primary"></i>@(Model.Specs != null && Model.Specs.Network5G ? "5G Network Supported" : "4G LTE")</div>
+                            <div style="font-size:12px;color:var(--text-muted)">SIM: @(Model.Specs?.SimType ?? "Dual SIM") @(Model.Specs != null && Model.Specs.EsimSupport ? "(eSIM Supported)" : "")</div>
+                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.WifiVersion)) { <div style="font-size:12px;color:var(--text-muted)">Wi-Fi: @Model.Specs.WifiVersion | BT: @Model.Specs.BluetoothVersion</div> }
+                            @if (Model.Specs != null && Model.Specs.Nfc) { <div style="font-size:12px;color:var(--text-muted)">NFC: Enabled</div> }
+                        </div>
+
+                        <div class="col-md-4">
+                            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">OS &amp; SECURITY</div>
+                            <div class="td-strong"><i class="bi bi-shield-check me-1 text-secondary"></i>@(Model.Specs?.OperatingSystem ?? "Android") @Model.Specs?.OsVersion</div>
+                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.FingerprintSensor)) { <div style="font-size:12px;color:var(--text-muted)">Biometrics: @Model.Specs.FingerprintSensor</div> }
+                        </div>
+
+                        <div class="col-md-4">
+                            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">PHYSICAL DESIGN &amp; COLORS</div>
+                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.OfficialColors)) { <div class="td-strong"><i class="bi bi-palette me-1 text-dark"></i>Colors: @Model.Specs.OfficialColors</div> }
+                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.WaterResistance)) { <div style="font-size:12px;color:var(--text-muted)">IP Rating: @Model.Specs.WaterResistance</div> }
+                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.DimensionsWeight)) { <div style="font-size:12px;color:var(--text-muted)">Dimensions: @Model.Specs.DimensionsWeight</div> }
+                        </div>
+
+                        <div class="col-md-4">
+                            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">SENSORS</div>
+                            <div style="font-size:12px;color:var(--text-secondary)">@(string.IsNullOrWhiteSpace(Model.Specs?.Sensors) ? "Standard Accelerometer, Proximity, Light Sensors" : Model.Specs.Sensors)</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="col-12">
                     <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">DESCRIPTION</div>
                     <div style="color:var(--text-secondary);font-size:14px;margin-top:4px;white-space:pre-wrap">@(string.IsNullOrEmpty(Model.Description) ? "No description provided." : Model.Description)</div>

@@ -186,6 +186,8 @@ builder.Services.AddScoped<ISupplierService, SupplierService>();
 builder.Services.AddScoped<IReturnService, ReturnService>();
 builder.Services.AddScoped<IExchangeService, ExchangeService>();
 builder.Services.AddScoped<IRepairService, RepairService>();
+builder.Services.AddSingleton<IManufacturerRegistryService, ManufacturerRegistryService>();
+builder.Services.AddHttpClient<IMobileSpecSearchService, MobileSpecSearchService>();
 
 // Configure Cookie Authentication
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)

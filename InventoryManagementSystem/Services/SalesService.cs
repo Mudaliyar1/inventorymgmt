@@ -21,6 +21,7 @@ namespace InventoryManagementSystem.Services
         private readonly IDeviceRepository _deviceRepository;
         private readonly ICustomerRepository _customerRepository;
         private readonly IStockService _stockService;
+        private readonly IAuditLogService _auditLogService;
         private readonly MongoDbContext _context;
 
         public SalesService(
@@ -29,6 +30,7 @@ namespace InventoryManagementSystem.Services
             IDeviceRepository deviceRepository,
             ICustomerRepository customerRepository,
             IStockService stockService,
+            IAuditLogService auditLogService,
             MongoDbContext context)
         {
             _saleRepository = saleRepository;
@@ -36,6 +38,7 @@ namespace InventoryManagementSystem.Services
             _deviceRepository = deviceRepository;
             _customerRepository = customerRepository;
             _stockService = stockService;
+            _auditLogService = auditLogService;
             _context = context;
 
             QuestPDF.Settings.License = LicenseType.Community;
@@ -51,6 +54,11 @@ namespace InventoryManagementSystem.Services
             // 1. Validate customer & auto-create/update customer record if provided
             if (!string.IsNullOrWhiteSpace(sale.CustomerPhone))
             {
+                if (!InventoryManagementSystem.Helpers.ValidationHelper.IsValidPhone(sale.CustomerPhone))
+                {
+                    throw new InvalidOperationException("Invalid Customer Contact Number format. Phone number must be 10 numeric digits.");
+                }
+
                 var existingCust = await _customerRepository.GetByPhoneAsync(sale.CustomerPhone.Trim());
                 if (existingCust != null)
                 {
@@ -76,29 +84,48 @@ namespace InventoryManagementSystem.Services
             // 2. Validate items & IMEIs
             foreach (var item in sale.Items)
             {
+                if (!string.IsNullOrWhiteSpace(item.IMEI1) && !InventoryManagementSystem.Helpers.ValidationHelper.IsValidImei(item.IMEI1))
+                {
+                    throw new InvalidOperationException($"Invalid IMEI 1 format '{item.IMEI1}' for product '{item.ProductName}'. Must be 14 to 16 digits.");
+                }
+                if (!string.IsNullOrWhiteSpace(item.IMEI2) && !InventoryManagementSystem.Helpers.ValidationHelper.IsValidImei(item.IMEI2))
+                {
+                    throw new InvalidOperationException($"Invalid IMEI 2 format '{item.IMEI2}' for product '{item.ProductName}'. Must be 14 to 16 digits.");
+                }
+
                 var product = await _productRepository.GetByIdAsync(item.ProductId);
                 if (product == null || product.CurrentStock < item.Quantity)
                 {
                     throw new InvalidOperationException($"Insufficient stock for product '{item.ProductName}' (Available: {product?.CurrentStock ?? 0})");
                 }
 
-                // If physical device / IMEI selected, validate availability
+                // If physical device / IMEI selected, validate availability & cost
+                Device? matchedDevice = null;
                 if (!string.IsNullOrWhiteSpace(item.DeviceId))
                 {
-                    var device = await _deviceRepository.GetByIdAsync(item.DeviceId);
-                    if (device == null || device.Status != "InStock")
+                    matchedDevice = await _deviceRepository.GetByIdAsync(item.DeviceId);
+                }
+                else if (!string.IsNullOrWhiteSpace(item.IMEI1))
+                {
+                    matchedDevice = await _deviceRepository.GetByImeiAsync(item.IMEI1.Trim());
+                }
+
+                if (matchedDevice != null)
+                {
+                    if (matchedDevice.Status != "InStock")
                     {
-                        throw new InvalidOperationException($"Selected device IMEI '{item.IMEI1}' is no longer available.");
+                        throw new InvalidOperationException($"Selected device IMEI '{matchedDevice.IMEI1}' is in status '{matchedDevice.Status}' and cannot be sold.");
                     }
 
-                    // Populate item details from device record
-                    item.IMEI1 = device.IMEI1;
-                    item.IMEI2 = device.IMEI2;
-                    item.SerialNumber = device.SerialNumber;
-                    item.Brand = device.Brand;
-                    item.ModelName = device.ModelName;
-                    item.Variant = device.Variant;
-                    item.Color = device.Color;
+                    item.DeviceId = matchedDevice.Id;
+                    item.IMEI1 = matchedDevice.IMEI1;
+                    item.IMEI2 = matchedDevice.IMEI2;
+                    item.SerialNumber = matchedDevice.SerialNumber;
+                    item.Brand = matchedDevice.Brand;
+                    item.ModelName = matchedDevice.ModelName;
+                    item.Variant = matchedDevice.Variant;
+                    item.Color = matchedDevice.Color; // PRESERVE COLOR
+                    item.CostPrice = matchedDevice.PurchasePrice; // ACQUISITION COST / TRADE-IN VALUATION
 
                     // Calculate warranty end date
                     int durMonths = product.WarrantyDurationMonths > 0 ? product.WarrantyDurationMonths : 12;
@@ -124,6 +151,16 @@ namespace InventoryManagementSystem.Services
                         sale.CustomerId,
                         sale.CustomerName,
                         sale.CustomerPhone);
+
+                    var soldDev = await _deviceRepository.GetByIdAsync(item.DeviceId);
+                    if (soldDev != null && soldDev.Source == "Trade-In")
+                    {
+                        await _auditLogService.LogActivityAsync(
+                            "TRADE_IN_SOLD",
+                            sale.CreatedBy,
+                            soldDev.ExchangeNumber,
+                            $"Sold Traded-In Mobile '{soldDev.Brand} {soldDev.ModelName}' (IMEI: {soldDev.IMEI1}, Color: {soldDev.Color}) under Invoice #{sale.InvoiceNumber} for ₹{item.SellingPrice:N2} (Acquisition Cost: ₹{soldDev.PurchasePrice:N2}, Gross Profit: ₹{(item.SellingPrice - soldDev.PurchasePrice):N2})");
+                    }
                 }
 
                 await _stockService.StockOutAsync(item.ProductId, item.Quantity, $"Mobile Invoice Sale: {sale.InvoiceNumber}", sale.CreatedBy);

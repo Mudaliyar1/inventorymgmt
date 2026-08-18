@@ -39,11 +39,27 @@
                     </li>
                     <li class="list-group-item d-flex justify-content-between px-0 py-2">
                         <span class="text-muted">RAM & Storage</span>
-                        <span class="fw-semibold">@Model.Variant</span>
+                        <span class="fw-semibold">@(string.IsNullOrWhiteSpace(Model.Variant) ? $"{Model.Ram} / {Model.Storage}" : Model.Variant)</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between px-0 py-2">
                         <span class="text-muted">Color</span>
                         <span class="fw-semibold">@Model.Color</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between px-0 py-2">
+                        <span class="text-muted">Processor / Chipset</span>
+                        <span class="fw-semibold"><i class="bi bi-cpu me-1 text-primary"></i>@(string.IsNullOrWhiteSpace(Model.Processor) ? (product?.Specs?.ProcessorName ?? "Not Specified") : Model.Processor)</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between px-0 py-2">
+                        <span class="text-muted">Display Specs</span>
+                        <span class="fw-semibold"><i class="bi bi-display me-1 text-info"></i>@(string.IsNullOrWhiteSpace(Model.DisplaySpecs) ? (product?.Specs?.DisplaySize ?? "Not Specified") : Model.DisplaySpecs)</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between px-0 py-2">
+                        <span class="text-muted">Camera Specs</span>
+                        <span class="fw-semibold"><i class="bi bi-camera me-1 text-danger"></i>@(string.IsNullOrWhiteSpace(Model.CameraSpecs) ? (product?.Specs?.PrimaryRearCameraMp ?? "Not Specified") : Model.CameraSpecs)</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between px-0 py-2">
+                        <span class="text-muted">Battery Capacity</span>
+                        <span class="fw-semibold"><i class="bi bi-battery-charging me-1 text-warning"></i>@(string.IsNullOrWhiteSpace(Model.BatteryCapacity) ? (product?.Specs != null && product.Specs.BatteryCapacityMah > 0 ? $"{product.Specs.BatteryCapacityMah} mAh" : "Not Specified") : Model.BatteryCapacity)</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between px-0 py-2">
                         <span class="text-muted">Serial Number</span>

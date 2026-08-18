@@ -48,31 +48,48 @@
             <div class="card-d card-p-lg">
                 <div class="s-title"><i class="bi bi-cart-plus me-2" style="color:var(--success)"></i>Billing Lines</div>
                 
-                <div class="row g-3 align-items-end mb-4">
+                <div class="row g-3 align-items-end mb-3">
                     <div class="col-md-6">
                         <div class="fg mb-0">
-                            <label class="fg-label">Product Search</label>
-                            <select id="productSelect" class="fg-control">
+                            <label class="fg-label">Product Search <span class="req">*</span></label>
+                            <select id="productSelect" class="fg-control" onchange="onProductSelectChange()">
                                 <option value="">— Choose Product SKU —</option>
                                 @foreach (var prod in products)
                                 {
-                                    <option value="@prod.Id" data-name="@prod.Name" data-code="@prod.Code" data-price="@prod.SellingPrice" data-stock="@prod.CurrentStock">
+                                    bool isImeiTracked = prod.IsImeiRequired || prod.ProductType == "Smartphone" || prod.ProductType == "Feature Phone" || prod.ProductType == "Tablet" || prod.ProductType == "Smartwatch";
+                                    <option value="@prod.Id" 
+                                            data-name="@prod.Name" 
+                                            data-code="@prod.Code" 
+                                            data-price="@prod.SellingPrice" 
+                                            data-stock="@prod.CurrentStock"
+                                            data-imei-required="@isImeiTracked.ToString().ToLower()">
                                         @prod.Name (SKU: @prod.Code - Price: ₹@prod.SellingPrice - Stock: @prod.CurrentStock)
                                     </option>
                                 }
                             </select>
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         <div class="fg mb-0">
                             <label class="fg-label">Quantity</label>
-                            <input type="number" id="qtyInput" min="1" value="1" class="fg-control" />
+                            <input type="number" id="qtyInput" min="1" value="1" class="fg-control" oninput="onQtyChange()" onchange="onQtyChange()" />
                         </div>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-4 text-end">
                         <button type="button" class="btn-d btn-primary w-100" onclick="addProductLine()">
-                            <i class="bi bi-plus-lg"></i> Add Item
+                            <i class="bi bi-plus-lg me-1"></i> Add Item(s) to Cart
                         </button>
+                    </div>
+                </div>
+
+                <!-- Dynamic IMEI Inputs Container for Each Device Unit -->
+                <div id="dynamicImeiWrapper" class="mb-4 p-3 rounded" style="background:var(--bg);border:1px solid var(--border);display:none;">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <h6 class="mb-0 text-primary font-weight-bold"><i class="bi bi-shield-lock me-2"></i>Device IMEI Numbers (<span id="imeiDeviceCountBadge">1 Device</span>)</h6>
+                        <span class="badge bg-warning text-dark font-monospace" style="font-size:11px;"><i class="bi bi-upc-scan me-1"></i>IMEI required for each physical device</span>
+                    </div>
+                    <div id="dynamicImeiList" class="row g-2">
+                        <!-- Individual Device IMEI input rows populated dynamically by JavaScript -->
                     </div>
                 </div>
 
@@ -83,7 +100,7 @@
                             <thead>
                                 <tr>
                                     <th style="width:45px">#</th>
-                                    <th>Product</th>
+                                    <th>Product &amp; Unit IMEI Details</th>
                                     <th style="width:110px">Price</th>
                                     <th style="width:80px">Qty</th>
                                     <th style="width:120px">Total</th>
@@ -95,7 +112,7 @@
                                     <td colspan="6">
                                         <div class="empty-s" style="padding:24px">
                                             <div class="empty-s-title">Cart is empty</div>
-                                            <div class="empty-s-desc">Select products above to build invoice cart.</div>
+                                            <div class="empty-s-desc">Select products and enter IMEI numbers for each unit above to build invoice cart.</div>
                                         </div>
                                     </td>
                                 </tr>
@@ -150,7 +167,7 @@
 
                 <hr class="s-divider my-3" />
 
-                <div class="s-title"><i class="bi bi-wallet2 me-2" style="color:var(--warning)"></i>Payment & Due Info</div>
+                <div class="s-title"><i class="bi bi-wallet2 me-2" style="color:var(--warning)"></i>Payment &amp; Due Info</div>
 
                 <!-- Payment Status -->
                 <div class="fg">
@@ -181,7 +198,7 @@
                 </div>
 
                 <button type="submit" class="btn-d btn-primary w-100" style="height:46px;font-size:15px">
-                    <i class="bi bi-credit-card-2-back"></i> Complete Order & Issue Invoice
+                    <i class="bi bi-credit-card-2-back me-1"></i> Complete Order &amp; Issue Invoice
                 </button>
             </div>
         </div>
@@ -192,6 +209,78 @@
     <partial name="_ValidationScriptsPartial" />
     <script>
         var itemIndex = 0;
+
+        function onProductSelectChange() {
+            renderImeiFields();
+        }
+
+        function onQtyChange() {
+            renderImeiFields();
+        }
+
+        function renderImeiFields() {
+            var select = document.getElementById('productSelect');
+            if (!select || select.selectedIndex < 0) return;
+            var option = select.options[select.selectedIndex];
+            var wrapper = document.getElementById('dynamicImeiWrapper');
+            var list = document.getElementById('dynamicImeiList');
+            var countBadge = document.getElementById('imeiDeviceCountBadge');
+
+            if (!option || !option.value) {
+                wrapper.style.display = 'none';
+                list.innerHTML = '';
+                return;
+            }
+
+            var isImeiRequired = option.getAttribute('data-imei-required') === 'true';
+            var qty = parseInt(document.getElementById('qtyInput').value) || 1;
+
+            if (!isImeiRequired || qty <= 0) {
+                wrapper.style.display = 'none';
+                list.innerHTML = '';
+                return;
+            }
+
+            wrapper.style.display = 'block';
+            countBadge.innerText = qty + (qty === 1 ? ' Mobile Device' : ' Mobile Devices');
+
+            // Preserve any previously typed IMEIs
+            var existingImeis = [];
+            $('.device-imei-card').each(function() {
+                var i1 = $(this).find('.imei1-val').val() || '';
+                var i2 = $(this).find('.imei2-val').val() || '';
+                existingImeis.push({ imei1: i1, imei2: i2 });
+            });
+
+            var html = '';
+            for (var i = 1; i <= qty; i++) {
+                var prev = existingImeis[i - 1] || { imei1: '', imei2: '' };
+                html += `
+                    <div class="col-12 device-imei-card" data-card-idx="${i}">
+                        <div class="p-2.5 rounded border" style="background: rgba(13, 110, 253, 0.03); border-color: rgba(13, 110, 253, 0.2) !important;">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <span class="fw-bold small text-primary"><i class="bi bi-phone me-1"></i>Device #${i} Details</span>
+                                <span class="badge bg-secondary font-monospace" style="font-size:10px">Device ${i} of ${qty}</span>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <input type="text" class="fg-control fg-control-sm font-monospace imei1-val" 
+                                           value="${prev.imei1}"
+                                           placeholder="Device #${i} Primary IMEI 1 (15 digits) *" required />
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="text" class="fg-control fg-control-sm font-monospace imei2-val" 
+                                           value="${prev.imei2}"
+                                           placeholder="Device #${i} Secondary IMEI 2 (Optional)" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            list.innerHTML = html;
+        }
 
         function addProductLine() {
             var select = document.getElementById('productSelect');
@@ -207,6 +296,7 @@
             var price = parseFloat(option.getAttribute('data-price'));
             var stock = parseInt(option.getAttribute('data-stock'));
             var quantity = parseInt(document.getElementById('qtyInput').value);
+            var isImeiRequired = option.getAttribute('data-imei-required') === 'true';
 
             if (isNaN(quantity) || quantity <= 0) {
                 alert('Please enter a valid quantity.');
@@ -218,51 +308,124 @@
                 return;
             }
 
-            var exists = false;
-            $('#posTable tbody tr').each(function() {
-                var existingId = $(this).find('input[name*="ProductId"]').val();
-                if (existingId === productId) {
-                    exists = true;
-                    return false;
-                }
-            });
+            var deviceEntries = [];
 
-            if (exists) {
-                alert('Product is already added. Remove and adjust quantity if needed.');
-                return;
+            if (isImeiRequired) {
+                var cards = $('.device-imei-card');
+                if (cards.length < quantity) {
+                    alert('Please enter IMEI numbers for all ' + quantity + ' devices.');
+                    return;
+                }
+
+                for (var i = 0; i < quantity; i++) {
+                    var card = cards.eq(i);
+                    var imei1 = card.find('.imei1-val').val().trim();
+                    var imei2 = card.find('.imei2-val').val().trim();
+
+                    if (!imei1) {
+                        alert('Please enter Primary IMEI 1 for Device #' + (i + 1) + '.');
+                        card.find('.imei1-val').focus();
+                        return;
+                    }
+
+                    if (imei1.length < 14 || imei1.length > 16 || !/^\d+$/.test(imei1)) {
+                        alert('Device #' + (i + 1) + ' IMEI 1 must be 14-16 digits.');
+                        card.find('.imei1-val').focus();
+                        return;
+                    }
+
+                    if (imei2 && (imei2.length < 14 || imei2.length > 16 || !/^\d+$/.test(imei2))) {
+                        alert('Device #' + (i + 1) + ' IMEI 2 must be 14-16 digits.');
+                        card.find('.imei2-val').focus();
+                        return;
+                    }
+
+                    // Check duplicate IMEI in existing cart
+                    var duplicateFound = false;
+                    $('#posTable tbody tr').each(function() {
+                        var existingImei1 = $(this).find('input[name*="IMEI1"]').val();
+                        if (existingImei1 === imei1) {
+                            duplicateFound = true;
+                            return false;
+                        }
+                    });
+
+                    if (duplicateFound) {
+                        alert('IMEI ' + imei1 + ' is already added in the cart.');
+                        return;
+                    }
+
+                    deviceEntries.push({ imei1: imei1, imei2: imei2 });
+                }
             }
 
             $('#emptyRow').hide();
-
-            var lineTotal = price * quantity;
             var tbody = document.querySelector('#posTable tbody');
-            var row = document.createElement('tr');
-            row.className = 'pos-item-row';
 
-            row.innerHTML = `
-                <td class="row-num" style="color:var(--text-muted)"></td>
-                <td>
-                    <div class="td-strong">${name}</div>
-                    <span class="code-pill">${code}</span>
-                    <input type="hidden" name="Items[${itemIndex}].ProductId" value="${productId}" />
-                    <input type="hidden" name="Items[${itemIndex}].Quantity" value="${quantity}" />
-                </td>
-                <td style="color:var(--text-secondary)">₹${price.toFixed(2)}</td>
-                <td style="color:var(--text-primary);font-weight:600">${quantity}</td>
-                <td class="line-total td-strong" data-total="${lineTotal}">₹${lineTotal.toFixed(2)}</td>
-                <td class="col-actions">
-                    <button type="button" class="btn-d btn-ghost btn-icon-d" style="color:var(--danger)" onclick="removeProductLine(this)"><i class="bi bi-trash"></i></button>
-                </td>
-            `;
+            if (isImeiRequired) {
+                // For mobile devices, add 1 row per unit with its dedicated IMEI
+                for (var d = 0; d < deviceEntries.length; d++) {
+                    var dev = deviceEntries[d];
+                    var lineTotal = price * 1;
+                    var row = document.createElement('tr');
+                    row.className = 'pos-item-row';
 
-            tbody.appendChild(row);
-            itemIndex++;
+                    var imeiBadges = `<div style="font-size:11px;color:var(--primary);font-family:monospace;margin-top:2px"><i class="bi bi-upc-scan me-1"></i>IMEI 1: ${dev.imei1}${dev.imei2 ? ' | IMEI 2: ' + dev.imei2 : ''}</div>`;
+
+                    row.innerHTML = `
+                        <td class="row-num" style="color:var(--text-muted)"></td>
+                        <td>
+                            <div class="td-strong">${name}</div>
+                            <span class="code-pill">${code}</span>
+                            ${imeiBadges}
+                            <input type="hidden" name="Items[${itemIndex}].ProductId" value="${productId}" />
+                            <input type="hidden" name="Items[${itemIndex}].Quantity" value="1" />
+                            <input type="hidden" name="Items[${itemIndex}].IMEI1" value="${dev.imei1}" />
+                            <input type="hidden" name="Items[${itemIndex}].IMEI2" value="${dev.imei2}" />
+                        </td>
+                        <td style="color:var(--text-secondary)">₹${price.toFixed(2)}</td>
+                        <td style="color:var(--text-primary);font-weight:600">1</td>
+                        <td class="line-total td-strong" data-total="${lineTotal}">₹${lineTotal.toFixed(2)}</td>
+                        <td class="col-actions">
+                            <button type="button" class="btn-d btn-ghost btn-icon-d" style="color:var(--danger)" onclick="removeProductLine(this)"><i class="bi bi-trash"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                    itemIndex++;
+                }
+            } else {
+                // Non-IMEI accessory
+                var lineTotal = price * quantity;
+                var row = document.createElement('tr');
+                row.className = 'pos-item-row';
+
+                row.innerHTML = `
+                    <td class="row-num" style="color:var(--text-muted)"></td>
+                    <td>
+                        <div class="td-strong">${name}</div>
+                        <span class="code-pill">${code}</span>
+                        <input type="hidden" name="Items[${itemIndex}].ProductId" value="${productId}" />
+                        <input type="hidden" name="Items[${itemIndex}].Quantity" value="${quantity}" />
+                        <input type="hidden" name="Items[${itemIndex}].IMEI1" value="" />
+                        <input type="hidden" name="Items[${itemIndex}].IMEI2" value="" />
+                    </td>
+                    <td style="color:var(--text-secondary)">₹${price.toFixed(2)}</td>
+                    <td style="color:var(--text-primary);font-weight:600">${quantity}</td>
+                    <td class="line-total td-strong" data-total="${lineTotal}">₹${lineTotal.toFixed(2)}</td>
+                    <td class="col-actions">
+                        <button type="button" class="btn-d btn-ghost btn-icon-d" style="color:var(--danger)" onclick="removeProductLine(this)"><i class="bi bi-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+                itemIndex++;
+            }
 
             reindexItems();
             calculateSummary();
 
             select.value = "";
             document.getElementById('qtyInput').value = 1;
+            renderImeiFields();
         }
 
         function removeProductLine(btn) {
@@ -281,6 +444,8 @@
                 $(row).find('td.row-num').text(index + 1);
                 $(row).find('input[name*="ProductId"]').attr('name', `Items[${index}].ProductId`);
                 $(row).find('input[name*="Quantity"]').attr('name', `Items[${index}].Quantity`);
+                $(row).find('input[name*="IMEI1"]').attr('name', `Items[${index}].IMEI1`);
+                $(row).find('input[name*="IMEI2"]').attr('name', `Items[${index}].IMEI2`);
                 itemIndex = index + 1;
             });
         }

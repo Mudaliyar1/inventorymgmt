@@ -47,6 +47,33 @@ namespace InventoryManagementSystem.Models
         [BsonElement("ExecutedBy")]
         public string ExecutedBy { get; set; } = string.Empty; // Username or Full Name
 
+        [BsonElement("Source")]
+        public string Source { get; set; } = "Purchase"; // Purchase, Trade-In, Customer Return
+
+        [BsonElement("ExchangeNumber")]
+        public string ExchangeNumber { get; set; } = string.Empty;
+
+        [BsonElement("IMEI")]
+        public string IMEI { get; set; } = string.Empty;
+
+        [BsonElement("Brand")]
+        public string Brand { get; set; } = string.Empty;
+
+        [BsonElement("ModelName")]
+        public string ModelName { get; set; } = string.Empty;
+
+        [BsonElement("Variant")]
+        public string Variant { get; set; } = string.Empty;
+
+        [BsonElement("Processor")]
+        public string Processor { get; set; } = string.Empty;
+
+        [BsonElement("Color")]
+        public string Color { get; set; } = string.Empty;
+
+        [BsonElement("UnitCost")]
+        public decimal UnitCost { get; set; }
+
         [BsonElement("Timestamp")]
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     }

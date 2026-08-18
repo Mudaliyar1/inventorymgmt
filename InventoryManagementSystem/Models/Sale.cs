@@ -63,6 +63,16 @@ namespace InventoryManagementSystem.Models
         [BsonElement("CompanyGstin")]
         public string CompanyGstin { get; set; } = "27AAAAA0000A1Z5";
 
+        // Return Tracking
+        [BsonElement("ReturnStatus")]
+        public string ReturnStatus { get; set; } = "None"; // None, Partially Returned, Fully Returned
+
+        [BsonElement("TotalRefundedAmount")]
+        public decimal TotalRefundedAmount { get; set; } = 0.0m;
+
+        [BsonIgnore]
+        public decimal NetTotal => System.Math.Max(0m, GrandTotal - TotalRefundedAmount);
+
         [BsonElement("Items")]
         public List<SaleItem> Items { get; set; } = new List<SaleItem>();
     }
@@ -112,7 +122,20 @@ namespace InventoryManagementSystem.Models
         [BsonElement("SellingPrice")]
         public decimal SellingPrice { get; set; }
 
+        [BsonElement("CostPrice")]
+        public decimal CostPrice { get; set; }
+
         [BsonElement("Total")]
         public decimal Total { get; set; } // Quantity * SellingPrice
+
+        // Item Level Return Tracking
+        [BsonElement("IsReturned")]
+        public bool IsReturned { get; set; } = false;
+
+        [BsonElement("ReturnedQuantity")]
+        public int ReturnedQuantity { get; set; } = 0;
+
+        [BsonElement("ReturnRecordId")]
+        public string ReturnRecordId { get; set; } = string.Empty;
     }
 }
