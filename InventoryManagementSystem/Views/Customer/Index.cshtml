@@ -19,16 +19,16 @@
 </div>
 
 <!-- Detailed Filters Bar (Toggleable Panel) -->
-<div class="card border-0 shadow-sm rounded-4 mb-4" id="customerFilterPanel">
+<div class="card border shadow-sm rounded-4 mb-4" id="customerFilterPanel">
     <div class="card-body p-3">
         <form method="get" class="row g-3">
             <div class="col-md-4">
                 <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-search me-1"></i>Search Keywords</label>
-                <input type="text" name="search" value="@ViewBag.Search" class="form-control bg-light border-0" placeholder="Name, Phone, Email, GSTIN, Address...">
+                <input type="text" name="search" value="@ViewBag.Search" class="form-control" placeholder="Name, Phone, Email, GSTIN, Address...">
             </div>
             <div class="col-md-3">
                 <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-receipt me-1"></i>GST Status</label>
-                <select name="hasGstin" class="form-select bg-light border-0">
+                <select name="hasGstin" class="form-select">
                     <option value="">All Customers</option>
                     <option value="Yes" selected="@(ViewBag.HasGstin == "Yes")">GST Registered (B2B)</option>
                     <option value="No" selected="@(ViewBag.HasGstin == "No")">Non-GST (B2C)</option>
@@ -36,11 +36,11 @@
             </div>
             <div class="col-md-2">
                 <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-currency-rupee me-1"></i>Min Purchases (₹)</label>
-                <input type="number" step="500" name="minPurchases" value="@ViewBag.MinPurchases" class="form-control bg-light border-0" placeholder="Min ₹">
+                <input type="number" step="500" name="minPurchases" value="@ViewBag.MinPurchases" class="form-control" placeholder="Min ₹">
             </div>
             <div class="col-md-2">
                 <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-currency-rupee me-1"></i>Max Purchases (₹)</label>
-                <input type="number" step="500" name="maxPurchases" value="@ViewBag.MaxPurchases" class="form-control bg-light border-0" placeholder="Max ₹">
+                <input type="number" step="500" name="maxPurchases" value="@ViewBag.MaxPurchases" class="form-control" placeholder="Max ₹">
             </div>
             <div class="col-md-1 d-flex align-items-end gap-1">
                 <button type="submit" class="btn btn-dark w-100 rounded-pill" title="Apply Filter"><i class="bi bi-funnel"></i></button>

@@ -1,191 +1,353 @@
 @model Product
 @{
-    ViewData["Title"] = "Product Details - " + Model.Name;
+    ViewData["Title"] = $"{Model.Brand} {Model.Name} — Product Details";
     decimal margin = Model.SellingPrice - Model.PurchasePrice;
     decimal marginPercentage = Model.PurchasePrice > 0 ? (margin / Model.PurchasePrice) * 100 : 0;
+    var categoryName = ViewBag.CategoryName as string ?? "General";
 }
 
-<div class="ph">
+<!-- Page Header & Action Bar -->
+<div class="ph mb-4">
     <div>
-        <h1 class="ph-title">@Model.Name</h1>
-        <p class="ph-sub">SKU Code: <span class="code-pill">@Model.Code</span></p>
+        <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+            <span class="badge-d badge-blue"><i class="bi bi-tag-fill me-1"></i>@Model.ProductType</span>
+            @if (!string.IsNullOrEmpty(Model.Brand))
+            {
+                <span class="badge-d badge-sky">@Model.Brand</span>
+            }
+            <span class="badge-d badge-gray"><i class="bi bi-folder me-1"></i>@categoryName</span>
+            @if (Model.IsImeiRequired)
+            {
+                <span class="badge-d badge-amber"><i class="bi bi-upc-scan me-1"></i>IMEI Tracked</span>
+            }
+        </div>
+        <h2 class="ph-title mb-0" style="color:var(--text-primary);font-weight:700">@Model.Brand @Model.Name</h2>
+        <p class="ph-sub mb-0 mt-1" style="color:var(--text-secondary)">SKU / Product Code: <code style="color:var(--primary-text);font-weight:700">@Model.Code</code> | Barcode: <code style="color:var(--text-muted)">@Model.Barcode</code></p>
     </div>
-    <div class="ph-actions">
+    <div class="ph-actions d-flex gap-2">
         <a href="@Url.Action("Index","Product")" class="btn-d btn-outline">
-            <i class="bi bi-arrow-left"></i> Back to Products
+            <i class="bi bi-arrow-left me-1"></i> Back to Catalog
         </a>
         <a href="@Url.Action("Edit","Product",new{id=Model.Id})" class="btn-d btn-primary">
-            <i class="bi bi-pencil"></i> Edit Product
+            <i class="bi bi-pencil-square me-1"></i> Edit Specifications
         </a>
     </div>
 </div>
 
+<!-- Commercial & Inventory Financial Cards (4 Grid Columns) -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+        <div class="card-d card-p">
+            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Purchase Cost Price</div>
+            <div style="font-size:22px;font-weight:700;color:var(--text-primary)" class="mt-1">₹@Model.PurchasePrice.ToString("N2")</div>
+            <div style="font-size:11px;color:var(--text-secondary)" class="mt-1">Excl. Tax / Unit Cost</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card-d card-p">
+            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Retail Selling Price</div>
+            <div style="font-size:22px;font-weight:700;color:var(--primary-text)" class="mt-1">₹@Model.SellingPrice.ToString("N2")</div>
+            <div style="font-size:11px;color:var(--text-secondary)" class="mt-1">MRP: ₹@(Model.Mrp > 0 ? Model.Mrp.ToString("N2") : Model.SellingPrice.ToString("N2"))</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card-d card-p">
+            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Profit Margin</div>
+            <div style="font-size:22px;font-weight:700;color:var(--success)" class="mt-1">₹@margin.ToString("N2")</div>
+            <div style="font-size:11px;color:var(--success)" class="mt-1">Markup: +@marginPercentage.ToString("F1")%</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card-d card-p">
+            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Current Stock Level</div>
+            <div class="mt-1">
+                @if (Model.CurrentStock <= 0)
+                {
+                    <span class="badge-d badge-red fs-6"><i class="bi bi-x-circle me-1"></i>Out of Stock (0)</span>
+                }
+                else if (Model.CurrentStock <= Model.MinimumStock)
+                {
+                    <span class="badge-d badge-amber fs-6"><i class="bi bi-exclamation-triangle me-1"></i>Low Stock: @Model.CurrentStock units</span>
+                }
+                else
+                {
+                    <span class="badge-d badge-green fs-6"><i class="bi bi-check-circle me-1"></i>In Stock: @Model.CurrentStock units</span>
+                }
+            </div>
+            <div style="font-size:11px;color:var(--text-secondary)" class="mt-2">Safety Alert Threshold: @Model.MinimumStock units</div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Details Layout (Visuals & Specifications) -->
 <div class="row g-4">
-    <!-- Visual Presentation -->
+    <!-- Left Column: Media & Barcode Stickers -->
     <div class="col-lg-4">
-        <div class="card-d card-p-lg text-center mb-4">
-            <div class="s-title text-start"><i class="bi bi-image me-2" style="color:var(--primary)"></i>Product Image</div>
-            <img src="@(string.IsNullOrEmpty(Model.ImageUrl) ? "/images/default-product.png" : Model.ImageUrl)"
-                 alt="Product"
-                 style="max-height:220px;width:100%;object-fit:cover;border-radius:var(--radius-md);border:1px solid var(--border)">
+        <!-- Product Image Preview Card -->
+        <div class="card-d card-p mb-4 text-center">
+            <div class="s-title text-start mb-3"><i class="bi bi-image me-2" style="color:var(--primary)"></i>Product Visual Presentation</div>
+            @if (!string.IsNullOrEmpty(Model.ImageUrl))
+            {
+                <div class="p-2 rounded-3 border" style="background:var(--bg);border-color:var(--border)!important">
+                    <img src="@Model.ImageUrl" alt="@Model.Name" style="max-height:220px;width:100%;object-fit:contain;border-radius:8px">
+                </div>
+            }
+            else
+            {
+                <div class="p-4 rounded-3 d-flex flex-column align-items-center justify-content-center" style="background:var(--bg-elevated);border:1px dashed var(--border);min-height:180px">
+                    <i class="bi bi-phone fs-1 text-primary mb-2 opacity-75"></i>
+                    <div style="color:var(--text-primary);font-weight:600;font-size:14px">@Model.Brand @Model.Name</div>
+                    <div style="color:var(--text-muted);font-size:12px" class="mt-1">@(string.IsNullOrWhiteSpace(Model.Variant) ? $"{Model.Ram} / {Model.Storage}" : Model.Variant)</div>
+                </div>
+            }
+            
+            <div class="d-flex justify-content-between py-2 border-top mt-3" style="border-color:var(--border)!important;font-size:12px">
+                <span style="color:var(--text-muted);font-weight:600">Color Variant:</span>
+                <span style="color:var(--text-primary);font-weight:600">@(string.IsNullOrEmpty(Model.Color) ? "Standard" : Model.Color)</span>
+            </div>
+            <div class="d-flex justify-content-between py-1" style="font-size:12px">
+                <span style="color:var(--text-muted);font-weight:600">Warranty Coverage:</span>
+                <span style="color:var(--text-primary);font-weight:600">@Model.WarrantyDurationMonths Months Official</span>
+            </div>
         </div>
 
-        <!-- Labels -->
-        <div class="card-d card-p-lg text-center">
-            <div class="s-title text-start"><i class="bi bi-qr-code me-2" style="color:var(--success)"></i>System Labels</div>
+        <!-- System Barcode & QR Code Sticker Card -->
+        <div class="card-d card-p text-center">
+            <div class="s-title text-start mb-3"><i class="bi bi-qr-code me-2" style="color:var(--success)"></i>Printable Barcode &amp; QR Tag</div>
             
-            <div class="p-3 mb-3 bg-white rounded-3 d-flex justify-content-center">
+            <div class="p-3 mb-3 bg-white rounded-3 d-flex justify-content-center border shadow-sm">
                 <svg id="barcode-canvas"></svg>
             </div>
             
-            <div class="p-3 bg-white rounded-3 d-flex justify-content-center mx-auto" style="width:fit-content">
+            <div class="p-3 bg-white rounded-3 d-flex justify-content-center mx-auto border shadow-sm" style="width:fit-content">
                 <div id="qrcode-canvas"></div>
             </div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:8px">Value: <span class="code-pill">@Model.Barcode</span></div>
+            
+            <div class="mt-3 p-2 rounded-3 d-flex align-items-center justify-content-between" style="background:var(--bg);font-size:12px">
+                <span style="color:var(--text-muted);font-weight:600">Barcode ID:</span>
+                <code style="color:var(--primary-text);font-weight:700;font-size:13px">@Model.Barcode</code>
+            </div>
         </div>
     </div>
 
-    <!-- Specifications -->
+    <!-- Right Column: Structured Specs Sheet Cards Grid -->
     <div class="col-lg-8">
-        <div class="card-d card-p-lg h-100">
-            <div class="s-title"><i class="bi bi-card-list me-2" style="color:var(--primary)"></i>Specifications Sheet</div>
+        <div class="card-d card-p mb-4">
+            <div class="s-title mb-4"><i class="bi bi-cpu me-2" style="color:var(--primary)"></i>Mobile Hardware Specifications Sheet</div>
 
             <div class="row g-4">
+                <!-- Section 1: Performance & Processing -->
                 <div class="col-md-6">
-                    <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">PRODUCT NAME</div>
-                    <div class="td-strong" style="font-size:15px">@Model.Name</div>
-                </div>
-                <div class="col-md-6">
-                    <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">CATEGORY</div>
-                    <div class="td-strong" style="font-size:15px">@(ViewBag.CategoryName ?? "—")</div>
-                </div>
-
-                <div class="col-md-6">
-                    <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">SKU CODE</div>
-                    <span class="code-pill">@Model.Code</span>
-                </div>
-                <div class="col-md-6">
-                    <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">BARCODE VALUE</div>
-                    <span class="code-pill">@Model.Barcode</span>
-                </div>
-
-                <div class="col-md-4">
-                    <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">PURCHASE PRICE</div>
-                    <div style="font-weight:600;color:var(--text-secondary)">₹@Model.PurchasePrice.ToString("N2")</div>
-                </div>
-                <div class="col-md-4">
-                    <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">SELLING PRICE</div>
-                    <div style="font-weight:700;color:var(--primary-text)">₹@Model.SellingPrice.ToString("N2")</div>
-                </div>
-                <div class="col-md-4">
-                    <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">PROFIT MARGIN</div>
-                    <div style="font-weight:700;color:var(--success)">₹@margin.ToString("N2") <small style="color:var(--text-muted)">(@marginPercentage.ToString("F1")%)</small></div>
-                </div>
-
-                <div class="col-md-6">
-                    <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;margin-bottom:4px">CURRENT STOCK LEVEL</div>
-                    @if (Model.CurrentStock <= 0)
-                    {
-                        <span class="badge-d badge-red"><i class="bi bi-x-circle"></i> Out Of Stock</span>
-                    }
-                    else if (Model.CurrentStock <= Model.MinimumStock)
-                    {
-                        <span class="badge-d badge-amber"><i class="bi bi-exclamation-triangle"></i> Low Stock: @Model.CurrentStock units</span>
-                    }
-                    else
-                    {
-                        <span class="badge-d badge-green"><i class="bi bi-check-circle"></i> In Stock: @Model.CurrentStock units</span>
-                    }
-                </div>
-                <div class="col-md-6">
-                    <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">SAFETY THRESHOLD</div>
-                    <div class="td-strong">@Model.MinimumStock units</div>
-                </div>
-
-                <div class="col-12 mt-3 pt-3" style="border-top:1px solid var(--border)">
-                    <div class="s-title mb-3"><i class="bi bi-cpu me-2" style="color:var(--primary)"></i>Mobile Hardware Specifications Sheet</div>
-                    
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">PROCESSOR &amp; CHIPSET</div>
-                            <div class="td-strong"><i class="bi bi-cpu me-1 text-primary"></i>@(string.IsNullOrWhiteSpace(Model.Specs?.ProcessorName) ? (string.IsNullOrWhiteSpace(Model.Processor) ? "Not Specified" : Model.Processor) : $"{Model.Specs?.ProcessorBrand} {Model.Specs?.ProcessorName}")</div>
-                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.Chipset)) { <div style="font-size:12px;color:var(--text-muted)">Chipset: @Model.Specs.Chipset</div> }
-                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.CpuCores)) { <div style="font-size:12px;color:var(--text-muted)">Cores: @Model.Specs.CpuCores (@Model.Specs?.CpuClockSpeed)</div> }
-                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.Gpu)) { <div style="font-size:12px;color:var(--text-muted)">GPU: @Model.Specs.Gpu</div> }
+                    <div class="p-3 rounded-3 h-100" style="background:var(--bg-elevated);border:1px solid var(--border)">
+                        <div class="fw-bold text-primary mb-2 small text-uppercase d-flex align-items-center">
+                            <i class="bi bi-cpu-fill me-2"></i>Performance &amp; Processing
                         </div>
-
-                        <div class="col-md-4">
-                            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">RAM &amp; STORAGE</div>
-                            <div class="td-strong"><i class="bi bi-memory me-1 text-success"></i>@(string.IsNullOrWhiteSpace(Model.Variant) ? (string.IsNullOrWhiteSpace(Model.Ram) && string.IsNullOrWhiteSpace(Model.Storage) ? "Not Specified" : $"{Model.Ram} / {Model.Storage}") : Model.Variant)</div>
-                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.RamType)) { <div style="font-size:12px;color:var(--text-muted)">RAM Type: @Model.Specs.RamType</div> }
-                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.StorageType)) { <div style="font-size:12px;color:var(--text-muted)">Storage Type: @Model.Specs.StorageType</div> }
-                            @if (Model.Specs != null && Model.Specs.ExpandableStorage) { <div style="font-size:12px;color:var(--text-muted)">Expandable: Up to @(Model.Specs.MaxExpandableStorage ?? "Card Slot")</div> }
+                        <div class="d-flex justify-content-between py-1 border-bottom" style="border-color:var(--border)!important">
+                            <span style="color:var(--text-muted);font-size:12px;font-weight:600">Processor / SoC:</span>
+                            <span style="color:var(--text-primary);font-weight:600;font-size:12px" class="text-end">@(string.IsNullOrWhiteSpace(Model.Specs?.ProcessorName) ? (string.IsNullOrWhiteSpace(Model.Processor) ? "Standard" : Model.Processor) : Model.Specs.ProcessorName)</span>
                         </div>
-
-                        <div class="col-md-4">
-                            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">DISPLAY SPECIFICATIONS</div>
-                            <div class="td-strong"><i class="bi bi-display me-1 text-info"></i>@(string.IsNullOrWhiteSpace(Model.Specs?.DisplaySize) ? (string.IsNullOrWhiteSpace(Model.DisplaySize) ? "Not Specified" : Model.DisplaySize) : $"{Model.Specs.DisplaySize} {Model.Specs.DisplayType}")</div>
-                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.Resolution)) { <div style="font-size:12px;color:var(--text-muted)">Resolution: @Model.Specs.Resolution</div> }
-                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.RefreshRate)) { <div style="font-size:12px;color:var(--text-muted)">Refresh Rate: @Model.Specs.RefreshRate</div> }
-                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.ScreenProtection)) { <div style="font-size:12px;color:var(--text-muted)">Protection: @Model.Specs.ScreenProtection</div> }
+                        @if (!string.IsNullOrWhiteSpace(Model.Specs?.Chipset))
+                        {
+                            <div class="d-flex justify-content-between py-1 border-bottom" style="border-color:var(--border)!important">
+                                <span style="color:var(--text-muted);font-size:12px;font-weight:600">Chipset:</span>
+                                <span style="color:var(--text-secondary);font-size:12px" class="text-end">@Model.Specs.Chipset</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.Specs?.CpuCores))
+                        {
+                            <div class="d-flex justify-content-between py-1 border-bottom" style="border-color:var(--border)!important">
+                                <span style="color:var(--text-muted);font-size:12px;font-weight:600">CPU Architecture:</span>
+                                <span style="color:var(--text-secondary);font-size:12px" class="text-end">@Model.Specs.CpuCores</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.Specs?.Gpu))
+                        {
+                            <div class="d-flex justify-content-between py-1 border-bottom" style="border-color:var(--border)!important">
+                                <span style="color:var(--text-muted);font-size:12px;font-weight:600">GPU Graphics:</span>
+                                <span style="color:var(--text-secondary);font-size:12px" class="text-end">@Model.Specs.Gpu</span>
+                            </div>
+                        }
+                        <div class="d-flex justify-content-between py-1 border-bottom" style="border-color:var(--border)!important">
+                            <span style="color:var(--text-muted);font-size:12px;font-weight:600">RAM / Storage Variant:</span>
+                            <span style="color:var(--success);font-weight:700;font-size:12px" class="text-end">@(string.IsNullOrWhiteSpace(Model.Variant) ? $"{Model.Ram} / {Model.Storage}" : Model.Variant)</span>
                         </div>
-
-                        <div class="col-md-4">
-                            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">CAMERA SETUP</div>
-                            <div class="td-strong"><i class="bi bi-camera me-1 text-danger"></i>Primary: @(string.IsNullOrWhiteSpace(Model.Specs?.PrimaryRearCameraMp) ? "Not Specified" : Model.Specs.PrimaryRearCameraMp)</div>
-                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.UltrawideCameraMp)) { <div style="font-size:12px;color:var(--text-muted)">Ultrawide: @Model.Specs.UltrawideCameraMp</div> }
-                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.TelephotoCameraMp)) { <div style="font-size:12px;color:var(--text-muted)">Telephoto: @Model.Specs.TelephotoCameraMp</div> }
-                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.FrontCameraMp)) { <div style="font-size:12px;color:var(--text-muted)">Selfie: @Model.Specs.FrontCameraMp</div> }
-                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.CameraFeatures)) { <div style="font-size:12px;color:var(--text-muted)">Features: @Model.Specs.CameraFeatures</div> }
-                        </div>
-
-                        <div class="col-md-4">
-                            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">BATTERY &amp; CHARGING</div>
-                            <div class="td-strong"><i class="bi bi-battery-charging me-1 text-warning"></i>@(Model.Specs != null && Model.Specs.BatteryCapacityMah > 0 ? $"{Model.Specs.BatteryCapacityMah} mAh" : (string.IsNullOrWhiteSpace(Model.BatteryCapacity) ? "Not Specified" : Model.BatteryCapacity))</div>
-                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.FastChargingWattage)) { <div style="font-size:12px;color:var(--text-muted)">Fast Charge: @Model.Specs.FastChargingWattage (@Model.Specs.ChargingPortType)</div> }
-                            @if (Model.Specs != null && Model.Specs.WirelessCharging) { <div style="font-size:12px;color:var(--text-muted)">Wireless Charging Supported</div> }
-                        </div>
-
-                        <div class="col-md-4">
-                            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">NETWORK &amp; CONNECTIVITY</div>
-                            <div class="td-strong"><i class="bi bi-wifi me-1 text-primary"></i>@(Model.Specs != null && Model.Specs.Network5G ? "5G Network Supported" : "4G LTE")</div>
-                            <div style="font-size:12px;color:var(--text-muted)">SIM: @(Model.Specs?.SimType ?? "Dual SIM") @(Model.Specs != null && Model.Specs.EsimSupport ? "(eSIM Supported)" : "")</div>
-                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.WifiVersion)) { <div style="font-size:12px;color:var(--text-muted)">Wi-Fi: @Model.Specs.WifiVersion | BT: @Model.Specs.BluetoothVersion</div> }
-                            @if (Model.Specs != null && Model.Specs.Nfc) { <div style="font-size:12px;color:var(--text-muted)">NFC: Enabled</div> }
-                        </div>
-
-                        <div class="col-md-4">
-                            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">OS &amp; SECURITY</div>
-                            <div class="td-strong"><i class="bi bi-shield-check me-1 text-secondary"></i>@(Model.Specs?.OperatingSystem ?? "Android") @Model.Specs?.OsVersion</div>
-                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.FingerprintSensor)) { <div style="font-size:12px;color:var(--text-muted)">Biometrics: @Model.Specs.FingerprintSensor</div> }
-                        </div>
-
-                        <div class="col-md-4">
-                            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">PHYSICAL DESIGN &amp; COLORS</div>
-                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.OfficialColors)) { <div class="td-strong"><i class="bi bi-palette me-1 text-dark"></i>Colors: @Model.Specs.OfficialColors</div> }
-                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.WaterResistance)) { <div style="font-size:12px;color:var(--text-muted)">IP Rating: @Model.Specs.WaterResistance</div> }
-                            @if (!string.IsNullOrWhiteSpace(Model.Specs?.DimensionsWeight)) { <div style="font-size:12px;color:var(--text-muted)">Dimensions: @Model.Specs.DimensionsWeight</div> }
-                        </div>
-
-                        <div class="col-md-4">
-                            <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">SENSORS</div>
-                            <div style="font-size:12px;color:var(--text-secondary)">@(string.IsNullOrWhiteSpace(Model.Specs?.Sensors) ? "Standard Accelerometer, Proximity, Light Sensors" : Model.Specs.Sensors)</div>
-                        </div>
+                        @if (!string.IsNullOrWhiteSpace(Model.Specs?.RamType) || !string.IsNullOrWhiteSpace(Model.Specs?.StorageType))
+                        {
+                            <div class="d-flex justify-content-between py-1" style="font-size:12px">
+                                <span style="color:var(--text-muted);font-weight:600">Memory Tech:</span>
+                                <span style="color:var(--text-secondary)">@Model.Specs?.RamType @Model.Specs?.StorageType</span>
+                            </div>
+                        }
                     </div>
                 </div>
 
-                <div class="col-12">
-                    <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">DESCRIPTION</div>
-                    <div style="color:var(--text-secondary);font-size:14px;margin-top:4px;white-space:pre-wrap">@(string.IsNullOrEmpty(Model.Description) ? "No description provided." : Model.Description)</div>
+                <!-- Section 2: Display & Screen -->
+                <div class="col-md-6">
+                    <div class="p-3 rounded-3 h-100" style="background:var(--bg-elevated);border:1px solid var(--border)">
+                        <div class="fw-bold text-info mb-2 small text-uppercase d-flex align-items-center">
+                            <i class="bi bi-display-fill me-2"></i>Display &amp; Screen
+                        </div>
+                        <div class="d-flex justify-content-between py-1 border-bottom" style="border-color:var(--border)!important">
+                            <span style="color:var(--text-muted);font-size:12px;font-weight:600">Screen Size &amp; Type:</span>
+                            <span style="color:var(--text-primary);font-weight:600;font-size:12px" class="text-end">@(string.IsNullOrWhiteSpace(Model.Specs?.DisplaySize) ? (string.IsNullOrWhiteSpace(Model.DisplaySize) ? "Standard" : Model.DisplaySize) : Model.Specs.DisplaySize) @Model.Specs?.DisplayType</span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(Model.Specs?.Resolution))
+                        {
+                            <div class="d-flex justify-content-between py-1 border-bottom" style="border-color:var(--border)!important">
+                                <span style="color:var(--text-muted);font-size:12px;font-weight:600">Resolution:</span>
+                                <span style="color:var(--text-secondary);font-size:12px" class="text-end">@Model.Specs.Resolution</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.Specs?.RefreshRate))
+                        {
+                            <div class="d-flex justify-content-between py-1 border-bottom" style="border-color:var(--border)!important">
+                                <span style="color:var(--text-muted);font-size:12px;font-weight:600">Refresh Rate:</span>
+                                <span style="color:var(--text-secondary);font-size:12px" class="text-end">@Model.Specs.RefreshRate</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.Specs?.ScreenProtection))
+                        {
+                            <div class="d-flex justify-content-between py-1" style="font-size:12px">
+                                <span style="color:var(--text-muted);font-weight:600">Glass Protection:</span>
+                                <span style="color:var(--text-secondary)">@Model.Specs.ScreenProtection</span>
+                            </div>
+                        }
+                    </div>
                 </div>
 
+                <!-- Section 3: Camera Optics -->
                 <div class="col-md-6">
-                    <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">CREATED DATE</div>
-                    <div style="color:var(--text-muted);font-size:12px">@Model.CreatedDate.ToIstString("MMM d, yyyy HH:mm IST")</div>
+                    <div class="p-3 rounded-3 h-100" style="background:var(--bg-elevated);border:1px solid var(--border)">
+                        <div class="fw-bold text-danger mb-2 small text-uppercase d-flex align-items-center">
+                            <i class="bi bi-camera-fill me-2"></i>Camera Setup &amp; Optics
+                        </div>
+                        <div class="d-flex justify-content-between py-1 border-bottom" style="border-color:var(--border)!important">
+                            <span style="color:var(--text-muted);font-size:12px;font-weight:600">Primary Rear Camera:</span>
+                            <span style="color:var(--text-primary);font-weight:600;font-size:12px" class="text-end">@(string.IsNullOrWhiteSpace(Model.Specs?.PrimaryRearCameraMp) ? "Standard Lens" : Model.Specs.PrimaryRearCameraMp)</span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(Model.Specs?.UltrawideCameraMp))
+                        {
+                            <div class="d-flex justify-content-between py-1 border-bottom" style="border-color:var(--border)!important">
+                                <span style="color:var(--text-muted);font-size:12px;font-weight:600">Ultrawide Lens:</span>
+                                <span style="color:var(--text-secondary);font-size:12px" class="text-end">@Model.Specs.UltrawideCameraMp</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.Specs?.FrontCameraMp))
+                        {
+                            <div class="d-flex justify-content-between py-1 border-bottom" style="border-color:var(--border)!important">
+                                <span style="color:var(--text-muted);font-size:12px;font-weight:600">Selfie Front Camera:</span>
+                                <span style="color:var(--text-secondary);font-size:12px" class="text-end">@Model.Specs.FrontCameraMp</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.Specs?.CameraFeatures))
+                        {
+                            <div class="d-flex justify-content-between py-1" style="font-size:12px">
+                                <span style="color:var(--text-muted);font-weight:600">Optics Features:</span>
+                                <span style="color:var(--text-secondary)" class="text-end">@Model.Specs.CameraFeatures</span>
+                            </div>
+                        }
+                    </div>
                 </div>
+
+                <!-- Section 4: Battery & Charging -->
                 <div class="col-md-6">
-                    <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase">LAST MODIFIED</div>
-                    <div style="color:var(--text-muted);font-size:12px">@Model.UpdatedDate.ToIstString("MMM d, yyyy HH:mm IST")</div>
+                    <div class="p-3 rounded-3 h-100" style="background:var(--bg-elevated);border:1px solid var(--border)">
+                        <div class="fw-bold text-warning mb-2 small text-uppercase d-flex align-items-center">
+                            <i class="bi bi-battery-charging me-2"></i>Battery &amp; Charging
+                        </div>
+                        <div class="d-flex justify-content-between py-1 border-bottom" style="border-color:var(--border)!important">
+                            <span style="color:var(--text-muted);font-size:12px;font-weight:600">Battery Capacity:</span>
+                            <span style="color:var(--success);font-weight:700;font-size:12px" class="text-end">@(Model.Specs != null && Model.Specs.BatteryCapacityMah > 0 ? $"{Model.Specs.BatteryCapacityMah} mAh" : (string.IsNullOrWhiteSpace(Model.BatteryCapacity) ? "Standard" : Model.BatteryCapacity))</span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(Model.Specs?.FastChargingWattage))
+                        {
+                            <div class="d-flex justify-content-between py-1 border-bottom" style="border-color:var(--border)!important">
+                                <span style="color:var(--text-muted);font-size:12px;font-weight:600">Fast Charging:</span>
+                                <span style="color:var(--text-secondary);font-size:12px" class="text-end">@Model.Specs.FastChargingWattage (@(Model.Specs?.ChargingPortType ?? "Type-C"))</span>
+                            </div>
+                        }
+                        @if (Model.Specs != null && Model.Specs.WirelessCharging)
+                        {
+                            <div class="d-flex justify-content-between py-1" style="font-size:12px">
+                                <span style="color:var(--text-muted);font-weight:600">Wireless Charge:</span>
+                                <span class="text-success"><i class="bi bi-check-circle me-1"></i>Supported</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Section 5: Network & Connectivity -->
+                <div class="col-md-6">
+                    <div class="p-3 rounded-3 h-100" style="background:var(--bg-elevated);border:1px solid var(--border)">
+                        <div class="fw-bold text-success mb-2 small text-uppercase d-flex align-items-center">
+                            <i class="bi bi-wifi me-2"></i>Network &amp; Connectivity
+                        </div>
+                        <div class="d-flex justify-content-between py-1 border-bottom" style="border-color:var(--border)!important">
+                            <span style="color:var(--text-muted);font-size:12px;font-weight:600">Cellular Network:</span>
+                            <span style="color:var(--text-primary);font-weight:600;font-size:12px" class="text-end">@(Model.Specs != null && Model.Specs.Network5G ? "5G Network Supported" : "4G LTE")</span>
+                        </div>
+                        <div class="d-flex justify-content-between py-1 border-bottom" style="border-color:var(--border)!important">
+                            <span style="color:var(--text-muted);font-size:12px;font-weight:600">SIM Slot Type:</span>
+                            <span style="color:var(--text-secondary);font-size:12px" class="text-end">@(Model.Specs?.SimType ?? "Dual SIM") @(Model.Specs != null && Model.Specs.EsimSupport ? "(eSIM Support)" : "")</span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(Model.Specs?.WifiVersion) || !string.IsNullOrWhiteSpace(Model.Specs?.BluetoothVersion))
+                        {
+                            <div class="d-flex justify-content-between py-1" style="font-size:12px">
+                                <span style="color:var(--text-muted);font-weight:600">Wi-Fi &amp; Bluetooth:</span>
+                                <span style="color:var(--text-secondary)">Wi-Fi: @Model.Specs?.WifiVersion | BT: @Model.Specs?.BluetoothVersion</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Section 6: OS, Security & Build -->
+                <div class="col-md-6">
+                    <div class="p-3 rounded-3 h-100" style="background:var(--bg-elevated);border:1px solid var(--border)">
+                        <div class="fw-bold text-secondary mb-2 small text-uppercase d-flex align-items-center">
+                            <i class="bi bi-shield-check me-2"></i>OS &amp; Physical Build
+                        </div>
+                        <div class="d-flex justify-content-between py-1 border-bottom" style="border-color:var(--border)!important">
+                            <span style="color:var(--text-muted);font-size:12px;font-weight:600">Operating System:</span>
+                            <span style="color:var(--text-primary);font-weight:600;font-size:12px" class="text-end">@(Model.Specs?.OperatingSystem ?? "Android") @Model.Specs?.OsVersion</span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(Model.Specs?.WaterResistance))
+                        {
+                            <div class="d-flex justify-content-between py-1 border-bottom" style="border-color:var(--border)!important">
+                                <span style="color:var(--text-muted);font-size:12px;font-weight:600">IP Rating:</span>
+                                <span style="color:var(--text-secondary);font-size:12px" class="text-end">@Model.Specs.WaterResistance</span>
+                            </div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Model.Specs?.FingerprintSensor))
+                        {
+                            <div class="d-flex justify-content-between py-1" style="font-size:12px">
+                                <span style="color:var(--text-muted);font-weight:600">Biometrics:</span>
+                                <span style="color:var(--text-secondary)">@Model.Specs.FingerprintSensor</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Description Card -->
+        @if (!string.IsNullOrWhiteSpace(Model.Description))
+        {
+            <div class="card-d card-p mb-4">
+                <div class="s-title mb-2"><i class="bi bi-file-text me-2" style="color:var(--primary)"></i>Product Description</div>
+                <div style="color:var(--text-secondary);font-size:13px;line-height:1.6;white-space:pre-wrap">@Model.Description</div>
+            </div>
+        }
+
+        <!-- Timestamps Audit Footer -->
+        <div class="card-d card-p">
+            <div class="row g-2" style="font-size:12px">
+                <div class="col-6">
+                    <span style="color:var(--text-muted)">Date Created:</span>
+                    <span style="color:var(--text-secondary);font-weight:600" class="ms-1">@Model.CreatedDate.ToIstString("MMM d, yyyy HH:mm IST")</span>
+                </div>
+                <div class="col-6 text-end">
+                    <span style="color:var(--text-muted)">Last Modified:</span>
+                    <span style="color:var(--text-secondary);font-weight:600" class="ms-1">@Model.UpdatedDate.ToIstString("MMM d, yyyy HH:mm IST")</span>
                 </div>
             </div>
         </div>

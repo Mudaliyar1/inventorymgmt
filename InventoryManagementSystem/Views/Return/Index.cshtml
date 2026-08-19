@@ -21,17 +21,17 @@
 </div>
 
 <!-- Detailed Filters Bar (Toggleable Panel) -->
-<div class="card border-0 shadow-sm rounded-4 mb-4" id="returnFilterPanel">
+<div class="card border shadow-sm rounded-4 mb-4" id="returnFilterPanel">
     <div class="card-body p-3">
         <form method="get" class="row g-3">
             <!-- Row 1: Search & Categories -->
             <div class="col-md-4">
                 <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-search me-1"></i>Search Keywords</label>
-                <input type="text" name="search" value="@ViewBag.Search" class="form-control bg-light border-0" placeholder="Return #, Invoice #, IMEI, Customer...">
+                <input type="text" name="search" value="@ViewBag.Search" class="form-control" placeholder="Return #, Invoice #, IMEI, Customer...">
             </div>
             <div class="col-md-4">
                 <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-question-circle me-1"></i>Return Reason</label>
-                <select name="reason" class="form-select bg-light border-0">
+                <select name="reason" class="form-select">
                     <option value="">All Return Reasons</option>
                     <option value="Defective / Malfunctioning" selected="@(ViewBag.Reason == "Defective / Malfunctioning")">Defective / Malfunctioning</option>
                     <option value="Customer Regret / Changed Mind" selected="@(ViewBag.Reason == "Customer Regret / Changed Mind")">Customer Regret / Changed Mind</option>
@@ -42,7 +42,7 @@
             </div>
             <div class="col-md-4">
                 <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-shield-exclamation me-1"></i>Item Condition</label>
-                <select name="condition" class="form-select bg-light border-0">
+                <select name="condition" class="form-select">
                     <option value="">All Item Conditions</option>
                     <option value="Resellable (In Stock)" selected="@(ViewBag.Condition == "Resellable (In Stock)")">Resellable (In Stock)</option>
                     <option value="Damaged (RTV / Scrap)" selected="@(ViewBag.Condition == "Damaged (RTV / Scrap)")">Damaged (RTV / Scrap)</option>
@@ -53,7 +53,7 @@
             <!-- Row 2: Target & Amounts -->
             <div class="col-md-4">
                 <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-signpost-split me-1"></i>Destination Target</label>
-                <select name="target" class="form-select bg-light border-0">
+                <select name="target" class="form-select">
                     <option value="">All Inventory Targets</option>
                     <option value="Stock In" selected="@(ViewBag.Target == "Stock In")">Restocked to Inventory</option>
                     <option value="Damaged Scrap" selected="@(ViewBag.Target == "Damaged Scrap")">Write-Off / Scrap</option>
@@ -62,11 +62,11 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-currency-rupee me-1"></i>Min Refund Amount (₹)</label>
-                <input type="number" step="100" name="minRefund" value="@ViewBag.MinRefund" class="form-control bg-light border-0" placeholder="Min ₹">
+                <input type="number" step="100" name="minRefund" value="@ViewBag.MinRefund" class="form-control" placeholder="Min ₹">
             </div>
             <div class="col-md-3">
                 <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-currency-rupee me-1"></i>Max Refund Amount (₹)</label>
-                <input type="number" step="100" name="maxRefund" value="@ViewBag.MaxRefund" class="form-control bg-light border-0" placeholder="Max ₹">
+                <input type="number" step="100" name="maxRefund" value="@ViewBag.MaxRefund" class="form-control" placeholder="Max ₹">
             </div>
             <div class="col-md-2 d-flex align-items-end gap-1">
                 <button type="submit" class="btn btn-dark w-100 rounded-pill"><i class="bi bi-funnel me-1"></i>Filter</button>

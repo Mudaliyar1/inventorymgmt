@@ -951,3 +951,129 @@ option {
   background-color: var(--card-bg) !important;
   color: var(--text-primary) !important;
 }
+
+/* ============================================================
+   GLOBAL ACCESSIBILITY & HIGH-CONTRAST TYPOGRAPHY OVERRIDES
+   ============================================================ */
+
+/* Fix text-muted to guarantee high contrast (#CBD5E1) on dark backgrounds */
+.text-muted, small.text-muted, span.text-muted, div.text-muted, label.text-muted, p.text-muted, td.text-muted {
+  color: #CBD5E1 !important;
+}
+
+/* Fix text-dark / text-black / text-body so they never render dark/black text on dark containers */
+.text-dark, .text-black, .text-body, span.text-dark, div.text-dark, h6.text-dark, h5.text-dark, td.text-dark {
+  color: #F8FAFC !important;
+}
+
+.text-secondary, span.text-secondary, small.text-secondary {
+  color: #E2E8F0 !important;
+}
+
+/* Fix Bootstrap bg-light and container cards inside modals */
+.bg-light, .bg-white, .bg-body {
+  background-color: var(--card-bg) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border) !important;
+}
+
+.bg-body-tertiary, .bg-secondary-subtle, .bg-light-subtle, .bg-dark-subtle {
+  background-color: var(--bg-elevated) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border) !important;
+}
+
+/* Global Badges High-Contrast Styling */
+.badge.bg-light, .badge.bg-light-subtle {
+  background-color: var(--border-light) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border) !important;
+}
+
+.badge.bg-secondary-subtle {
+  background-color: var(--primary-dim) !important;
+  color: var(--primary-text) !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+}
+
+.badge.bg-success-subtle {
+  background-color: rgba(34, 197, 94, 0.15) !important;
+  color: #4ADE80 !important;
+  border: 1px solid rgba(34, 197, 94, 0.3) !important;
+}
+
+.badge.bg-danger-subtle {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+  color: #FCA5A5 !important;
+  border: 1px solid rgba(239, 68, 68, 0.3) !important;
+}
+
+.badge.bg-warning-subtle {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  color: #FDE047 !important;
+  border: 1px solid rgba(245, 158, 11, 0.3) !important;
+}
+
+.badge.bg-info-subtle {
+  background-color: rgba(56, 189, 248, 0.15) !important;
+  color: #7DD3FC !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+}
+
+.badge.bg-primary-subtle {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+  color: #93C5FD !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Modal Details Key-Value List Rows */
+.modal-body .d-flex.justify-content-between.border-bottom,
+.modal-body .py-1.border-bottom {
+  border-bottom-color: var(--border) !important;
+  padding-top: 7px !important;
+  padding-bottom: 7px !important;
+}
+
+/* ============================================================
+   FILTER INPUT & SELECT BOX VISIBLE BORDER ENFORCEMENT
+   ============================================================ */
+
+/* Enforce crisp 1px border on all inputs and select dropdowns across all pages */
+.form-control,
+.form-select,
+.fg-control,
+.input-group-text,
+.form-control.border-0,
+.form-select.border-0,
+.input-group-text.border-0,
+.form-control.bg-light,
+.form-select.bg-light,
+.input-group-text.bg-light {
+  border: 1px solid #334155 !important;
+  background-color: #162032 !important;
+  color: #F8FAFC !important;
+}
+
+.form-control:focus,
+.form-select:focus,
+.fg-control:focus,
+.form-control.border-0:focus,
+.form-select.border-0:focus {
+  border-color: #3B82F6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
+  background-color: #162032 !important;
+  color: #F8FAFC !important;
+}
+
+/* Ensure filter panel containers have a distinct border */
+#repairFilterPanel,
+#returnFilterPanel,
+#imeiFilterPanel,
+#customerFilterPanel,
+#supplierFilterPanel,
+#productFilterPanel,
+#salesFilterPanel,
+#exchangeFilterPanel {
+  border: 1px solid #334155 !important;
+  background-color: #1E293B !important;
+}
