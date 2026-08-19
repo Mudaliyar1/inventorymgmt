@@ -602,7 +602,41 @@ body, .modal-content, .dropdown-menu, .popover { background: var(--bg) !importan
 .tbl-title { font-size: 14px; font-weight: 700; color: var(--text-primary); }
 .tbl-count { font-size: 12px; color: var(--text-muted); margin-left: 6px; }
 
-.tbl-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
+.tbl-scroll, .table-responsive {
+  overflow-x: auto !important;
+  overflow-y: visible;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  max-width: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: #3B82F6 #1E293B;
+  cursor: grab;
+}
+
+.tbl-scroll:active, .table-responsive:active {
+  cursor: grabbing;
+}
+
+.tbl-scroll::-webkit-scrollbar, .table-responsive::-webkit-scrollbar {
+  height: 8px;
+  background: #0F172A;
+}
+
+.tbl-scroll::-webkit-scrollbar-track, .table-responsive::-webkit-scrollbar-track {
+  background: #1E293B;
+  border-radius: 4px;
+}
+
+.tbl-scroll::-webkit-scrollbar-thumb, .table-responsive::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+  border: 1px solid #475569;
+}
+
+.tbl-scroll::-webkit-scrollbar-thumb:hover, .table-responsive::-webkit-scrollbar-thumb:hover {
+  background: #3B82F6;
+}
 
 table.tbl {
   width: 100%;

@@ -47,15 +47,17 @@
     </div>
 </div>
 
+<!-- Categories Table Card Container (Fixed Background & Border) -->
+<div class="card-d card-p p-0 overflow-hidden">
     <div class="tbl-scroll">
-        <table class="tbl" id="categories-table">
+        <table class="tbl mb-0" id="categories-table">
             <thead>
                 <tr>
-                    <th>Category Name</th>
+                    <th class="ps-4">Category Name</th>
                     <th>Description</th>
                     <th>Status</th>
-                    <th>Created</th>
-                    <th class="col-actions">Actions</th>
+                    <th>Created Date (IST)</th>
+                    <th class="col-actions text-end pe-4">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -64,7 +66,7 @@
                     @foreach (var cat in Model)
                     {
                         <tr>
-                            <td>
+                            <td class="ps-4">
                                 <div class="td-strong">@cat.Name</div>
                             </td>
                             <td style="color:var(--text-secondary);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
@@ -83,8 +85,13 @@
                             <td style="color:var(--text-muted);white-space:nowrap;font-size:12px">
                                 @cat.CreatedDate.ToIstString("MMM d, yyyy IST")
                             </td>
-                            <td class="col-actions">
+                            <td class="col-actions pe-4 text-end">
                                 <div class="d-flex align-items-center justify-content-end gap-1">
+                                    <button type="button" class="btn-d btn-ghost btn-icon-d"
+                                            onclick="openCategoryDetailsModal('@cat.Id', '@cat.Name', '@System.Text.Encodings.Web.JavaScriptEncoder.Default.Encode(cat.Description ?? "")', '@cat.Status', '@cat.CreatedDate.ToIstString("yyyy-MM-dd HH:mm IST")')"
+                                            title="View Details">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
                                     <a href="@Url.Action("Edit","Category",new{id=cat.Id})"
                                        class="btn-d btn-ghost btn-icon-d"
                                        title="Edit">
@@ -124,3 +131,65 @@
         </table>
     </div>
 </div>
+
+<!-- Modal: Category View Details -->
+<div class="modal fade" id="viewCategoryModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow rounded-4" style="background:var(--card-bg);color:var(--text-primary)">
+            <div class="modal-header border-bottom pb-3" style="border-color:var(--border)!important">
+                <h5 class="fw-bold modal-title" style="color:var(--text-primary)"><i class="bi bi-folder me-2 text-primary"></i>Category Details</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-4">
+                <div class="card-d card-p">
+                    <div class="d-flex justify-content-between py-1 border-bottom" style="border-color:var(--border)!important">
+                        <span style="color:var(--text-muted);font-size:12px;font-weight:600">Category ID:</span>
+                        <code style="color:var(--primary-text);font-weight:700;font-size:12px" id="catDetailId"></code>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom" style="border-color:var(--border)!important">
+                        <span style="color:var(--text-muted);font-size:12px;font-weight:600">Category Name:</span>
+                        <span style="color:var(--text-primary);font-weight:700;font-size:14px" id="catDetailName"></span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom" style="border-color:var(--border)!important">
+                        <span style="color:var(--text-muted);font-size:12px;font-weight:600">Status:</span>
+                        <span id="catDetailStatusBadge"></span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom" style="border-color:var(--border)!important">
+                        <span style="color:var(--text-muted);font-size:12px;font-weight:600">Date Created (IST):</span>
+                        <span style="color:var(--text-secondary);font-size:12px" id="catDetailCreated"></span>
+                    </div>
+                    <div class="mt-3">
+                        <span style="color:var(--text-muted);font-size:12px;font-weight:600;display:block" class="mb-1">Category Description:</span>
+                        <div class="p-3 rounded-3" style="background:var(--bg);color:var(--text-secondary);font-size:13px" id="catDetailDescription"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top py-2" style="border-color:var(--border)!important">
+                <button type="button" class="btn-d btn-ghost" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function openCategoryDetailsModal(id, name, desc, status, created) {
+            document.getElementById('catDetailId').innerText = id || '-';
+            document.getElementById('catDetailName').innerText = name || '-';
+            document.getElementById('catDetailDescription').innerText = desc || 'No description entered.';
+            document.getElementById('catDetailCreated').innerText = created || '-';
+            
+            const badgeEl = document.getElementById('catDetailStatusBadge');
+            if (status === 'Active') {
+                badgeEl.className = 'badge-d badge-green';
+                badgeEl.innerText = 'Active Category';
+            } else {
+                badgeEl.className = 'badge-d badge-gray';
+                badgeEl.innerText = 'Inactive Category';
+            }
+
+            const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('viewCategoryModal'));
+            modal.show();
+        }
+    </script>
+}

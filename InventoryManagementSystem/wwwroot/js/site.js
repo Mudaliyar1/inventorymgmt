@@ -534,7 +534,7 @@ function toggleFilterPanel(panelId, btnId) {
     }
 }
 
-// Auto-restore stored filter state on DOM load
+// Auto-restore stored filter state on DOM load & init Table Drag Scroll
 document.addEventListener('DOMContentLoaded', function () {
     const filterPanels = document.querySelectorAll('[id$="FilterPanel"]');
     filterPanels.forEach(panel => {
@@ -552,4 +552,85 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     });
+
+    initGlobalTableDragScroll();
+    setInterval(initGlobalTableDragScroll, 1000);
 });
+
+// 5. SITE-WIDE HORIZONTAL TABLE MOUSE-DRAG SCROLLING ENGINE
+function initGlobalTableDragScroll() {
+    const tableContainers = document.querySelectorAll('.tbl-scroll, .table-responsive, div:has(> table)');
+
+    tableContainers.forEach(container => {
+        if (container.dataset.dragScrollBound === 'true') return;
+
+        const table = container.querySelector('table');
+        if (!table) return;
+
+        container.dataset.dragScrollBound = 'true';
+
+        let isMouseDown = false;
+        let startX = 0;
+        let startScrollLeft = 0;
+        let isDragging = false;
+
+        container.addEventListener('mousedown', function (e) {
+            // Ignore non-primary mouse clicks (e.g. right click)
+            if (e.button !== 0) return;
+
+            // Do not drag scroll if user is interacting with form controls or buttons
+            if (e.target.closest('button, a, input, select, textarea, label, [role="button"], .btn-d, .btn')) {
+                return;
+            }
+
+            isMouseDown = true;
+            isDragging = false;
+            startX = e.clientX;
+            startScrollLeft = container.scrollLeft;
+        });
+
+        window.addEventListener('mouseup', function () {
+            if (isMouseDown) {
+                isMouseDown = false;
+                container.style.cursor = '';
+                setTimeout(() => { isDragging = false; }, 50);
+            }
+        });
+
+        container.addEventListener('mouseleave', function () {
+            if (isMouseDown) {
+                isMouseDown = false;
+                container.style.cursor = '';
+                setTimeout(() => { isDragging = false; }, 50);
+            }
+        });
+
+        container.addEventListener('mousemove', function (e) {
+            if (!isMouseDown) return;
+
+            const deltaX = e.clientX - startX;
+
+            // Only trigger horizontal drag scroll if moved > 4px
+            if (Math.abs(deltaX) > 4) {
+                isDragging = true;
+                container.style.cursor = 'grabbing';
+                container.scrollLeft = startScrollLeft - (deltaX * 1.5);
+            }
+        });
+
+        // Prevent accidental button/modal/link clicks if user was dragging to scroll
+        container.addEventListener('click', function (e) {
+            if (isDragging) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }, true);
+
+        // Ensure vertical mouse wheel scrolling over table containers scrolls the page vertically
+        container.addEventListener('wheel', function (e) {
+            if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                window.scrollBy(0, e.deltaY);
+            }
+        }, { passive: true });
+    });
+}
