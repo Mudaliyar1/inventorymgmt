@@ -9,23 +9,43 @@
         <h1 class="ph-title">Categories</h1>
         <p class="ph-sub">Group and classify your products into categories.</p>
     </div>
-    <div class="ph-actions">
+    <div class="ph-actions d-flex align-items-center gap-2">
+        <button type="button" class="btn-d btn-outline" id="categoryFilterToggleBtn" onclick="toggleFilterPanel('categoryFilterPanel', 'categoryFilterToggleBtn')">
+            <i class="bi bi-funnel-fill text-primary me-1"></i><span>Filters: ON</span>
+        </button>
         <a href="@Url.Action("Create","Category")" class="btn-d btn-primary">
             <i class="bi bi-plus-lg"></i> Add Category
         </a>
     </div>
 </div>
 
-<div class="tbl-wrap">
-    <div class="tbl-toolbar">
-        <div class="tbl-search">
-            <i class="bi bi-search tbl-search-icon"></i>
-            <input type="search" data-tbl-search="categories-table" placeholder="Search categories…">
+<!-- Detailed Filter Bar (Toggleable Panel) -->
+<div class="card-d card-p mb-4" id="categoryFilterPanel">
+    <div class="row g-3 align-items-center">
+        <div class="col-md-6">
+            <div class="fg mb-0">
+                <label class="fg-label"><i class="bi bi-search me-1"></i>Search Keywords</label>
+                <div class="tbl-search">
+                    <i class="bi bi-search tbl-search-icon"></i>
+                    <input type="search" data-tbl-search="categories-table" placeholder="Search category name, description…" class="fg-control" style="height:38px;padding-left:32px">
+                </div>
+            </div>
         </div>
-        <div class="ms-auto">
-            <span class="tbl-count">@(Model?.Count() ?? 0) categories</span>
+        <div class="col-md-3">
+            <div class="fg mb-0">
+                <label class="fg-label"><i class="bi bi-toggle-on me-1"></i>Status Filter</label>
+                <select class="fg-control" style="height:38px" onchange="const val=this.value.toLowerCase(); document.querySelectorAll('#categories-table tbody tr').forEach(r => { if(!val || r.textContent.toLowerCase().includes(val)) r.style.display=''; else r.style.display='none'; })">
+                    <option value="">All Statuses</option>
+                    <option value="Active">Active Categories</option>
+                    <option value="Inactive">Inactive Categories</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-3 d-flex align-items-end justify-content-end">
+            <span class="tbl-count">@(Model?.Count() ?? 0) categories total</span>
         </div>
     </div>
+</div>
 
     <div class="tbl-scroll">
         <table class="tbl" id="categories-table">

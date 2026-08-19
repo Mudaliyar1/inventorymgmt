@@ -112,5 +112,41 @@ namespace InventoryManagementSystem.Services
             if (string.IsNullOrWhiteSpace(imei)) return true;
             return !(await _deviceRepository.IsImeiExistsAsync(imei, excludeDeviceId));
         }
+
+        public async Task<(bool Success, string Message)> DeleteDeviceAsync(string id, string deletedBy)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(id)) return (false, "Device ID is required.");
+                var device = await _deviceRepository.GetByIdAsync(id);
+                if (device == null) return (false, "IMEI Device not found.");
+
+                // Decrement Product CurrentStock if linked
+                if (!string.IsNullOrWhiteSpace(device.ProductId))
+                {
+                    var product = await _productRepository.GetByIdAsync(device.ProductId);
+                    if (product != null && product.CurrentStock > 0)
+                    {
+                        product.CurrentStock -= 1;
+                        product.UpdatedDate = DateTime.UtcNow;
+                        await _productRepository.UpdateAsync(product.Id, product);
+                    }
+                }
+
+                await _deviceRepository.DeleteAsync(id);
+
+                await _auditLogService.LogActivityAsync(
+                    "Device Deleted",
+                    deletedBy,
+                    device.IMEI1,
+                    $"Deleted physical IMEI device '{device.Brand} {device.ModelName}' (IMEI: {device.IMEI1})");
+
+                return (true, $"IMEI Device '{device.IMEI1}' deleted successfully.");
+            }
+            catch (Exception ex)
+            {
+                return (false, "Error deleting device: " + ex.Message);
+            }
+        }
     }
 }

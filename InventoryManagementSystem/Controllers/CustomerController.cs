@@ -24,13 +24,16 @@ namespace InventoryManagementSystem.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index(string? search, int page = 1)
+        public async Task<IActionResult> Index(string? search, string? hasGstin, decimal? minPurchases, decimal? maxPurchases, int page = 1)
         {
             int pageSize = 20;
             var customers = await _customerService.GetPagedCustomersAsync(search, page, pageSize);
             var totalCount = await _customerService.GetFilteredCountAsync(search);
 
             ViewBag.Search = search;
+            ViewBag.HasGstin = hasGstin;
+            ViewBag.MinPurchases = minPurchases;
+            ViewBag.MaxPurchases = maxPurchases;
             ViewBag.CurrentPage = page;
             ViewBag.TotalPages = (int)System.Math.Ceiling((double)totalCount / pageSize);
             ViewBag.TotalCount = totalCount;

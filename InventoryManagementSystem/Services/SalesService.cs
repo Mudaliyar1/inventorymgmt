@@ -139,9 +139,11 @@ namespace InventoryManagementSystem.Services
             // Save Sale record
             await _saleRepository.CreateAsync(sale);
 
-            // 3. Mark Devices as 'Sold' & deduct product stock
+            // 3. Mark Devices as 'Sold', Auto-Create POS Billing IMEIs, & deduct product stock
             foreach (var item in sale.Items)
             {
+                var prod = await _productRepository.GetByIdAsync(item.ProductId);
+
                 if (!string.IsNullOrWhiteSpace(item.DeviceId))
                 {
                     await _deviceRepository.UpdateStatusAsync(
@@ -162,6 +164,55 @@ namespace InventoryManagementSystem.Services
                             $"Sold Traded-In Mobile '{soldDev.Brand} {soldDev.ModelName}' (IMEI: {soldDev.IMEI1}, Color: {soldDev.Color}) under Invoice #{sale.InvoiceNumber} for ₹{item.SellingPrice:N2} (Acquisition Cost: ₹{soldDev.PurchasePrice:N2}, Gross Profit: ₹{(item.SellingPrice - soldDev.PurchasePrice):N2})");
                     }
                 }
+                else if (!string.IsNullOrWhiteSpace(item.IMEI1))
+                {
+                    var cleanImei1 = item.IMEI1.Trim();
+                    var existingDev = await _deviceRepository.GetByImeiAsync(cleanImei1);
+                    if (existingDev != null)
+                    {
+                        await _deviceRepository.UpdateStatusAsync(
+                            existingDev.Id,
+                            "Sold",
+                            sale.InvoiceNumber,
+                            sale.CustomerId,
+                            sale.CustomerName,
+                            sale.CustomerPhone);
+                        item.DeviceId = existingDev.Id;
+                    }
+                    else
+                    {
+                        // Auto-create new physical device record for this IMEI sold via POS
+                        var brandName = !string.IsNullOrWhiteSpace(item.Brand) ? item.Brand : (prod?.Brand ?? "Mobile");
+                        var modelName = !string.IsNullOrWhiteSpace(item.ModelName) ? item.ModelName : (prod?.ModelName ?? item.ProductName);
+                        var posDevice = new Device
+                        {
+                            Brand = brandName.Trim(),
+                            ModelName = modelName.Trim(),
+                            Variant = item.Variant?.Trim() ?? prod?.Variant ?? string.Empty,
+                            Color = item.Color?.Trim() ?? prod?.Color ?? string.Empty,
+                            IMEI1 = cleanImei1,
+                            IMEI2 = string.IsNullOrWhiteSpace(item.IMEI2) ? null : item.IMEI2.Trim(),
+                            SerialNumber = string.IsNullOrWhiteSpace(item.SerialNumber) ? null : item.SerialNumber.Trim(),
+                            ProductId = item.ProductId,
+                            ProductCode = item.ProductCode ?? prod?.Code,
+                            ProductName = item.ProductName ?? prod?.Name,
+                            PurchasePrice = item.CostPrice > 0 ? item.CostPrice : (prod?.PurchasePrice ?? 0),
+                            SellingPrice = item.SellingPrice > 0 ? item.SellingPrice : (prod?.SellingPrice ?? 0),
+                            Status = "Sold",
+                            Source = "POS Billing",
+                            InvoiceNumber = sale.InvoiceNumber,
+                            CustomerId = sale.CustomerId,
+                            CustomerName = sale.CustomerName,
+                            CustomerPhone = sale.CustomerPhone,
+                            Notes = $"Sold via POS Billing Invoice #{sale.InvoiceNumber}",
+                            CreatedBy = sale.CreatedBy,
+                            CreatedDate = DateTime.UtcNow,
+                            UpdatedDate = DateTime.UtcNow
+                        };
+                        await _deviceRepository.CreateAsync(posDevice);
+                        item.DeviceId = posDevice.Id;
+                    }
+                }
 
                 await _stockService.StockOutAsync(item.ProductId, item.Quantity, $"Mobile Invoice Sale: {sale.InvoiceNumber}", sale.CreatedBy);
             }
@@ -171,18 +222,30 @@ namespace InventoryManagementSystem.Services
 
         public async Task<string> GenerateInvoiceNumberAsync()
         {
-            var dateStr = DateTime.UtcNow.ToString("yyyyMMdd");
-            var random = new Random();
-            var suffix = random.Next(1000, 9999).ToString();
-            var invoiceNumber = $"INV-{dateStr}-{suffix}";
+            var istDate = DateTimeExtensions.ToIst(DateTime.UtcNow);
+            var dateStr = istDate.ToString("yyyyMMdd");
+            var seq = await _saleRepository.GetNextInvoiceSequenceAsync();
 
-            var existing = await _saleRepository.GetByInvoiceNumberAsync(invoiceNumber);
-            if (existing != null)
+            string invoiceNumber;
+            while (true)
             {
-                return await GenerateInvoiceNumberAsync();
+                var suffix = seq.ToString("D4");
+                invoiceNumber = $"INV-{dateStr}-{suffix}";
+
+                var existing = await _saleRepository.GetByInvoiceNumberAsync(invoiceNumber);
+                if (existing == null)
+                {
+                    break;
+                }
+                seq++;
             }
 
             return invoiceNumber;
+        }
+
+        public async Task<IEnumerable<Sale>> GetAllSalesAsync()
+        {
+            return await _saleRepository.GetAllAsync();
         }
 
         public async Task<Sale?> GetSaleByIdAsync(string id)
@@ -212,9 +275,17 @@ namespace InventoryManagementSystem.Services
             DateTime? endDate,
             string? cashier,
             int page,
-            int pageSize)
+            int pageSize,
+            string? paymentStatus = null,
+            string? paymentMethod = null,
+            decimal? minAmount = null,
+            decimal? maxAmount = null,
+            string? sortBy = null,
+            bool isDescending = true)
         {
-            return await _saleRepository.GetFilteredSalesAsync(searchTerm, customerName, startDate, endDate, cashier, page, pageSize);
+            return await _saleRepository.GetFilteredSalesAsync(
+                searchTerm, customerName, startDate, endDate, cashier, page, pageSize,
+                paymentStatus, paymentMethod, minAmount, maxAmount, sortBy, isDescending);
         }
 
         public async Task<Sale?> UpdateSaleAsync(
@@ -286,13 +357,40 @@ namespace InventoryManagementSystem.Services
             var sale = await _saleRepository.GetByIdAsync(id);
             if (sale == null) return false;
 
-            // Restock products & set devices back to InStock
+            // Restock products & set devices back to InStock or delete if created by POS
             foreach (var item in sale.Items)
             {
                 if (!string.IsNullOrWhiteSpace(item.DeviceId))
                 {
-                    await _deviceRepository.UpdateStatusAsync(item.DeviceId, "InStock");
+                    var dev = await _deviceRepository.GetByIdAsync(item.DeviceId);
+                    if (dev != null)
+                    {
+                        if (dev.Source == "POS Billing")
+                        {
+                            await _deviceRepository.DeleteAsync(dev.Id);
+                        }
+                        else
+                        {
+                            await _deviceRepository.UpdateStatusAsync(dev.Id, "InStock");
+                        }
+                    }
                 }
+                else if (!string.IsNullOrWhiteSpace(item.IMEI1))
+                {
+                    var dev = await _deviceRepository.GetByImeiAsync(item.IMEI1.Trim());
+                    if (dev != null)
+                    {
+                        if (dev.Source == "POS Billing")
+                        {
+                            await _deviceRepository.DeleteAsync(dev.Id);
+                        }
+                        else
+                        {
+                            await _deviceRepository.UpdateStatusAsync(dev.Id, "InStock");
+                        }
+                    }
+                }
+
                 await _stockService.StockInAsync(item.ProductId, item.Quantity, $"Invoice #{sale.InvoiceNumber} Cancellation/Deletion", sale.CreatedBy);
             }
 

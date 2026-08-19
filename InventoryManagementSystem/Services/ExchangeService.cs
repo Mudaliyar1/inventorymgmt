@@ -123,7 +123,11 @@ namespace InventoryManagementSystem.Services
                 var existingExch1 = await _exchangeRepository.GetByImeiAsync(imei1Clean);
                 if (existingExch1 != null)
                 {
-                    return (false, $"Phone with IMEI '{imei1Clean}' was already traded-in under Exchange #{existingExch1.ExchangeNumber}.", null);
+                    var isActiveInDeviceRepo = await _deviceRepository.IsImeiExistsAsync(imei1Clean);
+                    if (isActiveInDeviceRepo)
+                    {
+                        return (false, $"Phone with IMEI '{imei1Clean}' is currently active in inventory under Exchange #{existingExch1.ExchangeNumber}.", null);
+                    }
                 }
 
                 // Security Lock Check
@@ -194,55 +198,75 @@ namespace InventoryManagementSystem.Services
                     UpdatedDate = DateTime.UtcNow
                 };
 
-                // Find or link to a generic 'Exchanged Mobile Phones' Product if exists
+                // 2. Dedicated Product Catalog Creation / Linking for Products & Specs
+                var brandClean = req.OldBrand.Trim();
+                var modelClean = req.OldModel.Trim();
+                var variantClean = req.OldStorage?.Trim() ?? string.Empty;
+                var colorClean = req.OldColor.Trim();
+
+                var targetProductName = $"Pre-Owned {brandClean} {modelClean}";
+                if (!string.IsNullOrWhiteSpace(variantClean)) targetProductName += $" ({variantClean})";
+                if (!string.IsNullOrWhiteSpace(colorClean)) targetProductName += $" - {colorClean}";
+
                 var products = await _productRepository.GetAllAsync();
-                Product? genericExchProd = null;
+                Product? targetProduct = null;
+
                 foreach (var p in products)
                 {
-                    if (p.Name.Contains("Exchange", StringComparison.OrdinalIgnoreCase) || p.ProductType == "Smartphone")
+                    if (p.Name.Equals(targetProductName, StringComparison.OrdinalIgnoreCase) ||
+                       (p.Brand.Equals(brandClean, StringComparison.OrdinalIgnoreCase) && 
+                        p.ModelName.Equals(modelClean, StringComparison.OrdinalIgnoreCase) &&
+                        p.Variant.Equals(variantClean, StringComparison.OrdinalIgnoreCase)))
                     {
-                        genericExchProd = p;
+                        targetProduct = p;
                         break;
                     }
                 }
 
-                if (genericExchProd == null)
+                if (targetProduct == null)
                 {
-                    genericExchProd = new Product
+                    var codeBrand = brandClean.ToUpper().Replace(" ", "");
+                    var codeModel = modelClean.ToUpper().Replace(" ", "");
+                    var randSuffix = Random.Shared.Next(100, 999);
+                    var productCode = $"EXCH-{codeBrand}-{codeModel}-{randSuffix}";
+
+                    targetProduct = new Product
                     {
-                        Name = "Trade-In Pre-Owned Mobile Phones",
-                        Code = "EXCH-USED",
+                        Name = targetProductName,
+                        Code = productCode,
                         ProductType = "Smartphone",
-                        Brand = "Multi-Brand",
-                        ModelName = "Pre-Owned Trade-In",
-                        CategoryId = null,
+                        Brand = brandClean,
+                        ModelName = modelClean,
+                        Variant = variantClean,
+                        Color = colorClean,
+                        PurchasePrice = req.FinalExchangeValue,
+                        SellingPrice = System.Math.Round(req.FinalExchangeValue * 1.25m, 2),
                         CurrentStock = 0,
-                        PurchasePrice = 0,
-                        SellingPrice = 0,
-                        Description = "System category for traded-in pre-owned smartphones."
+                        MinimumStock = 1,
+                        Status = "Active",
+                        Description = $"Traded-in pre-owned smartphone ({req.Condition} condition). Primary IMEI: {imei1Clean}."
                     };
-                    await _productRepository.CreateAsync(genericExchProd);
+                    await _productRepository.CreateAsync(targetProduct);
                 }
 
-                if (genericExchProd != null && ObjectId.TryParse(genericExchProd.Id, out _))
+                if (targetProduct != null && ObjectId.TryParse(targetProduct.Id, out _))
                 {
-                    oldDevice.ProductId = genericExchProd.Id;
-                    oldDevice.ProductCode = genericExchProd.Code;
-                    oldDevice.ProductName = $"{req.OldBrand} {req.OldModel} ({req.OldColor})";
-                    req.ProductId = genericExchProd.Id;
+                    oldDevice.ProductId = targetProduct.Id;
+                    oldDevice.ProductCode = targetProduct.Code;
+                    oldDevice.ProductName = targetProduct.Name;
+                    req.ProductId = targetProduct.Id;
 
-                    // Increment catalog stock if status is InStock
                     if (req.InventoryDestinationStatus == "InStock")
                     {
-                        genericExchProd.CurrentStock += 1;
-                        genericExchProd.UpdatedDate = DateTime.UtcNow;
-                        await _productRepository.UpdateAsync(genericExchProd.Id, genericExchProd);
+                        targetProduct.CurrentStock += 1;
+                        targetProduct.UpdatedDate = DateTime.UtcNow;
+                        await _productRepository.UpdateAsync(targetProduct.Id, targetProduct);
                     }
                 }
                 else
                 {
                     oldDevice.ProductId = null;
-                    oldDevice.ProductName = $"{req.OldBrand} {req.OldModel} ({req.OldColor})";
+                    oldDevice.ProductName = targetProductName;
                     oldDevice.ProductCode = "EXCH-USED";
                 }
 
@@ -336,9 +360,23 @@ namespace InventoryManagementSystem.Services
                 var existing = await _exchangeRepository.GetByIdAsync(id);
                 if (existing == null) return (false, "Exchange record not found.");
 
+                // 1. Hard-delete all physical Device records matching ExchangeNumber or IMEIs from Devices collection
+                await _deviceRepository.DeleteDevicesByExchangeAsync(existing.ExchangeNumber, existing.OldImei1, existing.OldImei2);
                 if (!string.IsNullOrWhiteSpace(existing.DeviceId))
                 {
                     await _deviceRepository.DeleteAsync(existing.DeviceId);
+                }
+
+                // 3. Decrement Product Stock if applicable
+                if (!string.IsNullOrWhiteSpace(existing.ProductId))
+                {
+                    var prod = await _productRepository.GetByIdAsync(existing.ProductId);
+                    if (prod != null && prod.CurrentStock > 0)
+                    {
+                        prod.CurrentStock -= 1;
+                        prod.UpdatedDate = DateTime.UtcNow;
+                        await _productRepository.UpdateAsync(prod.Id, prod);
+                    }
                 }
 
                 await _exchangeRepository.DeleteAsync(id);

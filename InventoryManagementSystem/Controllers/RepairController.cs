@@ -17,7 +17,7 @@ namespace InventoryManagementSystem.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index(string? search, string? status, int page = 1)
+        public async Task<IActionResult> Index(string? search, string? status, string? brand, string? model, string? technician, decimal? minCost, decimal? maxCost, int page = 1)
         {
             int pageSize = 20;
             var tickets = await _repairService.GetPagedRepairsAsync(search, status, page, pageSize);
@@ -25,6 +25,11 @@ namespace InventoryManagementSystem.Controllers
 
             ViewBag.Search = search;
             ViewBag.Status = status;
+            ViewBag.Brand = brand;
+            ViewBag.Model = model;
+            ViewBag.Technician = technician;
+            ViewBag.MinCost = minCost;
+            ViewBag.MaxCost = maxCost;
             ViewBag.CurrentPage = page;
             ViewBag.TotalPages = (int)System.Math.Ceiling((double)totalCount / pageSize);
             ViewBag.TotalCount = totalCount;

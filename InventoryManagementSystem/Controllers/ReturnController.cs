@@ -28,13 +28,18 @@ namespace InventoryManagementSystem.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index(string? search, int page = 1)
+        public async Task<IActionResult> Index(string? search, string? reason, string? condition, string? target, decimal? minRefund, decimal? maxRefund, int page = 1)
         {
             int pageSize = 20;
             var returns = await _returnService.GetPagedReturnsAsync(search, page, pageSize);
             var totalCount = await _returnService.GetFilteredCountAsync(search);
 
             ViewBag.Search = search;
+            ViewBag.Reason = reason;
+            ViewBag.Condition = condition;
+            ViewBag.Target = target;
+            ViewBag.MinRefund = minRefund;
+            ViewBag.MaxRefund = maxRefund;
             ViewBag.CurrentPage = page;
             ViewBag.TotalPages = (int)System.Math.Ceiling((double)totalCount / pageSize);
             ViewBag.TotalCount = totalCount;

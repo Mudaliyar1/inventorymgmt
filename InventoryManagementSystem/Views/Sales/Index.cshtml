@@ -5,7 +5,11 @@
                             !string.IsNullOrEmpty(Model.CustomerName) ||
                             Model.StartDate.HasValue ||
                             Model.EndDate.HasValue ||
-                            !string.IsNullOrEmpty(Model.Cashier);
+                            !string.IsNullOrEmpty(Model.Cashier) ||
+                            !string.IsNullOrEmpty(Model.PaymentStatus) ||
+                            !string.IsNullOrEmpty(Model.PaymentMethod) ||
+                            Model.MinAmount.HasValue ||
+                            Model.MaxAmount.HasValue;
 }
 
 <form id="anti-forgery-form" style="display:none">
@@ -40,7 +44,7 @@
                     }
                 </div>
                 <div style="font-size:12px;color:var(--text-muted)">
-                    @(hasActiveFilters ? "Click to modify active invoice filter criteria" : "Click to expand search, customer, cashier & date/time filters")
+                    @(hasActiveFilters ? "Click to modify active invoice filter criteria" : "Click to expand multi-field detailed search & invoice filters")
                 </div>
             </div>
         </div>
@@ -63,10 +67,10 @@
     <div id="sales-filter-panel-body" class="card-p-lg border-top" style="display:@(hasActiveFilters ? "block" : "none");border-color:var(--border)!important">
         <form method="get" asp-action="Index" id="sales-filter-form">
             <div class="row g-3">
-                <!-- Search Term -->
+                <!-- Row 1: Keyword, Customer, Cashier -->
                 <div class="col-lg-4 col-md-6">
                     <div class="fg mb-0">
-                        <label class="fg-label" style="font-size:12px">Search Keyword</label>
+                        <label class="fg-label" style="font-size:12px"><i class="bi bi-search me-1"></i>Search Keyword</label>
                         <div class="fg-icon-wrap">
                             <i class="bi bi-search fg-icon"></i>
                             <input type="search" name="searchTerm" value="@Model.SearchTerm" class="fg-control" style="height:38px"
@@ -75,48 +79,98 @@
                     </div>
                 </div>
 
-                <!-- Customer Name / Phone -->
                 <div class="col-lg-4 col-md-6">
                     <div class="fg mb-0">
-                        <label class="fg-label" style="font-size:12px">Customer Name or Phone</label>
+                        <label class="fg-label" style="font-size:12px"><i class="bi bi-person me-1"></i>Customer Name or Phone</label>
                         <input type="text" name="customerName" value="@Model.CustomerName" class="fg-control" style="height:38px"
                                placeholder="Filter by customer name or phone…">
                     </div>
                 </div>
 
-                <!-- Cashier / User -->
                 <div class="col-lg-4 col-md-6">
                     <div class="fg mb-0">
-                        <label class="fg-label" style="font-size:12px">Cashier / Billed By</label>
+                        <label class="fg-label" style="font-size:12px"><i class="bi bi-person-badge me-1"></i>Cashier / Billed By</label>
                         <input type="text" name="cashier" value="@Model.Cashier" class="fg-control" style="height:38px"
                                placeholder="e.g. admin">
                     </div>
                 </div>
 
-                <!-- Start Date & Time (IST) -->
-                <div class="col-lg-4 col-md-6">
+                <!-- Row 2: Payment Status, Payment Method, Min & Max Amount -->
+                <div class="col-lg-3 col-md-6">
                     <div class="fg mb-0">
-                        <label class="fg-label" style="font-size:12px">From Date & Time (IST)</label>
+                        <label class="fg-label" style="font-size:12px"><i class="bi bi-wallet2 me-1"></i>Payment Status</label>
+                        <select name="paymentStatus" class="fg-control" style="height:38px">
+                            <option value="">All Payment Statuses</option>
+                            <option value="Paid" selected="@(Model.PaymentStatus == "Paid")">Paid</option>
+                            <option value="Partial" selected="@(Model.PaymentStatus == "Partial")">Partial</option>
+                            <option value="Unpaid" selected="@(Model.PaymentStatus == "Unpaid")">Unpaid</option>
+                            <option value="Draft" selected="@(Model.PaymentStatus == "Draft")">Draft</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-lg-3 col-md-6">
+                    <div class="fg mb-0">
+                        <label class="fg-label" style="font-size:12px"><i class="bi bi-credit-card me-1"></i>Payment Method</label>
+                        <select name="paymentMethod" class="fg-control" style="height:38px">
+                            <option value="">All Payment Methods</option>
+                            <option value="Cash" selected="@(Model.PaymentMethod == "Cash")">Cash</option>
+                            <option value="UPI" selected="@(Model.PaymentMethod == "UPI")">UPI / QR Code</option>
+                            <option value="Card" selected="@(Model.PaymentMethod == "Card")">Credit / Debit Card</option>
+                            <option value="Net Banking" selected="@(Model.PaymentMethod == "Net Banking")">Net Banking</option>
+                            <option value="Split" selected="@(Model.PaymentMethod == "Split")">Split Payment</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-lg-3 col-md-6">
+                    <div class="fg mb-0">
+                        <label class="fg-label" style="font-size:12px"><i class="bi bi-currency-rupee me-1"></i>Min Total (₹)</label>
+                        <input type="number" step="100" name="minAmount" value="@Model.MinAmount" placeholder="Min ₹" class="fg-control" style="height:38px">
+                    </div>
+                </div>
+
+                <div class="col-lg-3 col-md-6">
+                    <div class="fg mb-0">
+                        <label class="fg-label" style="font-size:12px"><i class="bi bi-currency-rupee me-1"></i>Max Total (₹)</label>
+                        <input type="number" step="100" name="maxAmount" value="@Model.MaxAmount" placeholder="Max ₹" class="fg-control" style="height:38px">
+                    </div>
+                </div>
+
+                <!-- Row 3: Dates, Sorting & Page Size -->
+                <div class="col-lg-3 col-md-6">
+                    <div class="fg mb-0">
+                        <label class="fg-label" style="font-size:12px"><i class="bi bi-calendar-event me-1"></i>From Date & Time (IST)</label>
                         <input type="datetime-local" name="startDate"
                                value="@(Model.StartDate.HasValue ? Model.StartDate.Value.ToString("yyyy-MM-ddTHH:mm") : "")"
                                class="fg-control" style="height:38px">
                     </div>
                 </div>
 
-                <!-- End Date & Time (IST) -->
-                <div class="col-lg-4 col-md-6">
+                <div class="col-lg-3 col-md-6">
                     <div class="fg mb-0">
-                        <label class="fg-label" style="font-size:12px">To Date & Time (IST)</label>
+                        <label class="fg-label" style="font-size:12px"><i class="bi bi-calendar-event me-1"></i>To Date & Time (IST)</label>
                         <input type="datetime-local" name="endDate"
                                value="@(Model.EndDate.HasValue ? Model.EndDate.Value.ToString("yyyy-MM-ddTHH:mm") : "")"
                                class="fg-control" style="height:38px">
                     </div>
                 </div>
 
-                <!-- Rows Per Page -->
-                <div class="col-lg-4 col-md-6">
+                <div class="col-lg-3 col-md-6">
                     <div class="fg mb-0">
-                        <label class="fg-label" style="font-size:12px">Rows Per Page</label>
+                        <label class="fg-label" style="font-size:12px"><i class="bi bi-sort-down me-1"></i>Sort By</label>
+                        <select name="sortBy" class="fg-control" style="height:38px">
+                            <option value="Date" selected="@(Model.SortBy == "Date" || string.IsNullOrEmpty(Model.SortBy))">Billing Date</option>
+                            <option value="GrandTotal" selected="@(Model.SortBy == "GrandTotal")">Grand Total Amount</option>
+                            <option value="InvoiceNumber" selected="@(Model.SortBy == "InvoiceNumber")">Invoice Number</option>
+                            <option value="CustomerName" selected="@(Model.SortBy == "CustomerName")">Customer Name</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="col-lg-3 col-md-6">
+                    <div class="fg mb-0">
+                        <label class="fg-label" style="font-size:12px"><i class="bi bi-list-ol me-1"></i>Rows Per Page</label>
                         <select name="pageSize" class="fg-control" style="height:38px">
                             <option value="15" selected="@(Model.PageSize == 15)">15 Rows</option>
                             <option value="30" selected="@(Model.PageSize == 30)">30 Rows</option>
@@ -127,11 +181,17 @@
                 </div>
             </div>
 
-            <div class="d-flex align-items-center justify-content-end gap-2 mt-4 pt-3 border-top" style="border-color:var(--border)!important">
-                <a href="@Url.Action("Index","Sales")" class="btn-d btn-outline btn-sm-d">Reset</a>
-                <button type="submit" class="btn-d btn-primary btn-sm-d">
-                    <i class="bi bi-search me-1"></i> Apply Filters
-                </button>
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-4 pt-3 border-top" style="border-color:var(--border)!important">
+                <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-secondary);cursor:pointer;white-space:nowrap;margin-bottom:0">
+                    <input type="checkbox" name="isDescending" value="true" @(Model.IsDescending ? "checked" : "") style="width:16px;height:16px;accent-color:var(--primary)">
+                    <i class="bi bi-sort-numeric-down me-1"></i> Descending Order (Highest / Newest First)
+                </label>
+                <div class="d-flex gap-2">
+                    <a href="@Url.Action("Index","Sales")" class="btn-d btn-outline btn-sm-d">Reset</a>
+                    <button type="submit" class="btn-d btn-primary btn-sm-d">
+                        <i class="bi bi-search me-1"></i> Apply Filters
+                    </button>
+                </div>
             </div>
         </form>
     </div>
@@ -271,6 +331,12 @@
                     startDate = Model.StartDate?.ToString("yyyy-MM-ddTHH:mm"),
                     endDate = Model.EndDate?.ToString("yyyy-MM-ddTHH:mm"),
                     cashier = Model.Cashier,
+                    paymentStatus = Model.PaymentStatus,
+                    paymentMethod = Model.PaymentMethod,
+                    minAmount = Model.MinAmount,
+                    maxAmount = Model.MaxAmount,
+                    sortBy = Model.SortBy,
+                    isDescending = Model.IsDescending,
                     pageSize = Model.PageSize,
                     page = Model.CurrentPage - 1
                 })" class="pg-btn @(Model.CurrentPage <= 1 ? "disabled" : "")">
@@ -285,6 +351,12 @@
                         startDate = Model.StartDate?.ToString("yyyy-MM-ddTHH:mm"),
                         endDate = Model.EndDate?.ToString("yyyy-MM-ddTHH:mm"),
                         cashier = Model.Cashier,
+                        paymentStatus = Model.PaymentStatus,
+                        paymentMethod = Model.PaymentMethod,
+                        minAmount = Model.MinAmount,
+                        maxAmount = Model.MaxAmount,
+                        sortBy = Model.SortBy,
+                        isDescending = Model.IsDescending,
                         pageSize = Model.PageSize,
                         page = p
                     })" class="pg-btn @(p == Model.CurrentPage ? "active" : "")">@p</a>
@@ -296,6 +368,12 @@
                     startDate = Model.StartDate?.ToString("yyyy-MM-ddTHH:mm"),
                     endDate = Model.EndDate?.ToString("yyyy-MM-ddTHH:mm"),
                     cashier = Model.Cashier,
+                    paymentStatus = Model.PaymentStatus,
+                    paymentMethod = Model.PaymentMethod,
+                    minAmount = Model.MinAmount,
+                    maxAmount = Model.MaxAmount,
+                    sortBy = Model.SortBy,
+                    isDescending = Model.IsDescending,
                     pageSize = Model.PageSize,
                     page = Model.CurrentPage + 1
                 })" class="pg-btn @(Model.CurrentPage >= Model.TotalPages ? "disabled" : "")">

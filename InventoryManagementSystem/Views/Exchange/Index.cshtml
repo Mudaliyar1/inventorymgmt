@@ -8,42 +8,75 @@
         <h1 class="ph-title"><i class="bi bi-arrow-repeat me-2" style="color:var(--primary)"></i>Mobile Trade-In &amp; Exchange</h1>
         <p class="ph-sub">Process used mobile phone valuations, inspect device health, and transfer trade-in inventory.</p>
     </div>
-    <div class="ph-actions">
+    <div class="ph-actions d-flex align-items-center gap-2">
+        <button type="button" class="btn-d btn-outline" id="exchangeFilterToggleBtn" onclick="toggleFilterPanel('exchangeFilterPanel', 'exchangeFilterToggleBtn')">
+            <i class="bi bi-funnel-fill text-primary me-1"></i> <span>Filters: ON</span>
+        </button>
         <button type="button" class="btn-d btn-primary" data-bs-toggle="modal" data-bs-target="#processExchangeModal">
             <i class="bi bi-plus-lg me-1"></i> Record New Trade-In
         </button>
     </div>
 </div>
 
-<!-- Filters Bar -->
-<div class="card-d card-p mb-4">
-    <form method="get" class="row g-3 align-items-center">
+<!-- Detailed Filters Bar (Toggleable Panel) -->
+<div class="card-d card-p mb-4" id="exchangeFilterPanel">
+    <form method="get" class="row g-3">
+        <!-- Row 1: Primary Device Filters -->
         <div class="col-md-3">
             <div class="fg mb-0">
-                <label class="fg-label">Keyword Search</label>
-                <div class="fg-prefix-wrap">
-                    <span class="fg-prefix"><i class="bi bi-search"></i></span>
-                    <input type="text" name="search" value="@ViewBag.Search" class="fg-control" placeholder="Exchange #, IMEI, Phone, Customer...">
-                </div>
+                <label class="fg-label"><i class="bi bi-search me-1"></i>Keyword Search</label>
+                <input type="text" name="search" value="@ViewBag.Search" class="fg-control" placeholder="Exchange #, IMEI, Phone, Customer...">
             </div>
         </div>
         <div class="col-md-2">
             <div class="fg mb-0">
-                <label class="fg-label">Brand</label>
-                <input type="text" name="brand" value="@ViewBag.Brand" class="fg-control" placeholder="Apple, Samsung...">
+                <label class="fg-label"><i class="bi bi-phone-fill me-1"></i>Brand</label>
+                <select name="brand" class="fg-control">
+                    <option value="">All Brands</option>
+                    <option value="Apple" selected="@(ViewBag.Brand == "Apple")">Apple</option>
+                    <option value="Samsung" selected="@(ViewBag.Brand == "Samsung")">Samsung</option>
+                    <option value="OnePlus" selected="@(ViewBag.Brand == "OnePlus")">OnePlus</option>
+                    <option value="Xiaomi" selected="@(ViewBag.Brand == "Xiaomi")">Xiaomi</option>
+                    <option value="Vivo" selected="@(ViewBag.Brand == "Vivo")">Vivo</option>
+                    <option value="Oppo" selected="@(ViewBag.Brand == "Oppo")">Oppo</option>
+                    <option value="Google" selected="@(ViewBag.Brand == "Google")">Google Pixel</option>
+                    <option value="Motorola" selected="@(ViewBag.Brand == "Motorola")">Motorola</option>
+                    <option value="Nothing" selected="@(ViewBag.Brand == "Nothing")">Nothing</option>
+                    <option value="Other" selected="@(ViewBag.Brand == "Other")">Other</option>
+                </select>
             </div>
         </div>
         <div class="col-md-2">
             <div class="fg mb-0">
-                <label class="fg-label">Color</label>
-                <input type="text" name="color" value="@ViewBag.Color" class="fg-control" placeholder="Black, Gold...">
+                <label class="fg-label"><i class="bi bi-phone me-1"></i>Model Name</label>
+                <input type="text" name="model" value="@ViewBag.Model" class="fg-control" placeholder="e.g. iPhone 11, S21">
             </div>
         </div>
         <div class="col-md-2">
             <div class="fg mb-0">
-                <label class="fg-label">Destination Status</label>
+                <label class="fg-label"><i class="bi bi-palette me-1"></i>Color</label>
+                <input type="text" name="color" value="@ViewBag.Color" class="fg-control" placeholder="Black, Gold, Blue...">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="fg mb-0">
+                <label class="fg-label"><i class="bi bi-shield-check me-1"></i>Device Condition</label>
+                <select name="condition" class="fg-control">
+                    <option value="">All Conditions</option>
+                    <option value="Like New" selected="@(ViewBag.Condition == "Like New")">Like New</option>
+                    <option value="Good Condition" selected="@(ViewBag.Condition == "Good Condition")">Good Condition</option>
+                    <option value="Fair" selected="@(ViewBag.Condition == "Fair")">Fair</option>
+                    <option value="Damaged / Defective" selected="@(ViewBag.Condition == "Damaged / Defective")">Damaged / Defective</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Row 2: Valuation & Inventory Destination Filters -->
+        <div class="col-md-3">
+            <div class="fg mb-0">
+                <label class="fg-label"><i class="bi bi-box-seam me-1"></i>Destination Status</label>
                 <select name="destinationStatus" class="fg-control">
-                    <option value="">All Statuses</option>
+                    <option value="">All Destination Statuses</option>
                     <option value="InStock" selected="@(ViewBag.DestinationStatus == "InStock")">In Stock (Sellable)</option>
                     <option value="UnderRepair" selected="@(ViewBag.DestinationStatus == "UnderRepair")">Under Repair</option>
                     <option value="Damaged" selected="@(ViewBag.DestinationStatus == "Damaged")">Damaged / Scrap</option>
@@ -51,9 +84,21 @@
                 </select>
             </div>
         </div>
+        <div class="col-md-3">
+            <div class="fg mb-0">
+                <label class="fg-label"><i class="bi bi-currency-rupee me-1"></i>Min Valuation (₹)</label>
+                <input type="number" step="100" name="minValuation" value="@ViewBag.MinValuation" class="fg-control" placeholder="Min ₹">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="fg mb-0">
+                <label class="fg-label"><i class="bi bi-currency-rupee me-1"></i>Max Valuation (₹)</label>
+                <input type="number" step="100" name="maxValuation" value="@ViewBag.MaxValuation" class="fg-control" placeholder="Max ₹">
+            </div>
+        </div>
         <div class="col-md-3 d-flex align-items-end gap-2">
-            <button type="submit" class="btn-d btn-primary flex-grow-1"><i class="bi bi-funnel"></i> Apply Filter</button>
-            <a href="@Url.Action("Index")" class="btn-d btn-outline" title="Reset Filters"><i class="bi bi-arrow-counterclockwise"></i></a>
+            <button type="submit" class="btn-d btn-primary flex-grow-1"><i class="bi bi-funnel me-1"></i> Apply Filters</button>
+            <a href="@Url.Action("Index")" class="btn-d btn-outline" title="Reset Filters"><i class="bi bi-arrow-counterclockwise"></i> Reset</a>
         </div>
     </form>
 </div>

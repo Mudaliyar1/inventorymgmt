@@ -19,7 +19,7 @@ namespace InventoryManagementSystem.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Index(string? search, string? brand, string? color, string? condition, string? destinationStatus, int page = 1)
+        public async Task<IActionResult> Index(string? search, string? brand, string? model, string? color, string? condition, string? destinationStatus, decimal? minValuation, decimal? maxValuation, int page = 1)
         {
             int pageSize = 20;
             var exchanges = await _exchangeService.GetFilteredExchangesAsync(search, brand, color, condition, destinationStatus, page, pageSize);
@@ -27,9 +27,12 @@ namespace InventoryManagementSystem.Controllers
 
             ViewBag.Search = search;
             ViewBag.Brand = brand;
+            ViewBag.Model = model;
             ViewBag.Color = color;
             ViewBag.Condition = condition;
             ViewBag.DestinationStatus = destinationStatus;
+            ViewBag.MinValuation = minValuation;
+            ViewBag.MaxValuation = maxValuation;
             ViewBag.CurrentPage = page;
             ViewBag.TotalPages = (int)System.Math.Ceiling((double)totalCount / pageSize);
             ViewBag.TotalCount = totalCount;

@@ -8,22 +8,51 @@
         <h3 class="fw-bold mb-1"><i class="bi bi-wrench-adjustable me-2 text-primary"></i>Service &amp; Repair Ticketing</h3>
         <p class="text-muted small mb-0">Track device repair tickets, technician assignment, job statuses, and service charges</p>
     </div>
-    <button type="button" class="btn btn-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#createRepairModal">
-        <i class="bi bi-plus-circle me-1"></i> New Repair Job Ticket
-    </button>
+    <div class="d-flex align-items-center gap-2">
+        <button type="button" class="btn btn-outline-primary rounded-pill px-3" id="repairFilterToggleBtn" onclick="toggleFilterPanel('repairFilterPanel', 'repairFilterToggleBtn')">
+            <i class="bi bi-funnel-fill me-1"></i><span>Filters: ON</span>
+        </button>
+        <button type="button" class="btn btn-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#createRepairModal">
+            <i class="bi bi-plus-circle me-1"></i> New Repair Job Ticket
+        </button>
+    </div>
 </div>
 
-<!-- Search & Status Filter -->
-<div class="card border-0 shadow-sm rounded-4 mb-4">
+<!-- Detailed Filters Bar (Toggleable Panel) -->
+<div class="card border-0 shadow-sm rounded-4 mb-4" id="repairFilterPanel">
     <div class="card-body p-3">
-        <form method="get" class="row g-2 align-items-center">
-            <div class="col-md-6">
-                <div class="input-group">
-                    <span class="input-group-text bg-light border-0"><i class="bi bi-search"></i></span>
-                    <input type="text" name="search" value="@ViewBag.Search" class="form-control bg-light border-0" placeholder="Search Ticket #, IMEI, Customer, Model, or Technician...">
-                </div>
+        <form method="get" class="row g-3">
+            <!-- Row 1: Search & Hardware Specs -->
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-search me-1"></i>Search Keywords</label>
+                <input type="text" name="search" value="@ViewBag.Search" class="form-control bg-light border-0" placeholder="Ticket #, IMEI, Customer, Problem...">
             </div>
             <div class="col-md-3">
+                <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-phone-fill me-1"></i>Brand</label>
+                <select name="brand" class="form-select bg-light border-0">
+                    <option value="">All Brands</option>
+                    <option value="Apple" selected="@(ViewBag.Brand == "Apple")">Apple</option>
+                    <option value="Samsung" selected="@(ViewBag.Brand == "Samsung")">Samsung</option>
+                    <option value="OnePlus" selected="@(ViewBag.Brand == "OnePlus")">OnePlus</option>
+                    <option value="Xiaomi" selected="@(ViewBag.Brand == "Xiaomi")">Xiaomi</option>
+                    <option value="Vivo" selected="@(ViewBag.Brand == "Vivo")">Vivo</option>
+                    <option value="Oppo" selected="@(ViewBag.Brand == "Oppo")">Oppo</option>
+                    <option value="Google" selected="@(ViewBag.Brand == "Google")">Google Pixel</option>
+                    <option value="Other" selected="@(ViewBag.Brand == "Other")">Other</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-phone me-1"></i>Model Name</label>
+                <input type="text" name="model" value="@ViewBag.Model" class="form-control bg-light border-0" placeholder="e.g. iPhone 12, S20">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-person-badge me-1"></i>Technician</label>
+                <input type="text" name="technician" value="@ViewBag.Technician" class="form-control bg-light border-0" placeholder="Technician name">
+            </div>
+
+            <!-- Row 2: Status & Cost Ranges -->
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-tag me-1"></i>Job Status</label>
                 <select name="status" class="form-select bg-light border-0">
                     <option value="">-- All Job Statuses --</option>
                     <option value="Received" selected="@(ViewBag.Status == "Received")">Received</option>
@@ -34,9 +63,17 @@
                     <option value="Cancelled" selected="@(ViewBag.Status == "Cancelled")">Cancelled</option>
                 </select>
             </div>
-            <div class="col-md-3 d-flex gap-1">
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-currency-rupee me-1"></i>Min Cost (₹)</label>
+                <input type="number" step="100" name="minCost" value="@ViewBag.MinCost" class="form-control bg-light border-0" placeholder="Min ₹">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-currency-rupee me-1"></i>Max Cost (₹)</label>
+                <input type="number" step="100" name="maxCost" value="@ViewBag.MaxCost" class="form-control bg-light border-0" placeholder="Max ₹">
+            </div>
+            <div class="col-md-2 d-flex align-items-end gap-1">
                 <button type="submit" class="btn btn-dark w-100 rounded-pill"><i class="bi bi-funnel me-1"></i>Filter</button>
-                <a href="@Url.Action("Index")" class="btn btn-outline-secondary rounded-circle"><i class="bi bi-arrow-counterclockwise"></i></a>
+                <a href="@Url.Action("Index")" class="btn btn-outline-secondary rounded-circle" title="Reset Filters"><i class="bi bi-arrow-counterclockwise"></i></a>
             </div>
         </form>
     </div>

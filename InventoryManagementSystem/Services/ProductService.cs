@@ -83,14 +83,19 @@ namespace InventoryManagementSystem.Services
         }
 
         public async Task<IEnumerable<Product>> GetPagedProductsAsync(
-            string? search, string? categoryId, string? sortBy, bool isDescending, int page, int pageSize)
+            string? search, string? categoryId, string? sortBy, bool isDescending, int page, int pageSize,
+            string? brand = null, string? modelName = null, string? stockStatus = null, string? statusFilter = null,
+            decimal? minPrice = null, decimal? maxPrice = null, int? minStock = null, int? maxStock = null, string? productSource = null)
         {
-            return await _productRepository.GetPagedProductsAsync(search, categoryId, sortBy, isDescending, page, pageSize);
+            return await _productRepository.GetPagedProductsAsync(search, categoryId, sortBy, isDescending, page, pageSize, brand, modelName, stockStatus, statusFilter, minPrice, maxPrice, minStock, maxStock, productSource);
         }
 
-        public async Task<long> GetFilteredCountAsync(string? search, string? categoryId)
+        public async Task<long> GetFilteredCountAsync(
+            string? search, string? categoryId,
+            string? brand = null, string? modelName = null, string? stockStatus = null, string? statusFilter = null,
+            decimal? minPrice = null, decimal? maxPrice = null, int? minStock = null, int? maxStock = null, string? productSource = null)
         {
-            return await _productRepository.GetFilteredCountAsync(search, categoryId);
+            return await _productRepository.GetFilteredCountAsync(search, categoryId, brand, modelName, stockStatus, statusFilter, minPrice, maxPrice, minStock, maxStock, productSource);
         }
     }
 }

@@ -505,3 +505,51 @@ function validateEmail(input, isSubmitCheck = false) {
         return true;
     }
 }
+
+// 4. GLOBAL FILTER TOGGLE ENGINE (PERSISTED IN LOCALSTORAGE)
+function toggleFilterPanel(panelId, btnId) {
+    if (!panelId) panelId = 'filterPanel';
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+
+    const btn = btnId ? document.getElementById(btnId) : null;
+    const isCurrentlyHidden = (panel.style.display === 'none' || getComputedStyle(panel).display === 'none');
+
+    if (isCurrentlyHidden) {
+        panel.style.display = 'block';
+        localStorage.setItem('sims_filter_state_' + panelId, 'on');
+        if (btn) {
+            btn.classList.remove('btn-secondary');
+            btn.classList.add('btn-outline-primary', 'btn-outline');
+            btn.innerHTML = `<i class="bi bi-funnel-fill text-primary me-1"></i><span>Filters: ON</span>`;
+        }
+    } else {
+        panel.style.display = 'none';
+        localStorage.setItem('sims_filter_state_' + panelId, 'off');
+        if (btn) {
+            btn.classList.remove('btn-outline-primary', 'btn-outline');
+            btn.classList.add('btn-secondary');
+            btn.innerHTML = `<i class="bi bi-funnel me-1"></i><span>Filters: OFF</span>`;
+        }
+    }
+}
+
+// Auto-restore stored filter state on DOM load
+document.addEventListener('DOMContentLoaded', function () {
+    const filterPanels = document.querySelectorAll('[id$="FilterPanel"]');
+    filterPanels.forEach(panel => {
+        const panelId = panel.id;
+        const btnId = panelId.replace('Panel', 'ToggleBtn');
+        const storedState = localStorage.getItem('sims_filter_state_' + panelId);
+        
+        if (storedState === 'off') {
+            panel.style.display = 'none';
+            const btn = document.getElementById(btnId);
+            if (btn) {
+                btn.classList.remove('btn-outline-primary', 'btn-outline');
+                btn.classList.add('btn-secondary');
+                btn.innerHTML = `<i class="bi bi-funnel me-1"></i><span>Filters: OFF</span>`;
+            }
+        }
+    });
+});

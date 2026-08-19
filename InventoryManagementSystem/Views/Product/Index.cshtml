@@ -6,10 +6,13 @@
 <!-- Page Header -->
 <div class="ph">
     <div>
-        <h1 class="ph-title">Products</h1>
+        <h1 class="ph-title">Products &amp; Specs</h1>
         <p class="ph-sub">Manage your product catalog, pricing and safety stock limits.</p>
     </div>
-    <div class="ph-actions">
+    <div class="ph-actions d-flex align-items-center gap-2">
+        <button type="button" class="btn-d btn-outline" id="productFilterToggleBtn" onclick="toggleFilterPanel('productFilterPanel', 'productFilterToggleBtn')">
+            <i class="bi bi-funnel-fill text-primary me-1"></i><span>Filters: ON</span>
+        </button>
         @if (User.IsInRole("Admin") || PermissionService.HasPermission(User, "Product", "Create"))
         {
             <a href="@Url.Action("Create","Product")" class="btn-d btn-primary">
@@ -19,55 +22,115 @@
     </div>
 </div>
 
-<!-- Filter Bar -->
-<div class="card-d card-p mb-4">
-    <form method="get" asp-action="Index" class="d-flex align-items-center gap-3 flex-wrap">
-        <div class="tbl-search" style="max-width:280px">
-            <i class="bi bi-search tbl-search-icon"></i>
-            <input type="text" name="search" value="@Model.Search"
-                   placeholder="Search name, SKU, barcode…"
-                   class="fg-control" style="height:36px;padding-left:32px">
+<!-- Detailed Filter Bar (Toggleable Panel) -->
+<div class="card-d card-p mb-4" id="productFilterPanel">
+    <form method="get" asp-action="Index" class="row g-3">
+        <!-- Row 1: Basic Identifiers -->
+        <div class="col-md-3">
+            <div class="fg mb-0">
+                <label class="fg-label"><i class="bi bi-search me-1"></i>Search Keywords</label>
+                <input type="text" name="search" value="@Model.Search" placeholder="Search name, SKU, barcode…" class="fg-control">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="fg mb-0">
+                <label class="fg-label"><i class="bi bi-tags me-1"></i>Category</label>
+                <select name="categoryId" class="fg-control">
+                    <option value="">All Categories</option>
+                    @foreach (var cat in Model.Categories)
+                    {
+                        <option value="@cat.Id" selected="@(Model.SelectedCategoryId==cat.Id?"selected":null)">@cat.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="fg mb-0">
+                <label class="fg-label"><i class="bi bi-phone-fill me-1"></i>Brand</label>
+                <input type="text" name="brand" value="@Model.Brand" placeholder="e.g. Apple, Samsung" class="fg-control">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="fg mb-0">
+                <label class="fg-label"><i class="bi bi-phone me-1"></i>Model Name</label>
+                <input type="text" name="modelName" value="@Model.ModelName" placeholder="e.g. iPhone 13, S22" class="fg-control">
+            </div>
         </div>
 
-        <div style="min-width:160px">
-            <select name="categoryId" class="fg-control" style="height:36px" onchange="this.form.submit()">
-                <option value="">All Categories</option>
-                @foreach (var cat in Model.Categories)
-                {
-                    <option value="@cat.Id" selected="@(Model.SelectedCategoryId==cat.Id?"selected":null)">@cat.Name</option>
-                }
-            </select>
+        <!-- Row 2: Status & Pricing Ranges -->
+        <div class="col-md-3">
+            <div class="fg mb-0">
+                <label class="fg-label"><i class="bi bi-arrow-repeat me-1 text-primary"></i>Catalog Source / Origin</label>
+                <select name="productSource" class="fg-control">
+                    <option value="">All Catalog Products (New & Trade-In)</option>
+                    <option value="TradeIn" selected="@(Model.ProductSource=="TradeIn"?"selected":null)">🔄 Mobile Trade-In & Exchange Only</option>
+                    <option value="New" selected="@(Model.ProductSource=="New"?"selected":null)">📦 New / Standard Inventory Only</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="fg mb-0">
+                <label class="fg-label"><i class="bi bi-boxes me-1"></i>Stock Status</label>
+                <select name="stockStatus" class="fg-control">
+                    <option value="">All Stock Levels</option>
+                    <option value="InStock" selected="@(Model.StockStatus=="InStock"?"selected":null)">In Stock (> 0)</option>
+                    <option value="OutOfStock" selected="@(Model.StockStatus=="OutOfStock"?"selected":null)">Out of Stock (0)</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="fg mb-0">
+                <label class="fg-label"><i class="bi bi-toggle-on me-1"></i>Product Status</label>
+                <select name="statusFilter" class="fg-control">
+                    <option value="">All Statuses</option>
+                    <option value="Active" selected="@(Model.StatusFilter=="Active"?"selected":null)">Active Products</option>
+                    <option value="Inactive" selected="@(Model.StatusFilter=="Inactive"?"selected":null)">Inactive Products</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="fg mb-0">
+                <label class="fg-label"><i class="bi bi-currency-rupee me-1"></i>Min Sell Price (₹)</label>
+                <input type="number" step="100" name="minPrice" value="@Model.MinPrice" placeholder="Min ₹" class="fg-control">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="fg mb-0">
+                <label class="fg-label"><i class="bi bi-currency-rupee me-1"></i>Max Sell Price (₹)</label>
+                <input type="number" step="100" name="maxPrice" value="@Model.MaxPrice" placeholder="Max ₹" class="fg-control">
+            </div>
         </div>
 
-        <div style="min-width:160px">
-            <select name="sortBy" class="fg-control" style="height:36px" onchange="this.form.submit()">
-                <option value="">Default Sort</option>
-                <option value="Name" selected="@(Model.SortBy=="Name"?"selected":null)">Name</option>
-                <option value="Code" selected="@(Model.SortBy=="Code"?"selected":null)">SKU</option>
-                <option value="PurchasePrice" selected="@(Model.SortBy=="PurchasePrice"?"selected":null)">Buy Price</option>
-                <option value="SellingPrice" selected="@(Model.SortBy=="SellingPrice"?"selected":null)">Sell Price</option>
-                <option value="CurrentStock" selected="@(Model.SortBy=="CurrentStock"?"selected":null)">Stock</option>
-            </select>
+        <!-- Row 3: Sorting & Action Buttons -->
+        <div class="col-md-3">
+            <div class="fg mb-0">
+                <label class="fg-label"><i class="bi bi-sort-down me-1"></i>Sort By</label>
+                <select name="sortBy" class="fg-control">
+                    <option value="">Default Sort (Newest)</option>
+                    <option value="Name" selected="@(Model.SortBy=="Name"?"selected":null)">Product Name</option>
+                    <option value="Code" selected="@(Model.SortBy=="Code"?"selected":null)">SKU / Code</option>
+                    <option value="PurchasePrice" selected="@(Model.SortBy=="PurchasePrice"?"selected":null)">Buy Price</option>
+                    <option value="SellingPrice" selected="@(Model.SortBy=="SellingPrice"?"selected":null)">Sell Price</option>
+                    <option value="CurrentStock" selected="@(Model.SortBy=="CurrentStock"?"selected":null)">Current Stock</option>
+                </select>
+            </div>
         </div>
-
-        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-secondary);cursor:pointer;white-space:nowrap">
-            <input type="checkbox" name="isDescending" value="true"
-                   checked="@(Model.IsDescending?"checked":null)"
-                   onchange="this.form.submit()"
-                   style="width:14px;height:14px;cursor:pointer;accent-color:var(--primary)">
-            Descending
-        </label>
-
-        <button type="submit" class="btn-d btn-outline btn-sm-d">
-            <i class="bi bi-funnel"></i> Apply
-        </button>
-
-        @if (!string.IsNullOrEmpty(Model.Search) || !string.IsNullOrEmpty(Model.SelectedCategoryId))
-        {
-            <a href="@Url.Action("Index","Product")" class="btn-d btn-ghost btn-sm-d">
-                <i class="bi bi-x"></i> Clear
+        <div class="col-md-3 d-flex align-items-end">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-secondary);cursor:pointer;white-space:nowrap;margin-bottom:8px">
+                <input type="checkbox" name="isDescending" value="true"
+                       checked="@(Model.IsDescending?"checked":null)"
+                       style="width:16px;height:16px;cursor:pointer;accent-color:var(--primary)">
+                Descending Order
+            </label>
+        </div>
+        <div class="col-md-6 d-flex align-items-end gap-2">
+            <button type="submit" class="btn-d btn-primary flex-grow-1">
+                <i class="bi bi-funnel me-1"></i> Apply Detailed Filters
+            </button>
+            <a href="@Url.Action("Index","Product")" class="btn-d btn-outline" title="Reset All Filters">
+                <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
             </a>
-        }
+        </div>
     </form>
 </div>
 

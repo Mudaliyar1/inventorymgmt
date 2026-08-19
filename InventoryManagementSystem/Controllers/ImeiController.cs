@@ -85,5 +85,22 @@ namespace InventoryManagementSystem.Controllers
             var isAvailable = await _deviceService.ValidateImeiUniquenessAsync(imei, excludeId);
             return Json(new { available = isAvailable, message = isAvailable ? "IMEI is valid and available." : "IMEI already exists in inventory!" });
         }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(string id)
+        {
+            var deletedBy = User.Identity?.Name ?? "Admin";
+            var (success, message) = await _deviceService.DeleteDeviceAsync(id, deletedBy);
+
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                return Json(new { success, message });
+            }
+
+            TempData["ToastMessage"] = message;
+            TempData["ToastType"] = success ? "success" : "danger";
+            return RedirectToAction(nameof(Index));
+        }
     }
 }

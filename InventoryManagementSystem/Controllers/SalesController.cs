@@ -44,6 +44,12 @@ namespace InventoryManagementSystem.Controllers
             DateTime? startDate,
             DateTime? endDate,
             string? cashier,
+            string? paymentStatus,
+            string? paymentMethod,
+            decimal? minAmount,
+            decimal? maxAmount,
+            string? sortBy,
+            bool isDescending = true,
             int page = 1,
             int pageSize = 15)
         {
@@ -51,7 +57,8 @@ namespace InventoryManagementSystem.Controllers
             if (page < 1) page = 1;
 
             var (sales, totalItems) = await _salesService.GetFilteredSalesAsync(
-                searchTerm, customerName, startDate, endDate, cashier, page, pageSize);
+                searchTerm, customerName, startDate, endDate, cashier, page, pageSize,
+                paymentStatus, paymentMethod, minAmount, maxAmount, sortBy, isDescending);
 
             int calcPages = (int)((totalItems + pageSize - 1) / pageSize);
             var totalPages = calcPages < 1 ? 1 : calcPages;
@@ -64,6 +71,12 @@ namespace InventoryManagementSystem.Controllers
                 StartDate = startDate,
                 EndDate = endDate,
                 Cashier = cashier,
+                PaymentStatus = paymentStatus,
+                PaymentMethod = paymentMethod,
+                MinAmount = minAmount,
+                MaxAmount = maxAmount,
+                SortBy = sortBy,
+                IsDescending = isDescending,
                 CurrentPage = page,
                 PageSize = pageSize,
                 TotalItems = totalItems,

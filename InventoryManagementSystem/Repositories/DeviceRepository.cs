@@ -67,9 +67,12 @@ namespace InventoryManagementSystem.Repositories
         {
             if (string.IsNullOrWhiteSpace(imei)) return false;
             var cleanImei = imei.Trim();
-            var filter = Builders<Device>.Filter.Or(
-                Builders<Device>.Filter.Eq(d => d.IMEI1, cleanImei),
-                Builders<Device>.Filter.Eq(d => d.IMEI2, cleanImei)
+            var filter = Builders<Device>.Filter.And(
+                Builders<Device>.Filter.Or(
+                    Builders<Device>.Filter.Eq(d => d.IMEI1, cleanImei),
+                    Builders<Device>.Filter.Eq(d => d.IMEI2, cleanImei)
+                ),
+                Builders<Device>.Filter.Ne(d => d.Status, "Deleted")
             );
 
             if (!string.IsNullOrEmpty(excludeId))
@@ -101,7 +104,7 @@ namespace InventoryManagementSystem.Repositories
 
         private FilterDefinition<Device> BuildFilter(string? search, string? productId, string? status, string? brand)
         {
-            var filter = Builders<Device>.Filter.Empty;
+            var filter = Builders<Device>.Filter.Ne(d => d.Status, "Deleted");
 
             if (!string.IsNullOrEmpty(productId))
             {
@@ -132,6 +135,44 @@ namespace InventoryManagementSystem.Repositories
             }
 
             return filter;
+        }
+
+        public async Task<long> DeleteByProductIdAsync(string productId)
+        {
+            if (string.IsNullOrWhiteSpace(productId)) return 0;
+            var filter = Builders<Device>.Filter.Or(
+                Builders<Device>.Filter.Eq(d => d.ProductId, productId.Trim()),
+                Builders<Device>.Filter.Eq(d => d.ProductCode, productId.Trim())
+            );
+            var res = await _collection.DeleteManyAsync(filter);
+            return res.DeletedCount;
+        }
+
+        public async Task<long> DeleteDevicesByExchangeAsync(string? exchangeNumber, string? imei1, string? imei2)
+        {
+            var filters = new List<FilterDefinition<Device>>();
+
+            if (!string.IsNullOrWhiteSpace(exchangeNumber))
+            {
+                filters.Add(Builders<Device>.Filter.Eq(d => d.ExchangeNumber, exchangeNumber.Trim()));
+            }
+            if (!string.IsNullOrWhiteSpace(imei1))
+            {
+                var clean1 = imei1.Trim();
+                filters.Add(Builders<Device>.Filter.Eq(d => d.IMEI1, clean1));
+                filters.Add(Builders<Device>.Filter.Eq(d => d.IMEI2, clean1));
+            }
+            if (!string.IsNullOrWhiteSpace(imei2))
+            {
+                var clean2 = imei2.Trim();
+                filters.Add(Builders<Device>.Filter.Eq(d => d.IMEI1, clean2));
+                filters.Add(Builders<Device>.Filter.Eq(d => d.IMEI2, clean2));
+            }
+
+            if (filters.Count == 0) return 0;
+            var filter = Builders<Device>.Filter.Or(filters);
+            var res = await _collection.DeleteManyAsync(filter);
+            return res.DeletedCount;
         }
     }
 }

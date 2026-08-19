@@ -20,6 +20,7 @@ namespace InventoryManagementSystem.Controllers
         private readonly IAuditLogService _auditLogService;
         private readonly INotificationRepository _notificationRepository;
         private readonly IMobileSpecSearchService _specSearchService;
+        private readonly IDeviceRepository _deviceRepository;
 
         public ProductController(
             IProductService productService,
@@ -27,7 +28,8 @@ namespace InventoryManagementSystem.Controllers
             IImageService imageService,
             IAuditLogService auditLogService,
             INotificationRepository notificationRepository,
-            IMobileSpecSearchService specSearchService)
+            IMobileSpecSearchService specSearchService,
+            IDeviceRepository deviceRepository)
         {
             _productService = productService;
             _categoryService = categoryService;
@@ -35,15 +37,24 @@ namespace InventoryManagementSystem.Controllers
             _auditLogService = auditLogService;
             _notificationRepository = notificationRepository;
             _specSearchService = specSearchService;
+            _deviceRepository = deviceRepository;
         }
 
 
 
-        public async Task<IActionResult> Index(string? search, string? categoryId, string? sortBy, bool isDescending = false, int page = 1)
+        public async Task<IActionResult> Index(
+            string? search, string? categoryId, string? brand, string? modelName, 
+            string? stockStatus, string? statusFilter, decimal? minPrice, decimal? maxPrice, 
+            int? minStock, int? maxStock, string? productSource, string? sortBy, bool isDescending = false, int page = 1)
         {
             const int pageSize = 10;
-            var products = await _productService.GetPagedProductsAsync(search, categoryId, sortBy, isDescending, page, pageSize);
-            var totalItems = await _productService.GetFilteredCountAsync(search, categoryId);
+            var products = await _productService.GetPagedProductsAsync(
+                search, categoryId, sortBy, isDescending, page, pageSize, 
+                brand, modelName, stockStatus, statusFilter, minPrice, maxPrice, minStock, maxStock, productSource);
+
+            var totalItems = await _productService.GetFilteredCountAsync(
+                search, categoryId, brand, modelName, stockStatus, statusFilter, minPrice, maxPrice, minStock, maxStock, productSource);
+
             var categories = await _categoryService.GetActiveCategoriesAsync();
 
             var viewModel = new ProductListViewModel
@@ -52,12 +63,21 @@ namespace InventoryManagementSystem.Controllers
                 Categories = categories,
                 Search = search,
                 SelectedCategoryId = categoryId,
+                Brand = brand,
+                ModelName = modelName,
+                StockStatus = stockStatus,
+                StatusFilter = statusFilter,
+                ProductSource = productSource,
+                MinPrice = minPrice,
+                MaxPrice = maxPrice,
+                MinStock = minStock,
+                MaxStock = maxStock,
                 SortBy = sortBy,
                 IsDescending = isDescending,
                 CurrentPage = page,
                 TotalItems = totalItems,
                 PageSize = pageSize,
-                TotalPages = (int)Math.CeRounding((double)totalItems / pageSize)
+                TotalPages = (int)System.Math.Ceiling((double)totalItems / pageSize)
             };
 
             return View(viewModel);
@@ -315,8 +335,11 @@ namespace InventoryManagementSystem.Controllers
                 await _imageService.DeleteImageAsync(product.ImagePublicId);
             }
 
+            // Cascade delete all physical IMEI devices linked to this Product
+            await _deviceRepository.DeleteByProductIdAsync(id);
+
             await _productService.DeleteProductAsync(id);
-            await _auditLogService.LogActivityAsync("Product Deleted", User.Identity?.Name ?? "System", $"Product: {product.Name}", $"Deleted product SKU: {product.Code}.");
+            await _auditLogService.LogActivityAsync("Product Deleted", User.Identity?.Name ?? "System", $"Product: {product.Name}", $"Deleted product SKU: {product.Code} and all associated IMEI devices.");
 
             await _notificationRepository.CreateAsync(new Notification
             {

@@ -11,6 +11,7 @@ namespace InventoryManagementSystem.Interfaces
         Task<Sale?> GetByInvoiceNumberAsync(string invoiceNumber);
         Task<IEnumerable<Sale>> GetPagedSalesAsync(int page, int pageSize);
         Task<long> GetTotalSalesCountAsync();
+        Task<long> GetNextInvoiceSequenceAsync();
         Task<IEnumerable<Sale>> GetSalesBetweenDatesAsync(DateTime start, DateTime end);
 
         Task<(IEnumerable<Sale> Items, long TotalCount)> GetFilteredSalesAsync(
@@ -20,7 +21,13 @@ namespace InventoryManagementSystem.Interfaces
             DateTime? endDate,
             string? cashier,
             int page,
-            int pageSize);
+            int pageSize,
+            string? paymentStatus = null,
+            string? paymentMethod = null,
+            decimal? minAmount = null,
+            decimal? maxAmount = null,
+            string? sortBy = null,
+            bool isDescending = true);
 
         Task<long> DeleteManyAsync(IEnumerable<string> ids);
 

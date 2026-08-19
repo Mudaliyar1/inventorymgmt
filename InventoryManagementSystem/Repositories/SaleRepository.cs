@@ -42,6 +42,32 @@ namespace InventoryManagementSystem.Repositories
             return await _collection.CountDocumentsAsync(FilterDefinition<Sale>.Empty);
         }
 
+        public async Task<long> GetNextInvoiceSequenceAsync()
+        {
+            var count = await _collection.CountDocumentsAsync(FilterDefinition<Sale>.Empty);
+            long nextSeq = count + 1;
+
+            var allSales = await _collection.Find(FilterDefinition<Sale>.Empty)
+                .Project(s => s.InvoiceNumber)
+                .ToListAsync();
+
+            long maxSeq = 0;
+            foreach (var inv in allSales)
+            {
+                if (string.IsNullOrEmpty(inv)) continue;
+                var parts = inv.Split('-');
+                if (parts.Length >= 3 && long.TryParse(parts[parts.Length - 1], out long seq))
+                {
+                    if (seq <= count + 1000 && seq > maxSeq)
+                    {
+                        maxSeq = seq;
+                    }
+                }
+            }
+
+            return System.Math.Max(nextSeq, maxSeq + 1);
+        }
+
         public async Task<IEnumerable<Sale>> GetSalesBetweenDatesAsync(DateTime start, DateTime end)
         {
             var filter = Builders<Sale>.Filter.And(
@@ -60,7 +86,13 @@ namespace InventoryManagementSystem.Repositories
             DateTime? endDate,
             string? cashier,
             int page,
-            int pageSize)
+            int pageSize,
+            string? paymentStatus = null,
+            string? paymentMethod = null,
+            decimal? minAmount = null,
+            decimal? maxAmount = null,
+            string? sortBy = null,
+            bool isDescending = true)
         {
             var builder = Builders<Sale>.Filter;
             var filters = new List<FilterDefinition<Sale>>();
@@ -101,12 +133,45 @@ namespace InventoryManagementSystem.Repositories
                 filters.Add(builder.Regex(s => s.CreatedBy, regex));
             }
 
+            if (!string.IsNullOrWhiteSpace(paymentStatus))
+            {
+                filters.Add(builder.Eq(s => s.PaymentStatus, paymentStatus.Trim()));
+            }
+
+            if (!string.IsNullOrWhiteSpace(paymentMethod))
+            {
+                filters.Add(builder.Eq(s => s.PaymentMethod, paymentMethod.Trim()));
+            }
+
+            if (minAmount.HasValue)
+            {
+                filters.Add(builder.Gte(s => s.GrandTotal, minAmount.Value));
+            }
+
+            if (maxAmount.HasValue)
+            {
+                filters.Add(builder.Lte(s => s.GrandTotal, maxAmount.Value));
+            }
+
             var combinedFilter = filters.Any() ? builder.And(filters) : builder.Empty;
 
             var totalCount = await _collection.CountDocumentsAsync(combinedFilter);
 
-            var items = await _collection.Find(combinedFilter)
-                .SortByDescending(s => s.Date)
+            var query = _collection.Find(combinedFilter);
+
+            if (!string.IsNullOrWhiteSpace(sortBy))
+            {
+                var sortDef = isDescending
+                    ? Builders<Sale>.Sort.Descending(sortBy)
+                    : Builders<Sale>.Sort.Ascending(sortBy);
+                query = query.Sort(sortDef);
+            }
+            else
+            {
+                query = query.SortByDescending(s => s.Date);
+            }
+
+            var items = await query
                 .Skip((page - 1) * pageSize)
                 .Limit(pageSize)
                 .ToListAsync();

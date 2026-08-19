@@ -14,6 +14,12 @@ namespace InventoryManagementSystem.ViewModels
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
         public string? Cashier { get; set; }
+        public string? PaymentStatus { get; set; }
+        public string? PaymentMethod { get; set; }
+        public decimal? MinAmount { get; set; }
+        public decimal? MaxAmount { get; set; }
+        public string? SortBy { get; set; }
+        public bool IsDescending { get; set; } = true;
 
         // Pagination Properties
         public int CurrentPage { get; set; } = 1;

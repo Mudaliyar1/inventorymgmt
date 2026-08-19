@@ -14,5 +14,6 @@ namespace InventoryManagementSystem.Interfaces
         Task<(bool Success, string Message, Device? Device)> RegisterDeviceAsync(Device device, string executedBy);
         Task<bool> UpdateDeviceStatusAsync(string deviceId, string status, string? invoiceNumber = null, string? customerId = null, string? customerName = null, string? customerPhone = null);
         Task<bool> ValidateImeiUniquenessAsync(string imei, string? excludeDeviceId = null);
+        Task<(bool Success, string Message)> DeleteDeviceAsync(string id, string deletedBy);
     }
 }

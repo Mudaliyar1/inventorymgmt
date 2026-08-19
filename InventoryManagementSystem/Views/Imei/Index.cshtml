@@ -137,11 +137,104 @@
                                     }
                                 </td>
                                 <td class="pe-4 text-end">
-                                    <a href="@Url.Action("Details", new { imei = dev.IMEI1 })" class="btn btn-sm btn-outline-primary rounded-pill px-3">
-                                        <i class="bi bi-clock-history me-1"></i> Timeline
-                                    </a>
+                                    <div class="d-inline-flex align-items-center gap-1">
+                                        <button type="button" class="btn btn-sm btn-outline-info rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#deviceModal_@dev.Id" title="View Full Device Details">
+                                            <i class="bi bi-info-circle me-1"></i> Details
+                                        </button>
+                                        <a href="@Url.Action("Details", new { imei = dev.IMEI1 })" class="btn btn-sm btn-outline-primary rounded-pill px-3" title="View Device Timeline">
+                                            <i class="bi bi-clock-history me-1"></i> Timeline
+                                        </a>
+                                        <form method="post" action="@Url.Action("Delete", "Imei")" class="d-inline" onsubmit="return confirm('Are you sure you want to delete IMEI @dev.IMEI1 from inventory? This will free up the IMEI number.');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@dev.Id" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-circle p-2 d-inline-flex align-items-center justify-content-center" style="width:32px;height:32px" title="Delete IMEI Device">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
+
+                            <!-- Device Details Modal -->
+                            <div class="modal fade" id="deviceModal_@dev.Id" tabindex="-1" aria-labelledby="deviceModalLabel_@dev.Id" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered modal-lg">
+                                    <div class="modal-content border-0 shadow-lg rounded-4">
+                                        <div class="modal-header bg-dark text-white rounded-top-4 py-3">
+                                            <h5 class="modal-title fw-bold" id="deviceModalLabel_@dev.Id">
+                                                <i class="bi bi-upc-scan me-2 text-primary"></i>Device Details — @dev.Brand @dev.ModelName
+                                            </h5>
+                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body p-4 text-start">
+                                            <div class="row g-3">
+                                                <!-- Column 1: Core Specifications -->
+                                                <div class="col-md-6">
+                                                    <div class="p-3 bg-light rounded-3 h-100 border">
+                                                        <h6 class="fw-bold text-primary mb-3"><i class="bi bi-phone me-1"></i>Specifications & Hardware</h6>
+                                                        <div class="d-flex justify-content-between py-1 border-bottom"><span class="text-muted small">Brand:</span><span class="fw-semibold small">@dev.Brand</span></div>
+                                                        <div class="d-flex justify-content-between py-1 border-bottom"><span class="text-muted small">Model:</span><span class="fw-semibold small">@dev.ModelName</span></div>
+                                                        <div class="d-flex justify-content-between py-1 border-bottom"><span class="text-muted small">Variant / Storage:</span><span class="fw-semibold small">@(string.IsNullOrWhiteSpace(dev.Variant) ? $"{dev.Ram} / {dev.Storage}" : dev.Variant)</span></div>
+                                                        <div class="d-flex justify-content-between py-1 border-bottom"><span class="text-muted small">Color:</span><span class="fw-semibold small">@dev.Color</span></div>
+                                                        <div class="d-flex justify-content-between py-1 border-bottom"><span class="text-muted small">IMEI 1:</span><span class="fw-bold font-monospace text-primary small">@dev.IMEI1</span></div>
+                                                        @if (!string.IsNullOrEmpty(dev.IMEI2))
+                                                        {
+                                                            <div class="d-flex justify-content-between py-1 border-bottom"><span class="text-muted small">IMEI 2:</span><span class="fw-bold font-monospace text-secondary small">@dev.IMEI2</span></div>
+                                                        }
+                                                        <div class="d-flex justify-content-between py-1 border-bottom"><span class="text-muted small">Serial Number:</span><span class="font-monospace small">@(string.IsNullOrEmpty(dev.SerialNumber) ? "-" : dev.SerialNumber)</span></div>
+                                                        <div class="d-flex justify-content-between py-1 border-bottom"><span class="text-muted small">Condition:</span><span class="badge bg-light text-dark border small">@(string.IsNullOrEmpty(dev.Condition) ? "Standard" : dev.Condition)</span></div>
+                                                        @if (dev.BatteryHealthPercentage.HasValue && dev.BatteryHealthPercentage > 0)
+                                                        {
+                                                            <div class="d-flex justify-content-between py-1 border-bottom"><span class="text-muted small">Battery Health:</span><span class="fw-semibold text-success small"><i class="bi bi-battery-charging me-1"></i>@dev.BatteryHealthPercentage%</span></div>
+                                                        }
+                                                    </div>
+                                                </div>
+
+                                                <!-- Column 2: Inventory, Sale & Customer Info -->
+                                                <div class="col-md-6">
+                                                    <div class="p-3 bg-light rounded-3 h-100 border">
+                                                        <h6 class="fw-bold text-success mb-3"><i class="bi bi-receipt me-1"></i>Status, Valuation & Invoice</h6>
+                                                        <div class="d-flex justify-content-between py-1 border-bottom"><span class="text-muted small">Current Status:</span><span class="badge rounded-pill @statusBadge small">@dev.Status</span></div>
+                                                        <div class="d-flex justify-content-between py-1 border-bottom"><span class="text-muted small">Origin / Source:</span><span class="badge bg-secondary-subtle text-dark border small">@(string.IsNullOrEmpty(dev.Source) ? "Stock In" : dev.Source)</span></div>
+                                                        <div class="d-flex justify-content-between py-1 border-bottom"><span class="text-muted small">Purchase / Cost Price:</span><span class="fw-bold text-dark small">₹@dev.PurchasePrice.ToString("N2")</span></div>
+                                                        <div class="d-flex justify-content-between py-1 border-bottom"><span class="text-muted small">Selling / Retail Price:</span><span class="fw-bold text-success small">₹@dev.SellingPrice.ToString("N2")</span></div>
+                                                        
+                                                        @if (!string.IsNullOrEmpty(dev.InvoiceNumber))
+                                                        {
+                                                            <div class="d-flex justify-content-between py-1 border-bottom align-items-center">
+                                                                <span class="text-muted small">Tax Invoice:</span>
+                                                                <a href="@Url.Action("Invoice", "Sales", new { id = dev.InvoiceNumber })" class="badge bg-primary-subtle text-primary text-decoration-none border small">
+                                                                    <i class="bi bi-receipt me-1"></i>@dev.InvoiceNumber
+                                                                </a>
+                                                            </div>
+                                                        }
+                                                        @if (!string.IsNullOrEmpty(dev.CustomerName))
+                                                        {
+                                                            <div class="d-flex justify-content-between py-1 border-bottom"><span class="text-muted small">Customer Name:</span><span class="fw-semibold small">@dev.CustomerName</span></div>
+                                                            <div class="d-flex justify-content-between py-1 border-bottom"><span class="text-muted small">Customer Phone:</span><span class="fw-semibold small">@dev.CustomerPhone</span></div>
+                                                        }
+                                                        @if (!string.IsNullOrEmpty(dev.ExchangeNumber))
+                                                        {
+                                                            <div class="d-flex justify-content-between py-1 border-bottom"><span class="text-muted small">Exchange #:</span><span class="badge bg-info-subtle text-info border small">@dev.ExchangeNumber</span></div>
+                                                        }
+                                                        <div class="d-flex justify-content-between py-1"><span class="text-muted small">Date Logged:</span><span class="small text-muted">@dev.CreatedDate.ToString("yyyy-MM-dd HH:mm")</span></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            @if (!string.IsNullOrEmpty(dev.Notes))
+                                            {
+                                                <div class="mt-3 p-2 bg-body-tertiary rounded-3 border">
+                                                    <small class="text-muted fw-bold d-block mb-1"><i class="bi bi-sticky me-1"></i>Notes & Remarks:</small>
+                                                    <small class="text-secondary">@dev.Notes</small>
+                                                </div>
+                                            }
+                                        </div>
+                                        <div class="modal-footer bg-light py-2">
+                                            <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         }
                     }
                 </tbody>

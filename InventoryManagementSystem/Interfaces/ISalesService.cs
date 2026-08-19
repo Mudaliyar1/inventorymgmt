@@ -21,7 +21,13 @@ namespace InventoryManagementSystem.Interfaces
             DateTime? endDate,
             string? cashier,
             int page,
-            int pageSize);
+            int pageSize,
+            string? paymentStatus = null,
+            string? paymentMethod = null,
+            decimal? minAmount = null,
+            decimal? maxAmount = null,
+            string? sortBy = null,
+            bool isDescending = true);
 
         Task<Sale?> UpdateSaleAsync(
             string saleId,

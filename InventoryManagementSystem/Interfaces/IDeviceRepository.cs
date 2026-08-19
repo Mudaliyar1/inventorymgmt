@@ -14,5 +14,7 @@ namespace InventoryManagementSystem.Interfaces
         Task<long> GetFilteredCountAsync(string? search, string? productId, string? status, string? brand);
         Task<bool> IsImeiExistsAsync(string imei, string? excludeId = null);
         Task<bool> UpdateStatusAsync(string deviceId, string status, string? invoiceNumber = null, string? customerId = null, string? customerName = null, string? customerPhone = null);
+        Task<long> DeleteByProductIdAsync(string productId);
+        Task<long> DeleteDevicesByExchangeAsync(string? exchangeNumber, string? imei1, string? imei2);
     }
 }
