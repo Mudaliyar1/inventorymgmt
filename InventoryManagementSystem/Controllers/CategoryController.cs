@@ -19,9 +19,19 @@ namespace InventoryManagementSystem.Controllers
             _auditLogService = auditLogService;
         }
 
+        private string? GetCurrentSupplierId()
+        {
+            if (User.IsInRole(Role.Supplier))
+            {
+                return User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            }
+            return null;
+        }
+
         public async Task<IActionResult> Index()
         {
-            var categories = await _categoryService.GetAllCategoriesAsync();
+            var supplierId = GetCurrentSupplierId();
+            var categories = await _categoryService.GetCategoriesForUserAsync(supplierId);
             return View(categories);
         }
 
@@ -36,6 +46,7 @@ namespace InventoryManagementSystem.Controllers
         public async Task<IActionResult> Create(Category model)
         {
             model.Name = (model.Name ?? string.Empty).Trim();
+            model.SupplierId = GetCurrentSupplierId();
 
             if (!ModelState.IsValid)
             {
@@ -64,6 +75,13 @@ namespace InventoryManagementSystem.Controllers
         {
             var category = await _categoryService.GetCategoryByIdAsync(id);
             if (category == null) return NotFound();
+
+            var supplierId = GetCurrentSupplierId();
+            if (supplierId != null && category.SupplierId != supplierId)
+            {
+                return Forbid();
+            }
+
             return View(category);
         }
 
@@ -72,6 +90,17 @@ namespace InventoryManagementSystem.Controllers
         public async Task<IActionResult> Edit(Category model)
         {
             model.Name = (model.Name ?? string.Empty).Trim();
+
+            var supplierId = GetCurrentSupplierId();
+            var existing = await _categoryService.GetCategoryByIdAsync(model.Id);
+            if (existing == null) return NotFound();
+
+            if (supplierId != null && existing.SupplierId != supplierId)
+            {
+                return Forbid();
+            }
+
+            model.SupplierId = supplierId;
 
             if (!ModelState.IsValid)
             {
@@ -102,6 +131,12 @@ namespace InventoryManagementSystem.Controllers
             var category = await _categoryService.GetCategoryByIdAsync(id);
             if (category == null) return NotFound();
 
+            var supplierId = GetCurrentSupplierId();
+            if (supplierId != null && category.SupplierId != supplierId)
+            {
+                return Forbid();
+            }
+
             await _categoryService.ToggleStatusAsync(id);
             await _auditLogService.LogExAsync("Category Status Toggled", "Categories", category.Name, $"Toggled status of category '{category.Name}'.");
 
@@ -117,6 +152,12 @@ namespace InventoryManagementSystem.Controllers
         {
             var category = await _categoryService.GetCategoryByIdAsync(id);
             if (category == null) return NotFound();
+
+            var supplierId = GetCurrentSupplierId();
+            if (supplierId != null && category.SupplierId != supplierId)
+            {
+                return Forbid();
+            }
 
             await _categoryService.DeleteCategoryAsync(id);
             await _auditLogService.LogExAsync("Category Deleted", "Categories", category.Name, $"Deleted category '{category.Name}'.", "Success", "Warning");

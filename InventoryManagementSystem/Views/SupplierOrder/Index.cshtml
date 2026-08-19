@@ -1,0 +1,145 @@
+@model IEnumerable<InventoryManagementSystem.Models.SupplierOrder>
+@{
+    ViewData["Title"] = "Supplier Order Management";
+    var statusCounts = ViewBag.StatusCounts as Dictionary<string, long> ?? new Dictionary<string, long>();
+    var suppliers = ViewBag.Suppliers as IEnumerable<InventoryManagementSystem.Models.Supplier> ?? new List<InventoryManagementSystem.Models.Supplier>();
+    var currentStatus = ViewBag.Status as string;
+    var selectedSupplierId = ViewBag.SupplierId as string;
+    var search = ViewBag.Search as string;
+}
+
+<!-- Page Header -->
+<div class="ph">
+    <div>
+        <h1 class="ph-title"><i class="bi bi-shop me-2" style="color:var(--primary)"></i>Supplier Order Management</h1>
+        <p class="ph-sub">Manage vendor purchase orders, status workflows, and stock replenishment</p>
+    </div>
+    <div class="ph-actions">
+        <a href="@Url.Action("Create")" class="btn-d btn-primary">
+            <i class="bi bi-cart-plus me-1"></i> + Create Purchase Order
+        </a>
+    </div>
+</div>
+
+<!-- Status Filter Tabs Bar -->
+<div class="d-flex align-items-center gap-2 mb-4 overflow-auto pb-2" style="border-bottom:1px solid var(--border)">
+    <a href="@Url.Action("Index", new { supplierId = selectedSupplierId, search })" class="btn-d @(string.IsNullOrEmpty(currentStatus) ? "btn-primary" : "btn-outline") btn-sm-d">
+        All Orders (@(statusCounts.GetValueOrDefault("Total", 0)))
+    </a>
+    <a href="@Url.Action("Index", new { status = "Pending", supplierId = selectedSupplierId, search })" class="btn-d @(currentStatus == "Pending" ? "btn-primary" : "btn-outline") btn-sm-d">
+        Pending (@(statusCounts.GetValueOrDefault("Pending", 0)))
+    </a>
+    <a href="@Url.Action("Index", new { status = "Accepted", supplierId = selectedSupplierId, search })" class="btn-d @(currentStatus == "Accepted" ? "btn-primary" : "btn-outline") btn-sm-d">
+        Accepted (@(statusCounts.GetValueOrDefault("Accepted", 0)))
+    </a>
+    <a href="@Url.Action("Index", new { status = "Processing", supplierId = selectedSupplierId, search })" class="btn-d @(currentStatus == "Processing" ? "btn-primary" : "btn-outline") btn-sm-d">
+        Processing (@(statusCounts.GetValueOrDefault("Processing", 0)))
+    </a>
+    <a href="@Url.Action("Index", new { status = "Shipped", supplierId = selectedSupplierId, search })" class="btn-d @(currentStatus == "Shipped" ? "btn-primary" : "btn-outline") btn-sm-d">
+        Shipped (@(statusCounts.GetValueOrDefault("Shipped", 0)))
+    </a>
+    <a href="@Url.Action("Index", new { status = "Delivered", supplierId = selectedSupplierId, search })" class="btn-d @(currentStatus == "Delivered" ? "btn-primary" : "btn-outline") btn-sm-d">
+        Delivered (@(statusCounts.GetValueOrDefault("Delivered", 0)))
+    </a>
+    <a href="@Url.Action("Index", new { status = "Completed", supplierId = selectedSupplierId, search })" class="btn-d @(currentStatus == "Completed" ? "btn-primary" : "btn-outline") btn-sm-d">
+        Completed (@(statusCounts.GetValueOrDefault("Completed", 0)))
+    </a>
+    <a href="@Url.Action("Index", new { status = "Cancelled", supplierId = selectedSupplierId, search })" class="btn-d @(currentStatus == "Cancelled" ? "btn-primary" : "btn-outline") btn-sm-d">
+        Cancelled (@(statusCounts.GetValueOrDefault("Cancelled", 0)))
+    </a>
+</div>
+
+<!-- Detailed Filter Form -->
+<div class="card-d card-p mb-4">
+    <form method="get" class="row g-3 align-items-end">
+        <input type="hidden" name="status" value="@currentStatus" />
+        <div class="col-md-5">
+            <label class="fg-label"><i class="bi bi-search me-1 text-primary"></i>Search Keyword</label>
+            <input type="text" name="search" value="@search" class="fg-control" placeholder="Order #, Supplier Name, Email, Product..." />
+        </div>
+        <div class="col-md-4">
+            <label class="fg-label"><i class="bi bi-truck me-1 text-info"></i>Filter by Supplier</label>
+            <select name="supplierId" class="fg-control">
+                <option value="">All Suppliers</option>
+                @foreach (var sup in suppliers)
+                {
+                    <option value="@sup.Id" selected="@(selectedSupplierId == sup.Id)">@sup.CompanyName</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-3 d-flex align-items-center gap-2">
+            <button type="submit" class="btn-d btn-primary w-100"><i class="bi bi-funnel"></i> Apply Filter</button>
+            <a href="@Url.Action("Index")" class="btn-d btn-outline"><i class="bi bi-arrow-counterclockwise"></i></a>
+        </div>
+    </form>
+</div>
+
+<!-- Table Card Container -->
+<div class="card-d card-p p-0 overflow-hidden">
+    <div class="tbl-scroll">
+        <table class="tbl mb-0">
+            <thead>
+                <tr>
+                    <th class="ps-4">PO Number</th>
+                    <th>Supplier Vendor</th>
+                    <th>Date Created</th>
+                    <th>Items Count</th>
+                    <th>Total Units</th>
+                    <th>Grand Total</th>
+                    <th>Status</th>
+                    <th class="text-end pe-4">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model == null || !Model.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="bi bi-cart-x text-muted d-block mb-2" style="font-size:32px"></i>
+                            No purchase orders found.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var o in Model)
+                    {
+                        var statusBadge = o.Status switch
+                        {
+                            "Pending" => "badge-warning",
+                            "Accepted" => "badge-info",
+                            "Processing" => "badge-primary",
+                            "Shipped" => "badge-primary",
+                            "Delivered" => "badge-success",
+                            "Completed" => "badge-success",
+                            "Rejected" => "badge-danger",
+                            "Cancelled" => "badge-gray",
+                            _ => "badge-gray"
+                        };
+                        <tr>
+                            <td class="ps-4 fw-bold">
+                                <a href="@Url.Action("Details", new { id = o.Id })" class="text-decoration-none" style="color:var(--primary)">
+                                    @o.OrderNumber
+                                </a>
+                            </td>
+                            <td>
+                                <div style="font-weight:700;color:var(--text-primary)">@o.SupplierName</div>
+                                <div style="font-size:11px;color:var(--text-muted)">@o.SupplierEmail</div>
+                            </td>
+                            <td style="font-size:12px;color:var(--text-primary)">@o.CreatedAt.ToString("dd-MMM-yyyy HH:mm") IST</td>
+                            <td><span class="badge-d badge-gray">@o.Items.Count Products</span></td>
+                            <td style="font-weight:700">@o.TotalQuantity Units</td>
+                            <td style="font-weight:800;color:var(--success)">₹@o.GrandTotal.ToString("N2")</td>
+                            <td><span class="badge-d @statusBadge">@o.Status</span></td>
+                            <td class="text-end pe-4">
+                                <a href="@Url.Action("Details", new { id = o.Id })" class="btn-d btn-ghost btn-icon-d text-primary" title="View Order Details">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

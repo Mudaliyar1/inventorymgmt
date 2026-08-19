@@ -1,0 +1,96 @@
+@model IEnumerable<InventoryManagementSystem.Models.Product>
+@{
+    ViewData["Title"] = "My Supplied Products";
+    var categories = ViewBag.Categories as IEnumerable<InventoryManagementSystem.Models.Category> ?? new List<InventoryManagementSystem.Models.Category>();
+}
+
+<!-- Page Header -->
+<div class="ph">
+    <div>
+        <h1 class="ph-title"><i class="bi bi-phone me-2" style="color:var(--primary)"></i>My Supplied Products Catalog</h1>
+        <p class="ph-sub">Manage products, pricing, and stock details supplied by your company</p>
+    </div>
+    <div class="ph-actions">
+        <a href="@Url.Action("CreateProduct","SupplierDashboard")" class="btn-d btn-primary">
+            <i class="bi bi-plus-circle me-1"></i> Add New Product
+        </a>
+    </div>
+</div>
+
+<!-- Table Container -->
+<div class="card-d card-p p-0 overflow-hidden">
+    <div class="d-flex align-items-center justify-content-between p-3 border-bottom" style="border-color:var(--border)!important">
+        <div class="d-flex align-items-center gap-2">
+            <span style="font-weight:700;font-size:14px;color:var(--text-primary)">Supplied Catalog</span>
+            <span class="badge-d badge-gray">@Model.Count() Items</span>
+        </div>
+    </div>
+
+    <div class="tbl-scroll">
+        <table class="tbl mb-0">
+            <thead>
+                <tr>
+                    <th class="ps-4">Product & Model</th>
+                    <th>Brand & Type</th>
+                    <th>Variant / Specs</th>
+                    <th>Wholesale Price (₹)</th>
+                    <th>Retail Selling (₹)</th>
+                    <th>Status</th>
+                    <th class="text-end pe-4">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model == null || !Model.Any())
+                {
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="bi bi-box text-muted d-block mb-2" style="font-size:32px"></i>
+                            No products added to your catalog yet. Click "Add New Product" above to create one.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    foreach (var p in Model)
+                    {
+                        <tr>
+                            <td class="ps-4">
+                                <div style="font-weight:700;color:var(--text-primary)">@p.Name</div>
+                                <div style="font-size:11px;color:var(--text-muted)">SKU: <span class="code-pill">@p.Code</span></div>
+                            </td>
+                            <td>
+                                <div style="font-weight:600;color:var(--text-primary)">@p.Brand</div>
+                                <div style="font-size:11px;color:var(--text-muted)">@p.ProductType</div>
+                            </td>
+                            <td>
+                                <div style="font-size:13px;color:var(--text-primary)">@(string.IsNullOrEmpty(p.Variant) ? $"{p.Ram} / {p.Storage}" : p.Variant)</div>
+                                <div style="font-size:11px;color:var(--text-muted)">Color: @(string.IsNullOrEmpty(p.Color) ? "-" : p.Color)</div>
+                            </td>
+                            <td style="font-weight:700;color:var(--primary)">₹@((p.SupplierPrice > 0 ? p.SupplierPrice : p.PurchasePrice).ToString("N2"))</td>
+                            <td style="font-weight:700;color:var(--success)">₹@p.SellingPrice.ToString("N2")</td>
+                            <td>
+                                <span class="badge-d @(p.Status == "Active" ? "badge-success" : "badge-gray")">@p.Status</span>
+                            </td>
+                            <td class="text-end pe-4">
+                                <div class="d-flex align-items-center justify-content-end gap-1">
+                                    <a href="@Url.Action("Details", "SupplierDashboard", new { id = p.Id })" class="btn-d btn-ghost btn-icon-d text-info" title="View Product Details">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="@Url.Action("EditProduct", "SupplierDashboard", new { id = p.Id })" class="btn-d btn-ghost btn-icon-d text-primary" title="Edit Product">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <form method="post" asp-action="DeleteProduct" asp-route-id="@p.Id" class="d-inline" onsubmit="return confirm('Are you sure you want to delete product \'@p.Name\' from your catalog?');">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn-d btn-ghost btn-icon-d text-danger" title="Delete Product">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

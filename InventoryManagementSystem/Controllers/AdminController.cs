@@ -15,15 +15,18 @@ namespace InventoryManagementSystem.Controllers
         private readonly IUserRepository _userRepository;
         private readonly IAuditLogService _auditLogService;
         private readonly IPermissionService _permissionService;
+        private readonly IAccountValidationService _accountValidationService;
 
         public AdminController(
             IUserRepository userRepository,
             IAuditLogService auditLogService,
-            IPermissionService permissionService)
+            IPermissionService permissionService,
+            IAccountValidationService accountValidationService)
         {
             _userRepository = userRepository;
             _auditLogService = auditLogService;
             _permissionService = permissionService;
+            _accountValidationService = accountValidationService;
         }
 
         [HttpGet]
@@ -45,16 +48,14 @@ namespace InventoryManagementSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(User model, string rawPassword)
         {
-            var existingByEmail = await _userRepository.GetByEmailAsync(model.Email);
-            if (existingByEmail != null)
+            if (!string.IsNullOrWhiteSpace(model.Email) && await _accountValidationService.IsEmailAlreadyRegisteredAsync(model.Email))
             {
-                ModelState.AddModelError(nameof(model.Email), "Email address is already registered.");
+                ModelState.AddModelError(nameof(model.Email), "This email address is already registered with another account.");
             }
 
-            var existingByUsername = await _userRepository.GetByUsernameAsync(model.Username);
-            if (existingByUsername != null)
+            if (!string.IsNullOrWhiteSpace(model.Username) && await _accountValidationService.IsUsernameAlreadyRegisteredAsync(model.Username))
             {
-                ModelState.AddModelError(nameof(model.Username), "Username is already taken.");
+                ModelState.AddModelError(nameof(model.Username), "This username or identifier is already taken by another account.");
             }
 
             if (string.IsNullOrWhiteSpace(rawPassword) || rawPassword.Length < 6)
@@ -116,10 +117,9 @@ namespace InventoryManagementSystem.Controllers
             }
             else
             {
-                var existingByEmail = await _userRepository.GetByEmailAsync(model.Email.Trim());
-                if (existingByEmail != null && existingByEmail.Id != model.Id)
+                if (await _accountValidationService.IsEmailAlreadyRegisteredAsync(model.Email.Trim(), excludeUserId: model.Id))
                 {
-                    ModelState.AddModelError(nameof(model.Email), "Email address is already in use by another user.");
+                    ModelState.AddModelError(nameof(model.Email), "This email address is already registered with another account.");
                 }
             }
 

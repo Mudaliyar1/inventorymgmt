@@ -27,6 +27,24 @@ namespace InventoryManagementSystem.Services
             return await _categoryRepository.FindAsync(c => c.Status == "Active");
         }
 
+        public async Task<IEnumerable<Category>> GetCategoriesForUserAsync(string? supplierId)
+        {
+            if (string.IsNullOrEmpty(supplierId))
+            {
+                return await _categoryRepository.FindAsync(c => c.SupplierId == null);
+            }
+            return await _categoryRepository.FindAsync(c => c.SupplierId == supplierId);
+        }
+
+        public async Task<IEnumerable<Category>> GetActiveCategoriesForUserAsync(string? supplierId)
+        {
+            if (string.IsNullOrEmpty(supplierId))
+            {
+                return await _categoryRepository.FindAsync(c => c.SupplierId == null && c.Status == "Active");
+            }
+            return await _categoryRepository.FindAsync(c => c.SupplierId == supplierId && c.Status == "Active");
+        }
+
         public async Task<Category?> GetCategoryByIdAsync(string id)
         {
             return await _categoryRepository.GetByIdAsync(id);
@@ -40,7 +58,16 @@ namespace InventoryManagementSystem.Services
                 throw new InvalidOperationException("Category Name is required.");
             }
 
-            var existing = await _categoryRepository.FindAsync(c => c.Name.ToLower() == category.Name.ToLower());
+            IEnumerable<Category> existing;
+            if (string.IsNullOrEmpty(category.SupplierId))
+            {
+                existing = await _categoryRepository.FindAsync(c => c.SupplierId == null && c.Name.ToLower() == category.Name.ToLower());
+            }
+            else
+            {
+                existing = await _categoryRepository.FindAsync(c => c.SupplierId == category.SupplierId && c.Name.ToLower() == category.Name.ToLower());
+            }
+
             if (existing.Any())
             {
                 throw new InvalidOperationException($"A category with the name '{category.Name}' already exists.");
@@ -75,7 +102,16 @@ namespace InventoryManagementSystem.Services
                 throw new InvalidOperationException("Category Name is required.");
             }
 
-            var duplicate = await _categoryRepository.FindAsync(c => c.Id != category.Id && c.Name.ToLower() == category.Name.ToLower());
+            IEnumerable<Category> duplicate;
+            if (string.IsNullOrEmpty(category.SupplierId))
+            {
+                duplicate = await _categoryRepository.FindAsync(c => c.Id != category.Id && c.SupplierId == null && c.Name.ToLower() == category.Name.ToLower());
+            }
+            else
+            {
+                duplicate = await _categoryRepository.FindAsync(c => c.Id != category.Id && c.SupplierId == category.SupplierId && c.Name.ToLower() == category.Name.ToLower());
+            }
+
             if (duplicate.Any())
             {
                 throw new InvalidOperationException($"A category with the name '{category.Name}' already exists.");

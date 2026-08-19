@@ -1,0 +1,125 @@
+@model InventoryManagementSystem.Models.Supplier
+@{
+    ViewData["Title"] = "Supplier Portal Profile";
+}
+
+<!-- Page Header -->
+<div class="ph">
+    <div>
+        <h1 class="ph-title"><i class="bi bi-person-badge me-2" style="color:var(--primary)"></i>Supplier Portal Profile</h1>
+        <p class="ph-sub">Manage vendor identity, contact details, office location, and portal credentials</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card-d card-p-lg">
+            <div class="s-title"><i class="bi bi-building me-2" style="color:var(--primary)"></i>Vendor Company & Account Identity</div>
+
+            <form asp-action="Profile" method="post">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="alert-d alert-danger mb-4"></div>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label">Company / Vendor Name <span class="req">*</span></label>
+                            <input asp-for="CompanyName" class="fg-control" required />
+                            <span asp-validation-for="CompanyName" class="fg-error"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label">Email Address (Portal Login) <span class="req">*</span></label>
+                            <input asp-for="Email" type="email" class="fg-control" required />
+                            <span asp-validation-for="Email" class="fg-error"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label">Phone Number</label>
+                            <input asp-for="Phone" class="fg-control" />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label">Vendor GSTIN</label>
+                            <input asp-for="Gstin" class="fg-control text-uppercase" />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label">Payment Terms</label>
+                            <input asp-for="PaymentTerms" class="fg-control" readonly style="background:var(--bg);cursor:not-allowed" />
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label">City</label>
+                            <input asp-for="City" class="fg-control" />
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label">State</label>
+                            <input asp-for="State" class="fg-control" />
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label">Country</label>
+                            <input asp-for="Country" class="fg-control" />
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="fg">
+                            <label class="fg-label">Warehouse / Office Street Address</label>
+                            <textarea asp-for="Address" rows="2" class="fg-control"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="s-divider" />
+                <div class="s-title"><i class="bi bi-key me-2" style="color:var(--warning)"></i>Change Portal Login Password</div>
+                
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label">New Password</label>
+                            <input type="password" name="newPassword" class="fg-control" placeholder="Leave blank to keep existing password" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center justify-content-end gap-2">
+                    <button type="submit" class="btn-d btn-primary">
+                        <i class="bi bi-check2-circle me-1"></i> Save Profile Details
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right Side Account Details Summary Card -->
+    <div class="col-lg-4">
+        <div class="card-d card-p-lg">
+            <div class="s-title"><i class="bi bi-shield-check me-2" style="color:var(--success)"></i>Portal Credentials</div>
+            <div class="mb-3">
+                <div style="font-size:12px;color:var(--text-muted)">Login Identifier:</div>
+                <div style="font-size:14px;font-weight:700;color:var(--text-primary)">@Model.Email</div>
+            </div>
+            <div class="mb-3">
+                <div style="font-size:12px;color:var(--text-muted)">Account Status:</div>
+                <span class="badge-d badge-success">@Model.Status</span>
+            </div>
+            <div class="mb-3">
+                <div style="font-size:12px;color:var(--text-muted)">Member Since:</div>
+                <div style="font-size:13px;color:var(--text-primary)">@Model.CreatedDate.ToString("dd-MMM-yyyy")</div>
+            </div>
+            <div>
+                <div style="font-size:12px;color:var(--text-muted)">Last Login:</div>
+                <div style="font-size:13px;color:var(--text-primary)">@(Model.LastLogin.HasValue ? Model.LastLogin.Value.ToString("dd-MMM-yyyy HH:mm IST") : "First Session")</div>
+            </div>
+        </div>
+    </div>
+</div>

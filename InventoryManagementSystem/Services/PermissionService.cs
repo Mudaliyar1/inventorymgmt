@@ -12,6 +12,7 @@ namespace InventoryManagementSystem.Services
     public class PermissionService : IPermissionService
     {
         private readonly IUserRepository _userRepository;
+        private readonly ISupplierService _supplierService;
         private readonly IPermissionDiscoveryService _permissionDiscovery;
         private readonly IMemoryCache _cache;
 
@@ -19,10 +20,12 @@ namespace InventoryManagementSystem.Services
 
         public PermissionService(
             IUserRepository userRepository,
+            ISupplierService supplierService,
             IPermissionDiscoveryService permissionDiscovery,
             IMemoryCache cache)
         {
             _userRepository = userRepository;
+            _supplierService = supplierService;
             _permissionDiscovery = permissionDiscovery;
             _cache = cache;
         }
@@ -42,6 +45,21 @@ namespace InventoryManagementSystem.Services
             var user = await _userRepository.GetByIdAsync(userId);
             if (user == null)
             {
+                var supplier = await _supplierService.GetSupplierByIdAsync(userId);
+                if (supplier != null)
+                {
+                    var supplierState = new LiveUserState
+                    {
+                        IsValid = supplier.Status == "Active",
+                        IsLocked = supplier.Status == "Inactive",
+                        PermissionVersion = 1,
+                        Role = Role.Supplier,
+                        Permissions = new List<string> { "SupplierDashboard.Index", "SupplierDashboard.Products", "SupplierDashboard.Orders", "SupplierDashboard.Profile", "Category.Index" }
+                    };
+                    _cache.Set(cacheKey, supplierState, CacheDuration);
+                    return supplierState;
+                }
+
                 var invalidState = new LiveUserState { IsValid = false };
                 _cache.Set(cacheKey, invalidState, TimeSpan.FromSeconds(30));
                 return invalidState;

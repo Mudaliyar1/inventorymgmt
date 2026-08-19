@@ -486,6 +486,27 @@
                        onchange="previewImg(this)">
                 <span asp-validation-for="ProductImage" class="fg-error mt-2"></span>
             </div>
+
+            <!-- Multi-Image Gallery Upload Card (Up to 50 Photos) -->
+            <div class="card-d card-p-lg mt-3">
+                <div class="s-title"><i class="bi bi-images me-1 text-info"></i>Product Gallery Photos</div>
+                <div class="upload-area" id="gallery-upload-area" onclick="document.getElementById('ProductImages').click()">
+                    <i class="bi bi-images text-muted d-block mb-2" style="font-size:32px"></i>
+                    <div class="upload-area-text">
+                        <i class="bi bi-cloud-upload me-1"></i> Add Up to 50 Gallery Images
+                    </div>
+                    <div class="upload-area-hint">Select multiple photos for product slider</div>
+                </div>
+
+                <input asp-for="ProductImages"
+                       id="ProductImages"
+                       type="file"
+                       multiple
+                       accept="image/*"
+                       style="display:none"
+                       onchange="previewGalleryImgs(this)">
+                <div id="gallery-preview-container" class="d-flex flex-wrap gap-2 mt-2"></div>
+            </div>
         </div>
     </div>
 
@@ -1135,6 +1156,25 @@ async function applyModalSpecsToForm() {
     }
 
     if (window.showToast) window.showToast('All matching specifications applied to product form! Click Save Product to persist.', 'success');
+}
+
+function previewGalleryImgs(input) {
+    const container = document.getElementById('gallery-preview-container');
+    if (!container) return;
+    container.innerHTML = '';
+    if (input.files) {
+        Array.from(input.files).slice(0, 50).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.className = 'rounded border';
+                img.style.cssText = 'width:50px;height:50px;object-fit:cover';
+                container.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
 }
 </script>
 }

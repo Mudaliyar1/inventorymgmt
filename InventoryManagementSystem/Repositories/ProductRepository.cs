@@ -14,15 +14,39 @@ namespace InventoryManagementSystem.Repositories
         {
         }
 
-        public async Task<Product?> GetByCodeAsync(string code)
+        public async Task<Product?> GetByCodeAsync(string code, string? supplierId = null)
         {
             var filter = Builders<Product>.Filter.Eq(p => p.Code, code);
+            if (string.IsNullOrEmpty(supplierId))
+            {
+                var shopFilter = Builders<Product>.Filter.Or(
+                    Builders<Product>.Filter.Eq(p => p.SupplierId, null),
+                    Builders<Product>.Filter.Exists(p => p.SupplierId, false)
+                );
+                filter = Builders<Product>.Filter.And(filter, shopFilter);
+            }
+            else
+            {
+                filter = Builders<Product>.Filter.And(filter, Builders<Product>.Filter.Eq(p => p.SupplierId, supplierId));
+            }
             return await _collection.Find(filter).FirstOrDefaultAsync();
         }
 
-        public async Task<Product?> GetByBarcodeAsync(string barcode)
+        public async Task<Product?> GetByBarcodeAsync(string barcode, string? supplierId = null)
         {
             var filter = Builders<Product>.Filter.Eq(p => p.Barcode, barcode);
+            if (string.IsNullOrEmpty(supplierId))
+            {
+                var shopFilter = Builders<Product>.Filter.Or(
+                    Builders<Product>.Filter.Eq(p => p.SupplierId, null),
+                    Builders<Product>.Filter.Exists(p => p.SupplierId, false)
+                );
+                filter = Builders<Product>.Filter.And(filter, shopFilter);
+            }
+            else
+            {
+                filter = Builders<Product>.Filter.And(filter, Builders<Product>.Filter.Eq(p => p.SupplierId, supplierId));
+            }
             return await _collection.Find(filter).FirstOrDefaultAsync();
         }
 
@@ -34,22 +58,18 @@ namespace InventoryManagementSystem.Repositories
             var filter = BuildFilter(search, categoryId, brand, modelName, stockStatus, statusFilter, minPrice, maxPrice, minStock, maxStock, productSource);
             var query = _collection.Find(filter);
 
-            if (!string.IsNullOrEmpty(sortBy))
+            query = sortBy switch
             {
-                var sortDef = isDescending 
-                    ? Builders<Product>.Sort.Descending(sortBy) 
-                    : Builders<Product>.Sort.Ascending(sortBy);
-                query = query.Sort(sortDef);
-            }
-            else
-            {
-                query = query.SortByDescending(p => p.CreatedDate);
-            }
+                "Name" => isDescending ? query.SortByDescending(p => p.Name) : query.SortBy(p => p.Name),
+                "Code" => isDescending ? query.SortByDescending(p => p.Code) : query.SortBy(p => p.Code),
+                "SellingPrice" => isDescending ? query.SortByDescending(p => p.SellingPrice) : query.SortBy(p => p.SellingPrice),
+                "CurrentStock" => isDescending ? query.SortByDescending(p => p.CurrentStock) : query.SortBy(p => p.CurrentStock),
+                "Brand" => isDescending ? query.SortByDescending(p => p.Brand) : query.SortBy(p => p.Brand),
+                "ModelName" => isDescending ? query.SortByDescending(p => p.ModelName) : query.SortBy(p => p.ModelName),
+                _ => isDescending ? query.SortByDescending(p => p.CreatedDate) : query.SortBy(p => p.CreatedDate)
+            };
 
-            return await query
-                .Skip((page - 1) * pageSize)
-                .Limit(pageSize)
-                .ToListAsync();
+            return await query.Skip((page - 1) * pageSize).Limit(pageSize).ToListAsync();
         }
 
         public async Task<long> GetFilteredCountAsync(
@@ -63,15 +83,7 @@ namespace InventoryManagementSystem.Repositories
 
         public async Task<(int TotalProducts, int CurrentStockSum, int LowStockCount, int OutOfStockCount)> GetStockMetricsAsync()
         {
-            var projection = Builders<Product>.Projection
-                .Include(p => p.CurrentStock)
-                .Include(p => p.MinimumStock)
-                .Include(p => p.Status);
-
-            var products = await _collection.Find(FilterDefinition<Product>.Empty)
-                .Project<Product>(projection)
-                .ToListAsync();
-
+            var products = await _collection.Find(Builders<Product>.Filter.Empty).ToListAsync();
             int totalProducts = products.Count;
             int currentStockSum = 0;
             int lowStockCount = 0;
@@ -100,7 +112,23 @@ namespace InventoryManagementSystem.Repositories
 
             if (!string.IsNullOrWhiteSpace(productSource))
             {
-                if (productSource.Equals("TradeIn", StringComparison.OrdinalIgnoreCase) || productSource.Equals("Exchange", StringComparison.OrdinalIgnoreCase))
+                if (productSource.Equals("Shop", StringComparison.OrdinalIgnoreCase) || productSource.Equals("Store", StringComparison.OrdinalIgnoreCase) || productSource.Equals("Main", StringComparison.OrdinalIgnoreCase))
+                {
+                    var shopFilter = Builders<Product>.Filter.Or(
+                        Builders<Product>.Filter.Eq(p => p.SupplierId, null),
+                        Builders<Product>.Filter.Exists(p => p.SupplierId, false)
+                    );
+                    filter = Builders<Product>.Filter.And(filter, shopFilter);
+                }
+                else if (productSource.Equals("Supplier", StringComparison.OrdinalIgnoreCase))
+                {
+                    var supplierFilter = Builders<Product>.Filter.And(
+                        Builders<Product>.Filter.Ne(p => p.SupplierId, null),
+                        Builders<Product>.Filter.Exists(p => p.SupplierId, true)
+                    );
+                    filter = Builders<Product>.Filter.And(filter, supplierFilter);
+                }
+                else if (productSource.Equals("TradeIn", StringComparison.OrdinalIgnoreCase) || productSource.Equals("Exchange", StringComparison.OrdinalIgnoreCase))
                 {
                     var tradeInFilter = Builders<Product>.Filter.Or(
                         Builders<Product>.Filter.Regex(p => p.Code, new global::MongoDB.Bson.BsonRegularExpression("^EXCH-", "i")),
@@ -116,6 +144,15 @@ namespace InventoryManagementSystem.Repositories
                     );
                     filter = Builders<Product>.Filter.And(filter, newProductFilter);
                 }
+            }
+            else
+            {
+                // Default catalog filter: show shop products (not external supplier catalog proposals)
+                var shopFilter = Builders<Product>.Filter.Or(
+                    Builders<Product>.Filter.Eq(p => p.SupplierId, null),
+                    Builders<Product>.Filter.Exists(p => p.SupplierId, false)
+                );
+                filter = Builders<Product>.Filter.And(filter, shopFilter);
             }
 
             if (!string.IsNullOrEmpty(categoryId))

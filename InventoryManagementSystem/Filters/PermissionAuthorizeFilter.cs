@@ -52,6 +52,26 @@ namespace InventoryManagementSystem.Filters
                 return;
             }
 
+            // Allow Suppliers full access to SupplierDashboard & Category management
+            if (user.IsInRole(Role.Supplier))
+            {
+                if (controllerName.Equals("SupplierDashboard", StringComparison.OrdinalIgnoreCase) ||
+                    controllerName.Equals("Category", StringComparison.OrdinalIgnoreCase))
+                {
+                    await next();
+                    return;
+                }
+
+                // If supplier attempts to access non-supplier modules, block with 403
+                context.HttpContext.Response.StatusCode = 403;
+                context.Result = new ViewResult
+                {
+                    ViewName = "~/Views/Shared/AccessDenied.cshtml",
+                    StatusCode = 403
+                };
+                return;
+            }
+
             var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (!string.IsNullOrEmpty(userId))
             {

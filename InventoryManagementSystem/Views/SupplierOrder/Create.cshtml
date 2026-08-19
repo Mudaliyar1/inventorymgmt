@@ -1,0 +1,392 @@
+@model IEnumerable<InventoryManagementSystem.Models.Product>
+@{
+    ViewData["Title"] = "Create Purchase Order";
+    var suppliers = ViewBag.Suppliers as IEnumerable<InventoryManagementSystem.Models.Supplier> ?? new List<InventoryManagementSystem.Models.Supplier>();
+    var categories = ViewBag.Categories as IEnumerable<InventoryManagementSystem.Models.Category> ?? new List<InventoryManagementSystem.Models.Category>();
+    var selectedSupplierId = ViewBag.SelectedSupplierId as string;
+    var selectedCategoryId = ViewBag.CategoryId as string;
+    var search = ViewBag.Search as string;
+}
+
+<!-- Page Header -->
+<div class="ph">
+    <div>
+        <h1 class="ph-title"><i class="bi bi-cart-plus me-2" style="color:var(--primary)"></i>Create Supplier Purchase Order</h1>
+        <p class="ph-sub">Browse supplier product cards, inspect detailed specs, enter quantities, and generate purchase orders</p>
+    </div>
+    <div class="ph-actions">
+        <a href="@Url.Action("Index")" class="btn-d btn-outline">
+            <i class="bi bi-arrow-left me-1"></i> Order Management
+        </a>
+    </div>
+</div>
+
+<!-- Supplier Selection & Product Filter Card -->
+<div class="card-d card-p-lg mb-4" style="background:var(--bg-card);border:1px solid var(--border)">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-lg-4 col-md-6">
+            <label class="fg-label"><i class="bi bi-truck me-1 text-primary"></i>1. Select Supplier Vendor <span class="req">*</span></label>
+            <select name="selectedSupplierId" class="fg-control" required onchange="this.form.submit()">
+                <option value="">-- Choose Supplier Vendor --</option>
+                @foreach (var sup in suppliers)
+                {
+                    <option value="@sup.Id" selected="@(selectedSupplierId == sup.Id)">@sup.CompanyName (@sup.ContactPerson)</option>
+                }
+            </select>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <label class="fg-label"><i class="bi bi-tag me-1 text-info"></i>Filter Category</label>
+            <select name="categoryId" class="fg-control" onchange="this.form.submit()">
+                <option value="">All Categories</option>
+                @foreach (var cat in categories)
+                {
+                    <option value="@cat.Id" selected="@(selectedCategoryId == cat.Id)">@cat.Name</option>
+                }
+            </select>
+        </div>
+        <div class="col-lg-3 col-md-8">
+            <label class="fg-label"><i class="bi bi-search me-1 text-muted"></i>Search Product</label>
+            <input type="text" name="search" value="@search" class="fg-control" placeholder="Brand, Model, Name, SKU..." />
+        </div>
+        <div class="col-lg-2 col-md-4 d-flex align-items-center gap-2">
+            <button type="submit" class="btn-d btn-primary w-100"><i class="bi bi-filter"></i> Filter</button>
+            <a href="@Url.Action("Create")" class="btn-d btn-outline"><i class="bi bi-arrow-counterclockwise"></i></a>
+        </div>
+    </form>
+</div>
+
+<!-- Product Cards Grid Form -->
+<form asp-action="Review" method="post" id="poBasketForm">
+    <input type="hidden" name="supplierId" value="@selectedSupplierId" />
+
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div style="font-size:14px;font-weight:700;color:var(--text-primary)">
+            @if (!string.IsNullOrEmpty(selectedSupplierId))
+            {
+                var selSup = suppliers.FirstOrDefault(s => s.Id == selectedSupplierId);
+                <span>Products Supplied by <strong style="color:var(--primary)">@(selSup?.CompanyName)</strong> (@Model.Count() Available)</span>
+            }
+            else
+            {
+                <span>Available Product Catalog (@Model.Count() Items)</span>
+            }
+        </div>
+        <button type="submit" class="btn-d btn-primary btn-lg-d" id="reviewPoBtn">
+            <i class="bi bi-clipboard-check me-1"></i> Review Order Basket (<span id="basketCount">0</span> items)
+        </button>
+    </div>
+
+    @if (Model == null || !Model.Any())
+    {
+        <div class="card-d card-p p-5 text-center text-muted">
+            <i class="bi bi-box text-muted d-block mb-3" style="font-size:40px"></i>
+            <h5 style="color:var(--text-primary)">No Products Found</h5>
+            <p class="mb-0">Please select a supplier vendor above or adjust your search filters to browse products.</p>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3 mb-4">
+            @for (int i = 0; i < Model.Count(); i++)
+            {
+                var p = Model.ElementAt(i);
+                var modalJson = System.Text.Json.JsonSerializer.Serialize(p);
+                var supplierPrice = p.SupplierPrice > 0 ? p.SupplierPrice : p.PurchasePrice;
+
+                <div class="col-xl-3 col-lg-4 col-md-6">
+                    <div class="card-d card-p h-100 d-flex flex-column justify-content-between" style="background:var(--bg-card);border:1px solid var(--border)">
+                        <div>
+                            <!-- Header Info -->
+                            <div class="d-flex align-items-start justify-content-between mb-2">
+                                <span class="badge-d badge-gray" style="font-size:11px">@p.Brand</span>
+                                <span class="badge-d @(p.CurrentStock <= p.MinimumStock ? "badge-warning" : "badge-success")" style="font-size:10px">
+                                    Stock: @p.CurrentStock
+                                </span>
+                            </div>
+
+                            <h6 style="font-weight:700;color:var(--text-primary)" class="mb-1">@p.Name</h6>
+                            <div style="font-size:12px;color:var(--text-muted)" class="mb-2">
+                                @(string.IsNullOrEmpty(p.Variant) ? $"{p.Ram} / {p.Storage}" : p.Variant) · @p.Color
+                            </div>
+
+                            <!-- Pricing -->
+                            <div class="p-2 rounded mb-3" style="background:var(--bg);border:1px solid var(--border)">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <span style="font-size:11px;color:var(--text-muted)">Supplier Price:</span>
+                                    <span style="font-size:15px;font-weight:800;color:var(--primary)">₹@supplierPrice.ToString("N2")</span>
+                                </div>
+                                <div class="d-flex align-items-center justify-content-between mt-1">
+                                    <span style="font-size:11px;color:var(--text-muted)">Shop Retail Price:</span>
+                                    <span style="font-size:12px;font-weight:700;color:var(--text-primary)">₹@p.SellingPrice.ToString("N2")</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card Actions & Qty Input -->
+                        <div>
+                            <button type="button" class="btn-d btn-outline btn-sm-d w-100 mb-2" onclick='openProductSpecsModal(@Html.Raw(modalJson))'>
+                                <i class="bi bi-info-circle me-1"></i> Inspect Complete Specs
+                            </button>
+
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text style-ig-text" style="font-size:11px;background:var(--bg);color:var(--text-muted);border-color:var(--border)">Order Qty:</span>
+                                <input type="hidden" name="items[@i].ProductId" value="@p.Id" />
+                                <input type="hidden" name="items[@i].UnitPrice" value="@supplierPrice" />
+                                <input type="number" min="0" max="999" name="items[@i].Quantity" value="0" data-stock="@p.CurrentStock" data-supplier-id="@p.SupplierId" class="form-control po-qty-input fg-control text-center" oninput="updateBasketCount()" onchange="updateBasketCount()" style="border-radius:0 8px 8px 0" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</form>
+
+<!-- Modal: Inspect Complete Product Specs -->
+<div class="modal fade" id="productSpecsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content" style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;color:var(--text-primary)">
+            <div class="modal-header border-bottom" style="border-color:var(--border)!important">
+                <div class="d-flex align-items-center gap-2">
+                    <div style="width:36px;height:36px;border-radius:10px;background:var(--primary-dim);display:flex;align-items:center;justify-content:center;color:var(--primary)">
+                        <i class="bi bi-phone" style="font-size:18px"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title mb-0" id="ps_Name" style="font-weight:700">Product Hardware Specs</h5>
+                        <div style="font-size:12px;color:var(--text-muted)" id="ps_Code">SKU Details</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="row g-4">
+                    <!-- Left: Gallery Image Slider -->
+                    <div class="col-lg-4">
+                        <div class="p-3 rounded text-center mb-3 style-modal-img-wrap" style="background:var(--bg);border:1px solid var(--border);min-height:220px;display:flex;align-items:center;justify-content:center">
+                            <img id="ps_MainImg" src="" alt="Product" class="img-fluid rounded" style="max-height:220px;object-fit:contain" />
+                        </div>
+                        <div id="ps_ThumbStrip" class="d-flex flex-wrap gap-2 overflow-auto" style="max-height:100px"></div>
+                    </div>
+
+                    <!-- Right: Detailed Spec Tabs -->
+                    <div class="col-lg-8">
+                        <ul class="nav nav-tabs border-bottom mb-3" role="tablist" style="border-color:var(--border)!important">
+                            <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#mps-overview" type="button"><i class="bi bi-info-circle me-1"></i> Overview</button></li>
+                            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#mps-perf" type="button"><i class="bi bi-cpu me-1"></i> Performance</button></li>
+                            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#mps-display" type="button"><i class="bi bi-camera me-1"></i> Display & Camera</button></li>
+                            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#mps-battery" type="button"><i class="bi bi-battery-charging me-1"></i> Battery & Network</button></li>
+                            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#mps-os" type="button"><i class="bi bi-shield-check me-1"></i> OS & Features</button></li>
+                        </ul>
+
+                        <div class="tab-content">
+                            <!-- Tab 1: Overview -->
+                            <div class="tab-pane fade show active" id="mps-overview">
+                                <div class="row g-3">
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Brand & Model</div><div style="font-weight:700" id="ps_BrandModel">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Variant</div><div style="font-weight:700" id="ps_Variant">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Color</div><div style="font-weight:700" id="ps_Color">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Supplier Price</div><div style="font-weight:700;color:var(--primary)" id="ps_SupplierPrice">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Retail Selling Price</div><div style="font-weight:700;color:var(--success)" id="ps_SellingPrice">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Current Stock</div><div style="font-weight:700" id="ps_Stock">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Barcode</div><div style="font-weight:700" id="ps_Barcode">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Warranty</div><div style="font-weight:700" id="ps_Warranty">-</div></div>
+                                </div>
+                            </div>
+
+                            <!-- Tab 2: Performance -->
+                            <div class="tab-pane fade" id="mps-perf">
+                                <div class="row g-3">
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Processor</div><div style="font-weight:700" id="ps_Proc">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">CPU Cores</div><div style="font-weight:700" id="ps_Cores">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">GPU</div><div style="font-weight:700" id="ps_Gpu">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">RAM Memory</div><div style="font-weight:700" id="ps_Ram">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Internal Storage</div><div style="font-weight:700" id="ps_Storage">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Expandable Slot</div><div style="font-weight:700" id="ps_Expandable">-</div></div>
+                                </div>
+                            </div>
+
+                            <!-- Tab 3: Display & Camera -->
+                            <div class="tab-pane fade" id="mps-display">
+                                <div class="row g-3">
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Display Size</div><div style="font-weight:700" id="ps_DispSize">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Resolution</div><div style="font-weight:700" id="ps_DispRes">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Refresh Rate</div><div style="font-weight:700" id="ps_Refresh">-</div></div>
+                                    <div class="col-6 col-md-6"><div style="font-size:11px;color:var(--text-muted)">Rear Main Camera</div><div style="font-weight:700" id="ps_RearCam">-</div></div>
+                                    <div class="col-6 col-md-6"><div style="font-size:11px;color:var(--text-muted)">Front Selfie Camera</div><div style="font-weight:700" id="ps_FrontCam">-</div></div>
+                                </div>
+                            </div>
+
+                            <!-- Tab 4: Battery & Network -->
+                            <div class="tab-pane fade" id="mps-battery">
+                                <div class="row g-3">
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Battery Capacity</div><div style="font-weight:700" id="ps_Battery">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Charging Speed</div><div style="font-weight:700" id="ps_Charging">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">5G Support</div><div style="font-weight:700" id="ps_5G">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">SIM Type</div><div style="font-weight:700" id="ps_Sim">-</div></div>
+                                </div>
+                            </div>
+
+                            <!-- Tab 5: OS & Security -->
+                            <div class="tab-pane fade" id="mps-os">
+                                <div class="row g-3">
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Operating System</div><div style="font-weight:700" id="ps_OS">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Custom UI</div><div style="font-weight:700" id="ps_UI">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Biometrics</div><div style="font-weight:700" id="ps_Biometrics">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">IP Protection</div><div style="font-weight:700" id="ps_IP">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">NFC</div><div style="font-weight:700" id="ps_NFC">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Headphone Jack</div><div style="font-weight:700" id="ps_Jack">-</div></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="s-divider my-3" />
+                        <div class="fg mb-0">
+                            <label class="fg-label text-muted">Description & Notes</label>
+                            <div class="p-3 rounded" style="background:var(--bg);border:1px solid var(--border);font-size:13px;color:var(--text-primary)" id="ps_Description">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top" style="border-color:var(--border)!important">
+                <button type="button" class="btn-d btn-outline" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function updateBasketCount() {
+            const inputs = document.querySelectorAll('.po-qty-input');
+            let count = 0;
+            inputs.forEach(i => {
+                const val = parseInt(i.value) || 0;
+                const stock = parseInt(i.getAttribute('data-stock')) || 0;
+                const cardBody = i.closest('.card-d');
+                let warnEl = cardBody ? cardBody.querySelector('.po-stock-warning') : null;
+
+                if (val > 0) count += val;
+
+                if (val > stock) {
+                    if (!warnEl && cardBody) {
+                        warnEl = document.createElement('div');
+                        warnEl.className = 'po-stock-warning mt-2 p-2 rounded';
+                        warnEl.style.cssText = 'background:rgba(234,179,8,0.15);border:1px solid rgba(234,179,8,0.5);color:#f59e0b;font-size:11px;font-weight:700';
+                        cardBody.appendChild(warnEl);
+                    }
+                    if (warnEl) {
+                        warnEl.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i> Requested (${val}) exceeds available stock (${stock})`;
+                        warnEl.style.display = 'block';
+                    }
+                    i.style.borderColor = '#f59e0b';
+                } else {
+                    if (warnEl) warnEl.style.display = 'none';
+                    i.style.borderColor = '';
+                }
+            });
+            document.getElementById('basketCount').innerText = count;
+        }
+
+        document.getElementById('poBasketForm')?.addEventListener('submit', function (e) {
+            const inputs = document.querySelectorAll('.po-qty-input');
+            let count = 0;
+            let autoSupplierId = '';
+            inputs.forEach(i => {
+                const val = parseInt(i.value) || 0;
+                if (val > 0) {
+                    count += val;
+                    if (!autoSupplierId) {
+                        autoSupplierId = i.getAttribute('data-supplier-id') || '';
+                    }
+                }
+            });
+            if (count <= 0) {
+                e.preventDefault();
+                alert('Please enter an order quantity (> 0) for at least one product before reviewing your order.');
+                return false;
+            }
+
+            const supplierIdInput = this.querySelector('input[name="supplierId"]');
+            if (supplierIdInput && !supplierIdInput.value && autoSupplierId) {
+                supplierIdInput.value = autoSupplierId;
+            }
+        });
+
+        function openProductSpecsModal(p) {
+            const s = p.Specs || {};
+            document.getElementById('ps_Name').innerText = p.Name || 'Product Hardware Specs';
+            document.getElementById('ps_Code').innerText = `SKU: ${p.Code || '-'}`;
+            document.getElementById('ps_BrandModel').innerText = `${p.Brand || ''} ${p.ModelName || ''}`.trim() || '-';
+            document.getElementById('ps_Variant').innerText = p.Variant || `${p.Ram || ''} / ${p.Storage || ''}`.trim() || '-';
+            document.getElementById('ps_Color').innerText = p.Color || '-';
+            document.getElementById('ps_SupplierPrice').innerText = `₹${(p.SupplierPrice || p.PurchasePrice || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            document.getElementById('ps_SellingPrice').innerText = `₹${(p.SellingPrice || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            document.getElementById('ps_Stock').innerText = `${p.CurrentStock || 0} Units`;
+            document.getElementById('ps_Barcode').innerText = p.Barcode || '-';
+            document.getElementById('ps_Warranty').innerText = `${p.WarrantyDurationMonths || 12} Months`;
+            document.getElementById('ps_Description').innerText = p.Description || 'No detailed prose description recorded.';
+
+            // Specs mapping
+            document.getElementById('ps_Proc').innerText = s.ProcessorName || s.ProcessorBrand || p.Processor || '-';
+            document.getElementById('ps_Cores').innerText = s.CpuCores || '-';
+            document.getElementById('ps_Gpu').innerText = s.Gpu || '-';
+            document.getElementById('ps_Ram').innerText = s.RamType || p.Ram || '-';
+            document.getElementById('ps_Storage').innerText = s.StorageType || p.Storage || '-';
+            document.getElementById('ps_Expandable').innerText = s.ExpandableStorage ? 'Yes Supported' : 'No Expandable Slot';
+
+            document.getElementById('ps_DispSize').innerText = s.DisplaySize || p.DisplaySize || '-';
+            document.getElementById('ps_DispRes').innerText = s.Resolution || '-';
+            document.getElementById('ps_Refresh').innerText = s.RefreshRate || '-';
+            document.getElementById('ps_RearCam').innerText = s.PrimaryRearCameraMp || '-';
+            document.getElementById('ps_FrontCam').innerText = s.FrontCameraMp || '-';
+
+            document.getElementById('ps_Battery').innerText = (s.BatteryCapacityMah && s.BatteryCapacityMah > 0) ? `${s.BatteryCapacityMah} mAh` : (p.BatteryCapacity || '-');
+            document.getElementById('ps_Charging').innerText = s.FastChargingWattage || '-';
+            document.getElementById('ps_5G').innerText = s.Network5G ? '5G Supported' : '4G / LTE';
+            document.getElementById('ps_Sim').innerText = s.SimType || p.SimType || '-';
+
+            document.getElementById('ps_OS').innerText = s.OperatingSystem || s.OsVersion || p.OperatingSystem || '-';
+            document.getElementById('ps_UI').innerText = s.Chipset || '-';
+            document.getElementById('ps_Biometrics').innerText = s.FingerprintSensor || '-';
+            document.getElementById('ps_IP').innerText = s.WaterResistance || '-';
+            document.getElementById('ps_NFC').innerText = s.Nfc ? 'NFC Available' : 'No NFC';
+            document.getElementById('ps_Jack').innerText = s.AudioFeatures || '-';
+
+            // Gallery Images
+            const images = [];
+            if (p.ImageUrl) images.push(p.ImageUrl);
+            if (p.ImageUrls && Array.isArray(p.ImageUrls)) {
+                p.ImageUrls.forEach(img => { if (!images.includes(img)) images.push(img); });
+            }
+
+            const mainImg = document.getElementById('ps_MainImg');
+            const thumbStrip = document.getElementById('ps_ThumbStrip');
+            thumbStrip.innerHTML = '';
+
+            if (images.length > 0) {
+                mainImg.src = images[0];
+                mainImg.style.display = 'block';
+
+                if (images.length > 1) {
+                    images.forEach((imgUrl, i) => {
+                        const thumb = document.createElement('img');
+                        thumb.src = imgUrl;
+                        thumb.className = `rounded thumb-img ${i === 0 ? 'active-thumb' : ''}`;
+                        thumb.style.cssText = 'width:48px;height:48px;object-fit:cover;cursor:pointer;border:2px solid var(--border)';
+                        thumb.onclick = function() {
+                            mainImg.src = imgUrl;
+                            thumbStrip.querySelectorAll('img').forEach(t => t.style.borderColor = 'var(--border)');
+                            this.style.borderColor = 'var(--primary)';
+                        };
+                        thumbStrip.appendChild(thumb);
+                    });
+                }
+            } else {
+                mainImg.src = 'https://placehold.co/400x300?text=No+Photo';
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('productSpecsModal'));
+            modal.show();
+        }
+    </script>
+}

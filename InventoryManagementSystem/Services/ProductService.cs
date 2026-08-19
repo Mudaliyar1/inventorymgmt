@@ -25,14 +25,14 @@ namespace InventoryManagementSystem.Services
             return await _productRepository.GetByIdAsync(id);
         }
 
-        public async Task<Product?> GetProductByCodeAsync(string code)
+        public async Task<Product?> GetProductByCodeAsync(string code, string? supplierId = null)
         {
-            return await _productRepository.GetByCodeAsync(code);
+            return await _productRepository.GetByCodeAsync(code, supplierId);
         }
 
-        public async Task<Product?> GetProductByBarcodeAsync(string barcode)
+        public async Task<Product?> GetProductByBarcodeAsync(string barcode, string? supplierId = null)
         {
-            return await _productRepository.GetByBarcodeAsync(barcode);
+            return await _productRepository.GetByBarcodeAsync(barcode, supplierId);
         }
 
         public async Task CreateProductAsync(Product product)

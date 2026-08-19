@@ -79,7 +79,8 @@ document.addEventListener('submit', async function (e) {
     let hasError = false;
     let firstErrorInput = null;
 
-    const phoneInputs = form.querySelectorAll('input[type="tel"], .phone-input, input[name*="Phone" i], input[name*="Contact" i], input[name*="Mobile" i], input[id*="Phone" i], input[id*="Contact" i]');
+    const phoneInputs = Array.from(form.querySelectorAll('input[type="tel"], .phone-input, input[name*="Phone" i], input[name*="Mobile" i], input[id*="Phone" i], input[id*="Mobile" i]'))
+        .filter(input => isPhoneInput(input));
     phoneInputs.forEach(input => {
         const isValid = sanitizeAndValidatePhone(input, true);
         if (!isValid) {
@@ -227,7 +228,7 @@ function isPhoneInput(target) {
     const id = (target.id || '').toLowerCase();
     const placeholder = (target.placeholder || '').toLowerCase();
 
-    if (/(model|brand|product|device|spec|storage|color|serial|iphone|sku|category)/i.test(name + ' ' + id + ' ' + placeholder)) {
+    if (/(person|contactperson|contact_person|name|model|brand|product|device|spec|storage|color|serial|iphone|sku|category)/i.test(name + ' ' + id + ' ' + placeholder)) {
         return false;
     }
 
@@ -235,7 +236,7 @@ function isPhoneInput(target) {
         return true;
     }
 
-    const phonePattern = /(customerphone|contactphone|userphone|phone_number|phonenumber|contactno|mobile_number|mobilenumber|supplierphone|^phone$|^contact$|^mobile$)/i;
+    const phonePattern = /(customerphone|contactphone|userphone|phone_number|phonenumber|contactno|mobile_number|mobilenumber|supplierphone|^phone$|^mobile$)/i;
     return phonePattern.test(name) || phonePattern.test(id);
 }
 

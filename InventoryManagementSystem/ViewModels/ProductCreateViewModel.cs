@@ -51,8 +51,11 @@ namespace InventoryManagementSystem.ViewModels
 
         public string Description { get; set; } = string.Empty;
 
-        [Display(Name = "Product Image")]
+        [Display(Name = "Product Image (Primary)")]
         public IFormFile? ProductImage { get; set; }
+
+        [Display(Name = "Product Gallery Images (Up to 50)")]
+        public List<IFormFile>? ProductImages { get; set; }
 
         public MobileSpecifications Specs { get; set; } = new MobileSpecifications();
 

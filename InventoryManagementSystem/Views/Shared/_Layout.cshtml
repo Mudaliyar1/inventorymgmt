@@ -27,7 +27,8 @@
   var fullName = User.FindFirst("FullName")?.Value ?? User.Identity.Name;
   var uname    = User.Identity.Name;
   var profPic  = User.FindFirst("ProfilePictureUrl")?.Value ?? "";
-  var isAdmin  = User.IsInRole("Admin");
+  var isAdmin    = User.IsInRole("Admin");
+  var isSupplier = User.IsInRole("Supplier");
 
   <!-- Sidebar overlay (mobile) -->
   <div id="sb-overlay" class="sb-overlay"></div>
@@ -38,7 +39,7 @@
   <aside id="sidebar" aria-label="Main Navigation">
 
     <!-- Brand -->
-    <a class="sb-brand" href="@Url.Action("Index","Home")">
+    <a class="sb-brand" href="@(isSupplier ? Url.Action("Index","SupplierDashboard") : Url.Action("Index","Home"))">
       <div class="sb-brand-icon"><i class="bi bi-box-seam-fill"></i></div>
       <span class="sb-brand-name">SIMS</span>
     </a>
@@ -46,6 +47,47 @@
     <!-- Nav scroll area -->
     <div class="sb-scroll">
 
+    @if (isSupplier)
+    {
+      <div class="sb-label">Supplier Portal</div>
+
+      <a href="@Url.Action("Index","SupplierDashboard")"
+         class="sb-link @(ctrl=="SupplierDashboard"&&act=="Index"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Portal Dashboard" data-bs-placement="right">
+        <i class="bi bi-speedometer2 sb-icon"></i>
+        <span class="sb-text">Portal Dashboard</span>
+      </a>
+
+      <a href="@Url.Action("Products","SupplierDashboard")"
+         class="sb-link @(ctrl=="SupplierDashboard"&&(act=="Products"||act=="CreateProduct"||act=="EditProduct")?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Supplied Products" data-bs-placement="right">
+        <i class="bi bi-phone sb-icon"></i>
+        <span class="sb-text">My Products</span>
+      </a>
+
+      <a href="@Url.Action("Index","Category")"
+         class="sb-link @(ctrl=="Category"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Product Categories" data-bs-placement="right">
+        <i class="bi bi-tag sb-icon"></i>
+        <span class="sb-text">Categories</span>
+      </a>
+
+      <a href="@Url.Action("Orders","SupplierDashboard")"
+         class="sb-link @(ctrl=="SupplierDashboard"&&(act=="Orders"||act=="OrderDetails")?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Received Orders" data-bs-placement="right">
+        <i class="bi bi-cart-check sb-icon"></i>
+        <span class="sb-text">Received Orders</span>
+      </a>
+
+      <a href="@Url.Action("Profile","SupplierDashboard")"
+         class="sb-link @(ctrl=="SupplierDashboard"&&act=="Profile"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Supplier Profile" data-bs-placement="right">
+        <i class="bi bi-person-circle sb-icon"></i>
+        <span class="sb-text">My Profile</span>
+      </a>
+    }
+    else
+    {
       @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Home", "Index"))
       {
         <a href="@Url.Action("Index","Home")"
@@ -214,7 +256,15 @@
         </a>
       }
 
-      <div class="sb-label">System</div>
+      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "SupplierOrder", "Index"))
+      {
+        <a href="@Url.Action("Index","SupplierOrder")"
+           class="sb-link @(ctrl=="SupplierOrder"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="Order Management" data-bs-placement="right">
+          <i class="bi bi-shop sb-icon"></i>
+          <span class="sb-text">Order Management</span>
+        </a>
+      }
 
       @if (isAdmin)
       {
@@ -272,6 +322,7 @@
           <span class="sb-text">Email Alerts</span>
         </a>
       }
+    }
     </div><!-- /sb-scroll -->
 
     <!-- Footer collapse -->

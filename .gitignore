@@ -17,4 +17,7 @@ obj/
 .idea/
 .vscode/
 appsettings.Local.json
+appsettings.Development.json
+appsettings.Production.json
+*.secrets.json
 *.log

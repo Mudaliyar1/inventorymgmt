@@ -1,0 +1,144 @@
+@model InventoryManagementSystem.Models.SupplierOrder
+@{
+    ViewData["Title"] = $"PO Details #{Model.OrderNumber}";
+    var statusBadge = Model.Status switch
+    {
+        "Pending" => "badge-warning",
+        "Accepted" => "badge-info",
+        "Processing" => "badge-primary",
+        "Shipped" => "badge-primary",
+        "Delivered" => "badge-success",
+        "Completed" => "badge-success",
+        "Rejected" => "badge-danger",
+        _ => "badge-gray"
+    };
+}
+
+<!-- Page Header -->
+<div class="ph">
+    <div>
+        <h1 class="ph-title"><i class="bi bi-file-earmark-text me-2" style="color:var(--primary)"></i>Purchase Order #{Model.OrderNumber}</h1>
+        <p class="ph-sub">Issued by SIMS Mobile Shop · Date: <strong>@Model.CreatedAt.ToString("dd-MMM-yyyy HH:mm") IST</strong></p>
+    </div>
+    <div class="ph-actions">
+        <a href="@Url.Action("Orders")" class="btn-d btn-outline">
+            <i class="bi bi-arrow-left me-1"></i> Back to Orders
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Order Summary & Status Update -->
+    <div class="col-lg-8">
+        <div class="card-d card-p-lg mb-4">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="s-title mb-0"><i class="bi bi-box-seam me-2" style="color:var(--primary)"></i>Order Items & Quantities</div>
+                <span class="badge-d @statusBadge" style="font-size:13px;padding:6px 12px">@Model.Status</span>
+            </div>
+
+            <div class="tbl-scroll rounded border overflow-hidden mb-3" style="border-color:var(--border)!important">
+                <table class="tbl mb-0">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">Product Details</th>
+                            <th>Brand / Model</th>
+                            <th>Unit Price (₹)</th>
+                            <th>Quantity</th>
+                            <th class="text-end pe-4">Subtotal (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr>
+                                <td class="ps-4">
+                                    <div style="font-weight:700;color:var(--text-primary)">@item.ProductName</div>
+                                    <div style="font-size:11px;color:var(--text-muted)">Variant: @(string.IsNullOrEmpty(item.Variant) ? $"{item.Ram} / {item.Storage}" : item.Variant) · Color: @item.Color</div>
+                                </td>
+                                <td>
+                                    <div style="font-weight:600;color:var(--text-primary)">@item.Brand</div>
+                                    <div style="font-size:11px;color:var(--text-muted)">@item.Model</div>
+                                </td>
+                                <td style="font-weight:600">₹@item.UnitPrice.ToString("N2")</td>
+                                <td style="font-weight:700">@item.Quantity Units</td>
+                                <td class="text-end pe-4" style="font-weight:800;color:var(--success)">₹@item.Subtotal.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Financial Totals -->
+            <div class="p-3 rounded" style="background:var(--bg);border:1px solid var(--border)">
+                <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span style="color:var(--text-muted);font-size:13px">Items Subtotal:</span>
+                    <span style="font-weight:700;color:var(--text-primary)">₹@Model.Subtotal.ToString("N2")</span>
+                </div>
+                @if (Model.Tax > 0)
+                {
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span style="color:var(--text-muted);font-size:13px">Tax / GST:</span>
+                        <span style="font-weight:700;color:var(--text-primary)">+ ₹@Model.Tax.ToString("N2")</span>
+                    </div>
+                }
+                @if (Model.Discount > 0)
+                {
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span style="color:var(--text-muted);font-size:13px">Discount:</span>
+                        <span style="font-weight:700;color:var(--success)">- ₹@Model.Discount.ToString("N2")</span>
+                    </div>
+                }
+                <hr class="s-divider" />
+                <div class="d-flex align-items-center justify-content-between">
+                    <span style="font-size:16px;font-weight:800;color:var(--text-primary)">Grand Total Amount:</span>
+                    <span style="font-size:22px;font-weight:800;color:var(--success)">₹@Model.GrandTotal.ToString("N2")</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Update Order Status & Notes -->
+    <div class="col-lg-4">
+        <div class="card-d card-p-lg">
+            <div class="s-title"><i class="bi bi-gear me-2" style="color:var(--primary)"></i>Update Order Status</div>
+
+            <form asp-action="UpdateOrderStatus" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="orderId" value="@Model.Id" />
+
+                <div class="fg mb-3">
+                    <label class="fg-label">Select Action / Status</label>
+                    <select name="newStatus" class="fg-control">
+                        <option value="Accepted" selected="@(Model.Status == "Accepted")">Accept Purchase Order</option>
+                        <option value="Processing" selected="@(Model.Status == "Processing")">Mark as Processing / Packing</option>
+                        <option value="Shipped" selected="@(Model.Status == "Shipped")">Mark as Shipped / Dispatched</option>
+                        <option value="Delivered" selected="@(Model.Status == "Delivered")">Mark as Delivered</option>
+                        <option value="Rejected" selected="@(Model.Status == "Rejected")">Reject Purchase Order</option>
+                    </select>
+                </div>
+
+                <div class="fg mb-3">
+                    <label class="fg-label">Expected Delivery Date</label>
+                    <input type="date" name="expectedDeliveryDate" value="@(Model.ExpectedDeliveryDate?.ToString("yyyy-MM-dd"))" class="fg-control" />
+                </div>
+
+                <div class="fg mb-3">
+                    <label class="fg-label">Supplier Notes / Dispatch Tracking Info</label>
+                    <textarea name="supplierNotes" rows="3" class="fg-control" placeholder="Add tracking ID, dispatch details or notes for SIMS admin...">@Model.SupplierNotes</textarea>
+                </div>
+
+                <button type="submit" class="btn-d btn-primary w-100">
+                    <i class="bi bi-check2-circle me-1"></i> Update Order Status
+                </button>
+            </form>
+
+            <hr class="s-divider" />
+
+            <div style="font-size:12px;color:var(--text-muted)">
+                <div class="mb-1"><strong>Ordered By:</strong> @Model.CreatedBy (SIMS Admin)</div>
+                <div class="mb-1"><strong>Shop Contact:</strong> SIMS Central Procurement</div>
+                <div><strong>Email Notification:</strong> @(Model.EmailSent ? "Sent Successfully" : "Not Sent")</div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,606 @@
+@model ProductEditViewModel
+@{
+    ViewData["Title"] = "Edit Supplier Product — Catalog";
+}
+
+<div class="ph">
+    <div>
+        <h1 class="ph-title"><i class="bi bi-pencil-square me-2" style="color:var(--primary)"></i>Edit Supplier Product Details</h1>
+        <p class="ph-sub">Update smartphone or accessory model hardware specifications, pricing, and status.</p>
+    </div>
+    <div class="ph-actions">
+        <a href="@Url.Action("Products","SupplierDashboard")" class="btn-d btn-outline">
+            <i class="bi bi-arrow-left"></i> Back to Catalog
+        </a>
+    </div>
+</div>
+
+<form asp-action="EditProduct" method="post" enctype="multipart/form-data" id="productEditForm">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="Id" />
+    <input type="hidden" asp-for="CurrentImageUrl" />
+
+    <!-- Automatic Mobile Specification Finder Banner -->
+    <div class="card-d mb-4 border-primary shadow-sm" style="background: linear-gradient(135deg, rgba(25, 135, 84, 0.05), rgba(13, 202, 240, 0.05)); border: 1px solid rgba(25, 135, 84, 0.3);">
+        <div class="card-body p-3">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+                <div>
+                    <h6 class="mb-1 text-success font-weight-bold"><i class="bi bi-shield-check me-2"></i>Official-Manufacturer-First Specification Finder</h6>
+                    <p class="text-muted small mb-0">Search official technical specs automatically or paste a direct specification URL below.</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-info" onclick="toggleDirectUrlMode()">
+                        <i class="bi bi-link-45deg me-1"></i> Paste Spec URL
+                    </button>
+                    <button type="button" class="btn btn-sm btn-success" onclick="searchOnlineSpecs(false)">
+                        <i class="bi bi-search me-1"></i> Search Official Specs
+                    </button>
+                </div>
+            </div>
+
+            <div class="row g-2 align-items-center" id="standardSearchInputs">
+                <div class="col-md-4">
+                    <input type="text" id="autoSearchBrand" class="fg-control form-control-sm" value="@Model.Brand" placeholder="Brand">
+                </div>
+                <div class="col-md-5">
+                    <input type="text" id="autoSearchModel" class="fg-control form-control-sm" value="@Model.ModelName" placeholder="Model Name">
+                </div>
+                <div class="col-md-3">
+                    <input type="text" id="autoSearchVariant" class="fg-control form-control-sm" value="@Model.Variant" placeholder="Variant">
+                </div>
+            </div>
+
+            <div class="row g-2 align-items-center mt-2 d-none" id="directUrlBannerInput">
+                <div class="col-md-9">
+                    <input type="url" id="directBannerUrl" class="form-control form-control-sm" placeholder="Paste Direct Specification Page URL">
+                </div>
+                <div class="col-md-3">
+                    <button type="button" class="btn btn-info text-white btn-sm w-100" onclick="extractFromBannerUrl()">
+                        <i class="bi bi-download me-1"></i> Extract Specs from URL
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Main Form Column -->
+        <div class="col-lg-8">
+            <div class="card-d card-p-lg mb-4">
+                <div class="s-title"><i class="bi bi-phone me-2" style="color:var(--primary)"></i>Product Classification &amp; Basic Info</div>
+                <div asp-validation-summary="ModelOnly" class="alert-d alert-danger mb-4"></div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label">Product Type / Category <span class="req">*</span></label>
+                            <select name="ProductType" id="productTypeSelect" class="fg-control" onchange="toggleHardwareTabs(this.value)" required>
+                                <option value="Smartphone" selected="@(Model.ProductType == "Smartphone")">Smartphone (IMEI Tracked)</option>
+                                <option value="Feature Phone" selected="@(Model.ProductType == "Feature Phone")">Feature Phone (IMEI Tracked)</option>
+                                <option value="Tablet" selected="@(Model.ProductType == "Tablet")">Tablet (IMEI / Serial Tracked)</option>
+                                <option value="Smartwatch" selected="@(Model.ProductType == "Smartwatch")">Smartwatch</option>
+                                <option value="Charger" selected="@(Model.ProductType == "Charger")">Charger / Adapter</option>
+                                <option value="Cable" selected="@(Model.ProductType == "Cable")">Cable / Converter</option>
+                                <option value="Mobile Cover" selected="@(Model.ProductType == "Mobile Cover")">Mobile Cover / Case</option>
+                                <option value="Tempered Glass" selected="@(Model.ProductType == "Tempered Glass")">Tempered Glass Screen Guard</option>
+                                <option value="Earphones" selected="@(Model.ProductType == "Earphones")">Earphones / TWS Earbuds</option>
+                                <option value="Headphones" selected="@(Model.ProductType == "Headphones")">Headphones</option>
+                                <option value="Power Bank" selected="@(Model.ProductType == "Power Bank")">Power Bank</option>
+                                <option value="Memory Card" selected="@(Model.ProductType == "Memory Card")">Memory Card / Flash Drive</option>
+                                <option value="Speaker" selected="@(Model.ProductType == "Speaker")">Bluetooth Speaker</option>
+                                <option value="Other" selected="@(Model.ProductType == "Other")">Other Mobile Accessory</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="Name">Product / Model Title <span class="req">*</span></label>
+                            <input asp-for="Name" id="Name" class="fg-control" required>
+                            <span asp-validation-for="Name" class="fg-error"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="Brand">Brand</label>
+                            <input asp-for="Brand" id="Brand" class="fg-control">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="ModelName">Model Name</label>
+                            <input asp-for="ModelName" id="ModelName" class="fg-control">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="Variant">RAM / Storage Variant</label>
+                            <input asp-for="Variant" id="Variant" class="fg-control">
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="Color">Color</label>
+                            <input asp-for="Color" id="Color" class="fg-control">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label">Warranty (Months)</label>
+                            <input type="number" name="WarrantyDurationMonths" value="12" class="fg-control">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label">Requires IMEI Tracking?</label>
+                            <select name="IsImeiRequired" id="isImeiSelect" class="fg-control">
+                                <option value="true" selected>Yes — IMEI Tracked Device</option>
+                                <option value="false">No — Quantity-based Accessory</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <label class="fg-label mb-0" asp-for="Code">SKU / Product Code <span class="req">*</span></label>
+                                <button type="button" class="btn-d btn-ghost btn-sm-d py-0" style="height:22px;font-size:11px;padding:0 8px;" onclick="generateSKU()">
+                                    <i class="bi bi-magic me-1"></i> Auto Generate
+                                </button>
+                            </div>
+                            <div class="fg-action-wrap">
+                                <input asp-for="Code" id="Code" class="fg-control" required>
+                                <button type="button" class="fg-action-btn" onclick="generateSKU()" title="Generate SKU Code">
+                                    <i class="bi bi-magic"></i> Generate
+                                </button>
+                            </div>
+                            <span asp-validation-for="Code" class="fg-error"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <div class="d-flex align-items-center justify-content-between mb-1">
+                                <label class="fg-label mb-0" asp-for="Barcode">Barcode / UPC <span class="req">*</span></label>
+                                <button type="button" class="btn-d btn-ghost btn-sm-d py-0" style="height:22px;font-size:11px;padding:0 8px;" onclick="generateBarcode()">
+                                    <i class="bi bi-upc-scan me-1"></i> Auto Generate
+                                </button>
+                            </div>
+                            <div class="fg-action-wrap">
+                                <input asp-for="Barcode" id="Barcode" class="fg-control" required>
+                                <button type="button" class="fg-action-btn" onclick="generateBarcode()" title="Generate Barcode">
+                                    <i class="bi bi-upc-scan"></i> Generate
+                                </button>
+                            </div>
+                            <span asp-validation-for="Barcode" class="fg-error"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="CategoryId">Category <span class="req">*</span></label>
+                            <select asp-for="CategoryId" asp-items="Model.Categories" class="fg-control" required>
+                                <option value="">— Select Category —</option>
+                            </select>
+                            <span asp-validation-for="CategoryId" class="fg-error"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="Status">Status</label>
+                            <select asp-for="Status" class="fg-control">
+                                <option value="Active" selected="@(Model.Status == "Active")">Active</option>
+                                <option value="Inactive" selected="@(Model.Status == "Inactive")">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="PurchasePrice">Wholesale / Supplier Price (₹) <span class="req">*</span></label>
+                            <div class="fg-prefix-wrap">
+                                <span class="fg-prefix">₹</span>
+                                <input asp-for="PurchasePrice" class="fg-control" type="number" step="0.01" min="0" required>
+                            </div>
+                            <span asp-validation-for="PurchasePrice" class="fg-error"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="SellingPrice">Retail Selling Price (₹) <span class="req">*</span></label>
+                            <div class="fg-prefix-wrap">
+                                <span class="fg-prefix">₹</span>
+                                <input asp-for="SellingPrice" class="fg-control" type="number" step="0.01" min="0" required>
+                            </div>
+                            <span asp-validation-for="SellingPrice" class="fg-error"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="MinimumStock">Minimum Safety Stock <span class="req">*</span></label>
+                            <input asp-for="MinimumStock" class="fg-control" type="number" min="0" required>
+                            <span asp-validation-for="MinimumStock" class="fg-error"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile Hardware Specifications Card -->
+            <div class="card-d card-p-lg mb-4" id="hardwareSpecsCard">
+                <div class="s-title"><i class="bi bi-cpu me-2" style="color:var(--primary)"></i>Mobile Hardware Specifications</div>
+                
+                <ul class="nav nav-tabs mb-3" id="specsTab" role="tablist" style="border-bottom-color:var(--border)">
+                    <li class="nav-item">
+                        <button class="nav-link active fw-bold" id="proc-tab" data-bs-toggle="tab" data-bs-target="#proc-tab-pane" type="button"><i class="bi bi-cpu me-1"></i> Performance</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link fw-bold" id="disp-tab" data-bs-toggle="tab" data-bs-target="#disp-tab-pane" type="button"><i class="bi bi-display me-1"></i> Display &amp; Camera</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link fw-bold" id="batt-tab" data-bs-toggle="tab" data-bs-target="#batt-tab-pane" type="button"><i class="bi bi-battery-charging me-1"></i> Battery &amp; Network</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link fw-bold" id="os-tab" data-bs-toggle="tab" data-bs-target="#os-tab-pane" type="button"><i class="bi bi-shield-check me-1"></i> OS &amp; Security</button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="specsTabContent">
+                    <!-- Tab 1: Performance -->
+                    <div class="tab-pane fade show active" id="proc-tab-pane">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Processor Brand</label>
+                                    <input type="text" asp-for="Specs.ProcessorBrand" class="fg-control" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Processor / Chipset Name</label>
+                                    <input type="text" asp-for="Specs.ProcessorName" class="fg-control" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">CPU Cores &amp; Speed</label>
+                                    <input type="text" asp-for="Specs.CpuCores" class="fg-control" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">GPU</label>
+                                    <input type="text" asp-for="Specs.Gpu" class="fg-control" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">RAM Type</label>
+                                    <input type="text" asp-for="Specs.RamType" class="fg-control" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Storage Type</label>
+                                    <input type="text" asp-for="Specs.StorageType" class="fg-control" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: Display & Camera -->
+                    <div class="tab-pane fade" id="disp-tab-pane">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Display Size (inches)</label>
+                                    <input type="text" asp-for="Specs.DisplaySize" class="fg-control" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Display Type</label>
+                                    <input type="text" asp-for="Specs.DisplayType" class="fg-control" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Refresh Rate</label>
+                                    <input type="text" asp-for="Specs.RefreshRate" class="fg-control" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Primary Rear Camera (MP)</label>
+                                    <input type="text" asp-for="Specs.PrimaryRearCameraMp" class="fg-control" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Front Selfie Camera (MP)</label>
+                                    <input type="text" asp-for="Specs.FrontCameraMp" class="fg-control" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Camera Features</label>
+                                    <input type="text" asp-for="Specs.CameraFeatures" class="fg-control" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 3: Battery & Network -->
+                    <div class="tab-pane fade" id="batt-tab-pane">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Battery Capacity (mAh)</label>
+                                    <input type="number" asp-for="Specs.BatteryCapacityMah" class="fg-control" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Fast Charging (Wattage)</label>
+                                    <input type="text" asp-for="Specs.FastChargingWattage" class="fg-control" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Charging Port</label>
+                                    <select asp-for="Specs.ChargingPortType" class="fg-control">
+                                        <option value="USB Type-C">USB Type-C</option>
+                                        <option value="Lightning">Lightning</option>
+                                        <option value="Micro-USB">Micro-USB</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="fg">
+                                    <label class="fg-label">5G Network Support?</label>
+                                    <select asp-for="Specs.Network5G" class="fg-control">
+                                        <option value="true">Yes — 5G Supported</option>
+                                        <option value="false">No — 4G LTE Only</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="fg">
+                                    <label class="fg-label">SIM Type</label>
+                                    <select asp-for="Specs.SimType" class="fg-control">
+                                        <option value="Dual SIM">Dual SIM (Nano + Nano)</option>
+                                        <option value="eSIM + Physical SIM">eSIM + Physical SIM</option>
+                                        <option value="Single SIM">Single SIM</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="fg">
+                                    <label class="fg-label">NFC Support?</label>
+                                    <select asp-for="Specs.Nfc" class="fg-control">
+                                        <option value="true">Yes (Tap &amp; Pay)</option>
+                                        <option value="false">No NFC</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="fg">
+                                    <label class="fg-label">Wireless Charging?</label>
+                                    <select asp-for="Specs.WirelessCharging" class="fg-control">
+                                        <option value="false">No Wireless Charging</option>
+                                        <option value="true">Yes Wireless Charging</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tab 4: OS & Security -->
+                    <div class="tab-pane fade" id="os-tab-pane">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Operating System</label>
+                                    <select asp-for="Specs.OperatingSystem" class="fg-control">
+                                        <option value="Android">Android</option>
+                                        <option value="iOS">iOS</option>
+                                        <option value="KaiOS">KaiOS</option>
+                                        <option value="Other">Other OS</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">OS Version</label>
+                                    <input type="text" asp-for="Specs.OsVersion" class="fg-control" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="fg">
+                                    <label class="fg-label">Fingerprint Sensor</label>
+                                    <select asp-for="Specs.FingerprintSensor" class="fg-control">
+                                        <option value="In-Display Ultrasonic">In-Display Ultrasonic</option>
+                                        <option value="Side-Mounted">Side-Mounted</option>
+                                        <option value="Rear-Mounted">Rear-Mounted</option>
+                                        <option value="None">None</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="fg">
+                                    <label class="fg-label">Water/Dust Resistance Rating</label>
+                                    <input type="text" asp-for="Specs.WaterResistance" class="fg-control" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="fg">
+                                    <label class="fg-label">Audio &amp; Speakers</label>
+                                    <input type="text" asp-for="Specs.AudioFeatures" class="fg-control" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Description -->
+            <div class="card-d card-p-lg mb-4">
+                <div class="s-title"><i class="bi bi-file-text me-2" style="color:var(--primary)"></i>Additional Description</div>
+                <div class="fg mb-0">
+                    <textarea asp-for="Description" class="fg-control" rows="3"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column -->
+        <div class="col-lg-4">
+            <div class="card-d card-p-lg">
+                <div class="s-title">Product Image</div>
+
+                <div class="upload-area" id="upload-area" onclick="document.getElementById('ProductImage').click()">
+                    <img id="image-preview" src="@(string.IsNullOrEmpty(Model.CurrentImageUrl) ? "/images/default-product.png" : Model.CurrentImageUrl)" alt="Preview"
+                         style="max-height:160px;max-width:100%;border-radius:var(--radius-md);object-fit:cover;display:block;margin:0 auto 12px">
+                    <div class="upload-area-text">
+                        <i class="bi bi-cloud-upload me-1"></i> Click to change image
+                    </div>
+                    <div class="upload-area-hint">JPG, PNG or WEBP · Max 5 MB</div>
+                </div>
+
+                <input asp-for="ProductImage"
+                       id="ProductImage"
+                       type="file"
+                       accept=".jpg,.jpeg,.png,.webp"
+                       style="display:none"
+                       onchange="previewImg(this)">
+                <span asp-validation-for="ProductImage" class="fg-error mt-2"></span>
+            </div>
+
+            <!-- Multi-Image Gallery Upload Card (Up to 50 Photos) -->
+            <div class="card-d card-p-lg mt-3">
+                <div class="s-title"><i class="bi bi-images me-1 text-info"></i>Product Gallery Photos</div>
+                @if (Model.ExistingImageUrls != null && Model.ExistingImageUrls.Any())
+                {
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        @foreach (var img in Model.ExistingImageUrls)
+                        {
+                            <img src="@img" class="rounded border" style="width:48px;height:48px;object-fit:cover" />
+                        }
+                    </div>
+                }
+                <div class="upload-area" id="gallery-upload-area" onclick="document.getElementById('ProductImages').click()">
+                    <i class="bi bi-images text-muted d-block mb-2" style="font-size:32px"></i>
+                    <div class="upload-area-text">
+                        <i class="bi bi-cloud-upload me-1"></i> Add Up to 50 Gallery Images
+                    </div>
+                    <div class="upload-area-hint">Select multiple photos for product slider</div>
+                </div>
+
+                <input asp-for="ProductImages"
+                       id="ProductImages"
+                       type="file"
+                       multiple
+                       accept="image/*"
+                       style="display:none"
+                       onchange="previewGalleryImgs(this)">
+                <div id="gallery-preview-container" class="d-flex flex-wrap gap-2 mt-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex align-items-center justify-content-end gap-3 mt-4">
+        <a href="@Url.Action("Products","SupplierDashboard")" class="btn-d btn-outline">Cancel</a>
+        <button type="submit" class="btn-d btn-primary">
+            <i class="bi bi-check2"></i> Update Product
+        </button>
+    </div>
+</form>
+
+@section Scripts {
+<partial name="_ValidationScriptsPartial" />
+<script>
+function toggleHardwareTabs(type) {
+    const card = document.getElementById('hardwareSpecsCard');
+    const isImei = document.getElementById('isImeiSelect');
+
+    const accessoryTypes = ['Charger', 'Cable', 'Mobile Cover', 'Tempered Glass', 'Earphones', 'Headphones', 'Power Bank', 'Memory Card', 'Speaker', 'Other'];
+    if (accessoryTypes.includes(type)) {
+        card.style.display = 'none';
+        if (isImei) isImei.value = 'false';
+    } else {
+        card.style.display = 'block';
+        if (isImei) isImei.value = 'true';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const sel = document.getElementById('productTypeSelect');
+    if (sel) toggleHardwareTabs(sel.value);
+});
+
+function previewImg(input) {
+  if (!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => { document.getElementById('image-preview').src = e.target.result; };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function generateSKU() {
+  const nameInput = document.getElementById('Name');
+  const codeInput = document.getElementById('Code');
+  let prefix = 'MOB';
+
+  if (nameInput && nameInput.value.trim()) {
+    const words = nameInput.value.trim().split(/\s+/);
+    if (words.length >= 2) {
+      prefix = (words[0][0] + words[1][0] + (words[2] ? words[2][0] : words[1][1] || 'X')).toUpperCase();
+    } else if (words[0].length >= 3) {
+      prefix = words[0].substring(0, 3).toUpperCase();
+    }
+  }
+
+  const randomNum = Math.floor(100 + Math.random() * 900);
+  const sku = `${prefix}-${randomNum}`;
+  if (codeInput) {
+    codeInput.value = sku;
+    if (window.showToast) window.showToast(`Generated SKU: ${sku}`, 'success');
+  }
+}
+
+function generateBarcode() {
+  const barcodeInput = document.getElementById('Barcode');
+  const prefix = '890';
+  let middle = '';
+  for (let i = 0; i < 9; i++) {
+    middle += Math.floor(Math.random() * 10);
+  }
+  const barcode = prefix + middle;
+  if (barcodeInput) {
+    barcodeInput.value = barcode;
+    if (window.showToast) window.showToast(`Generated Barcode: ${barcode}`, 'success');
+  }
+}
+
+function previewGalleryImgs(input) {
+    const container = document.getElementById('gallery-preview-container');
+    if (!container) return;
+    container.innerHTML = '';
+    if (input.files) {
+        Array.from(input.files).slice(0, 50).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.className = 'rounded border';
+                img.style.cssText = 'width:50px;height:50px;object-fit:cover';
+                container.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+}
+</script>
+}

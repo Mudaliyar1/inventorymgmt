@@ -212,14 +212,11 @@
                             </td>
                             <td class="col-actions">
                                 <div class="d-flex align-items-center justify-content-end gap-1">
-                                    @if (User.IsInRole("Admin") || PermissionService.HasPermission(User, "Product", "Details"))
-                                    {
-                                        <a href="@Url.Action("Details","Product",new{id=p.Id})"
-                                           class="btn-d btn-ghost btn-icon-d"
-                                           title="View Details">
-                                            <i class="bi bi-eye"></i>
-                                        </a>
-                                    }
+                                    <a href="@Url.Action("Details","Product",new{id=p.Id})"
+                                       class="btn-d btn-ghost btn-icon-d text-info"
+                                       title="View Product Details & Specifications">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
                                     @if (User.IsInRole("Admin") || PermissionService.HasPermission(User, "Product", "Edit"))
                                     {
                                         <a href="@Url.Action("Edit","Product",new{id=p.Id})"

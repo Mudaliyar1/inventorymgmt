@@ -165,10 +165,12 @@ builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
 builder.Services.AddScoped<IReturnRepository, ReturnRepository>();
 builder.Services.AddScoped<IExchangeRepository, ExchangeRepository>();
 builder.Services.AddScoped<IRepairRepository, RepairRepository>();
+builder.Services.AddScoped<ISupplierOrderRepository, SupplierOrderRepository>();
 
 // Register Services
 builder.Services.AddSingleton<IPermissionDiscoveryService, PermissionDiscoveryService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddScoped<IAccountValidationService, AccountValidationService>();
 builder.Services.AddHttpClient<IBrevoEmailService, BrevoEmailService>();
 builder.Services.AddScoped<IInventoryAlertService, InventoryAlertService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
@@ -183,6 +185,7 @@ builder.Services.AddScoped<IReportService, ReportService>();
 builder.Services.AddScoped<IDeviceService, DeviceService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<ISupplierService, SupplierService>();
+builder.Services.AddScoped<ISupplierOrderService, SupplierOrderService>();
 builder.Services.AddScoped<IReturnService, ReturnService>();
 builder.Services.AddScoped<IExchangeService, ExchangeService>();
 builder.Services.AddScoped<IRepairService, RepairService>();

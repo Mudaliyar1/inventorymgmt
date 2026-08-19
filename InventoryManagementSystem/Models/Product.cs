@@ -103,7 +103,19 @@ namespace InventoryManagementSystem.Models
         }
         private string _simType = string.Empty;
 
-        // Commercials
+        // Commercials & Supplier Linkage
+        [BsonElement("SupplierId")]
+        [BsonRepresentation(BsonType.ObjectId)]
+        [BsonIgnoreIfNull]
+        [BsonIgnoreIfDefault]
+        public string? SupplierId { get; set; }
+
+        [BsonElement("SupplierName")]
+        public string SupplierName { get; set; } = string.Empty;
+
+        [BsonElement("SupplierPrice")]
+        public decimal SupplierPrice { get; set; }
+
         [BsonElement("PurchasePrice")]
         public decimal PurchasePrice { get; set; }
 
@@ -133,6 +145,9 @@ namespace InventoryManagementSystem.Models
 
         [BsonElement("ImageUrl")]
         public string ImageUrl { get; set; } = string.Empty;
+
+        [BsonElement("ImageUrls")]
+        public List<string> ImageUrls { get; set; } = new List<string>();
 
         [BsonElement("ImagePublicId")]
         public string ImagePublicId { get; set; } = string.Empty;

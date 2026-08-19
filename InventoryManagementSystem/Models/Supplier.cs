@@ -22,8 +22,20 @@ namespace InventoryManagementSystem.Models
         [BsonElement("Email")]
         public string Email { get; set; } = string.Empty;
 
+        [BsonElement("PasswordHash")]
+        public string PasswordHash { get; set; } = string.Empty;
+
         [BsonElement("Address")]
         public string Address { get; set; } = string.Empty;
+
+        [BsonElement("City")]
+        public string City { get; set; } = string.Empty;
+
+        [BsonElement("State")]
+        public string State { get; set; } = string.Empty;
+
+        [BsonElement("Country")]
+        public string Country { get; set; } = "India";
 
         [BsonElement("Gstin")]
         public string Gstin { get; set; } = string.Empty;
@@ -33,6 +45,12 @@ namespace InventoryManagementSystem.Models
 
         [BsonElement("OutstandingPayable")]
         public decimal OutstandingPayable { get; set; }
+
+        [BsonElement("Status")]
+        public string Status { get; set; } = "Active"; // Active, Inactive
+
+        [BsonElement("LastLogin")]
+        public DateTime? LastLogin { get; set; }
 
         [BsonElement("CreatedDate")]
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;

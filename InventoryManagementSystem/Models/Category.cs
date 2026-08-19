@@ -19,6 +19,12 @@ namespace InventoryManagementSystem.Models
         [BsonElement("Status")]
         public string Status { get; set; } = "Active"; // Active, Inactive
 
+        [BsonElement("SupplierId")]
+        [BsonRepresentation(BsonType.ObjectId)]
+        [BsonIgnoreIfNull]
+        [BsonIgnoreIfDefault]
+        public string? SupplierId { get; set; }
+
         [BsonElement("CreatedDate")]
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 

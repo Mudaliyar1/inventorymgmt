@@ -20,6 +20,7 @@ namespace InventoryManagementSystem.Controllers
         private readonly IEmailService _emailService;
         private readonly IUserRepository _userRepository;
         private readonly IPermissionService _permissionService;
+        private readonly ISupplierService _supplierService;
 
         public AccountController(
             IAuthService authService,
@@ -27,7 +28,8 @@ namespace InventoryManagementSystem.Controllers
             IAuditLogService auditLogService,
             IEmailService emailService,
             IUserRepository userRepository,
-            IPermissionService permissionService)
+            IPermissionService permissionService,
+            ISupplierService supplierService)
         {
             _authService = authService;
             _imageService = imageService;
@@ -35,6 +37,7 @@ namespace InventoryManagementSystem.Controllers
             _emailService = emailService;
             _userRepository = userRepository;
             _permissionService = permissionService;
+            _supplierService = supplierService;
         }
 
         [HttpGet]
@@ -42,6 +45,10 @@ namespace InventoryManagementSystem.Controllers
         {
             if (User.Identity?.IsAuthenticated == true)
             {
+                if (User.IsInRole(Role.Supplier))
+                {
+                    return RedirectToAction("Index", "SupplierDashboard");
+                }
                 return RedirectToAction("Index", "Home");
             }
             ViewData["ReturnUrl"] = returnUrl;
@@ -58,65 +65,85 @@ namespace InventoryManagementSystem.Controllers
                 return View(model);
             }
 
+            // 1. Try Authenticating User (Admin / Staff)
             var user = await _authService.AuthenticateAsync(model.UsernameOrEmail, model.Password);
-            if (user == null)
+            if (user != null)
             {
-                await _auditLogService.LogExAsync(
-                    "Failed Login", "Authentication", model.UsernameOrEmail,
-                    $"Failed login attempt for identifier '{model.UsernameOrEmail}'. Invalid credentials or locked account.",
-                    "Failed", "Warning");
-
-                ModelState.AddModelError(string.Empty, "Invalid login attempt. Check credentials or account status.");
-                return View(model);
-            }
-
-            var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.NameIdentifier, user.Id),
-                new Claim(ClaimTypes.Name, user.Username),
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.Role, user.Role),
-                new Claim("FullName", user.FullName),
-                new Claim("EmployeeId", !string.IsNullOrEmpty(user.EmployeeId) ? user.EmployeeId : "EMP-0000"),
-                new Claim("ProfilePictureUrl", string.IsNullOrEmpty(user.ProfilePictureUrl) ? "/images/default-avatar.png" : user.ProfilePictureUrl)
-            };
-
-            if (user.Permissions != null)
-            {
-                foreach (var perm in user.Permissions)
+                var claims = new List<Claim>
                 {
-                    claims.Add(new Claim("Permission", perm));
+                    new Claim(ClaimTypes.NameIdentifier, user.Id),
+                    new Claim(ClaimTypes.Name, user.Username),
+                    new Claim(ClaimTypes.Email, user.Email),
+                    new Claim(ClaimTypes.Role, user.Role),
+                    new Claim("FullName", user.FullName),
+                    new Claim("EmployeeId", !string.IsNullOrEmpty(user.EmployeeId) ? user.EmployeeId : "EMP-0000"),
+                    new Claim("ProfilePictureUrl", string.IsNullOrEmpty(user.ProfilePictureUrl) ? "/images/default-avatar.png" : user.ProfilePictureUrl)
+                };
+
+                if (user.Permissions != null)
+                {
+                    foreach (var perm in user.Permissions)
+                    {
+                        claims.Add(new Claim("Permission", perm));
+                    }
                 }
+
+                var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                var authProperties = new AuthenticationProperties
+                {
+                    IsPersistent = model.RememberMe,
+                    ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(120)
+                };
+
+                await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity), authProperties);
+                await _auditLogService.LogExAsync(user.Role == Role.Admin ? "Admin Login" : "Employee Login", "Authentication", $"{user.FullName} (@{user.Username})", $"User authenticated successfully with role '{user.Role}'.", "Success", "Success", referenceId: user.Id);
+
+                TempData["ToastMessage"] = $"Welcome back, {user.FullName}!";
+                TempData["ToastType"] = "success";
+
+                if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl)) return Redirect(returnUrl);
+                return RedirectToAction("Index", "Home");
             }
 
-            var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-            var authProperties = new AuthenticationProperties
+            // 2. Try Authenticating Supplier Vendor Account
+            var supplier = await _supplierService.AuthenticateSupplierAsync(model.UsernameOrEmail, model.Password);
+            if (supplier != null)
             {
-                IsPersistent = model.RememberMe,
-                ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(20)
-            };
+                var supplierClaims = new List<Claim>
+                {
+                    new Claim(ClaimTypes.NameIdentifier, supplier.Id),
+                    new Claim(ClaimTypes.Name, supplier.CompanyName),
+                    new Claim(ClaimTypes.Email, supplier.Email),
+                    new Claim(ClaimTypes.Role, Role.Supplier),
+                    new Claim("FullName", string.IsNullOrEmpty(supplier.ContactPerson) ? supplier.CompanyName : supplier.ContactPerson),
+                    new Claim("CompanyName", supplier.CompanyName),
+                    new Claim("SupplierId", supplier.Id)
+                };
 
-            await HttpContext.SignInAsync(
-                CookieAuthenticationDefaults.AuthenticationScheme,
-                new ClaimsPrincipal(claimsIdentity),
-                authProperties);
+                var claimsIdentity = new ClaimsIdentity(supplierClaims, CookieAuthenticationDefaults.AuthenticationScheme);
+                var authProperties = new AuthenticationProperties
+                {
+                    IsPersistent = model.RememberMe,
+                    ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(120)
+                };
+
+                await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(claimsIdentity), authProperties);
+                await _auditLogService.LogExAsync("SUPPLIER_LOGIN", "Authentication", supplier.CompanyName, $"Supplier '{supplier.CompanyName}' ({supplier.Email}) logged in successfully.", "Success", "Success", referenceId: supplier.Id);
+
+                TempData["ToastMessage"] = $"Welcome to SIMS Supplier Portal, {supplier.CompanyName}!";
+                TempData["ToastType"] = "success";
+
+                if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl)) return Redirect(returnUrl);
+                return RedirectToAction("Index", "SupplierDashboard");
+            }
 
             await _auditLogService.LogExAsync(
-                user.Role == Role.Admin ? "Admin Login" : "Employee Login",
-                "Authentication",
-                $"{user.FullName} (@{user.Username})",
-                $"User authenticated successfully with role '{user.Role}'.",
-                "Success", "Success", referenceId: user.Id);
+                "Failed Login", "Authentication", model.UsernameOrEmail,
+                $"Failed login attempt for identifier '{model.UsernameOrEmail}'. Invalid credentials or account deactivated.",
+                "Failed", "Warning");
 
-            TempData["ToastMessage"] = $"Welcome back, {user.FullName}!";
-            TempData["ToastType"] = "success";
-
-            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
-            {
-                return Redirect(returnUrl);
-            }
-
-            return RedirectToAction("Index", "Home");
+            ModelState.AddModelError(string.Empty, "Invalid login attempt. Check credentials or account status.");
+            return View(model);
         }
 
         [HttpGet]
@@ -327,6 +354,16 @@ namespace InventoryManagementSystem.Controllers
             if (string.IsNullOrEmpty(userId))
             {
                 return Ok(new { authenticated = false, isLocked = false, isDeleted = false, version = 0 });
+            }
+
+            if (User.IsInRole(Role.Supplier))
+            {
+                var supplier = await _supplierService.GetSupplierByIdAsync(userId);
+                if (supplier == null || supplier.Status == "Inactive")
+                {
+                    return Ok(new { authenticated = true, isLocked = supplier?.Status == "Inactive", isDeleted = supplier == null, version = 1 });
+                }
+                return Ok(new { authenticated = true, isLocked = false, isDeleted = false, version = 1 });
             }
 
             var state = await _permissionService.GetLiveUserStateAsync(userId);

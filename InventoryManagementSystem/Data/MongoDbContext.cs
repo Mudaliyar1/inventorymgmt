@@ -44,6 +44,7 @@ namespace InventoryManagementSystem.Data
         public IMongoCollection<ReturnRecord> ReturnRecords => GetCollection<ReturnRecord>("ReturnRecords");
         public IMongoCollection<ExchangeRecord> ExchangeRecords => GetCollection<ExchangeRecord>("ExchangeRecords");
         public IMongoCollection<RepairTicket> RepairTickets => GetCollection<RepairTicket>("RepairTickets");
+        public IMongoCollection<SupplierOrder> SupplierOrders => GetCollection<SupplierOrder>("SupplierOrders");
 
         /// <summary>
         /// Automatically verifies and creates database indexes on startup for fast queries.
@@ -53,9 +54,10 @@ namespace InventoryManagementSystem.Data
             try
             {
                 // Products Indexes
+                try { await Products.Indexes.DropOneAsync("Code_1"); } catch { }
+
                 var productCodeIndex = new CreateIndexModel<Product>(
-                    Builders<Product>.IndexKeys.Ascending(p => p.Code),
-                    new CreateIndexOptions { Unique = true, Sparse = true });
+                    Builders<Product>.IndexKeys.Ascending(p => p.SupplierId).Ascending(p => p.Code));
                 var productCatIndex = new CreateIndexModel<Product>(
                     Builders<Product>.IndexKeys.Ascending(p => p.CategoryId));
                 var productStatusIndex = new CreateIndexModel<Product>(
@@ -94,9 +96,10 @@ namespace InventoryManagementSystem.Data
                 await Suppliers.Indexes.CreateOneAsync(supplierNameIndex);
 
                 // Categories Indexes
+                try { await Categories.Indexes.DropOneAsync("Name_1"); } catch { }
+
                 var categoryNameIndex = new CreateIndexModel<Category>(
-                    Builders<Category>.IndexKeys.Ascending(c => c.Name),
-                    new CreateIndexOptions { Unique = true, Sparse = true });
+                    Builders<Category>.IndexKeys.Ascending(c => c.SupplierId).Ascending(c => c.Name));
                 await Categories.Indexes.CreateOneAsync(categoryNameIndex);
 
                 // StockTransactions Indexes
@@ -124,6 +127,16 @@ namespace InventoryManagementSystem.Data
                 var notifReadIndex = new CreateIndexModel<Notification>(
                     Builders<Notification>.IndexKeys.Ascending(n => n.IsRead).Descending(n => n.Timestamp));
                 await Notifications.Indexes.CreateOneAsync(notifReadIndex);
+
+                // SupplierOrders Indexes
+                var supplierOrderNumIndex = new CreateIndexModel<SupplierOrder>(
+                    Builders<SupplierOrder>.IndexKeys.Ascending(so => so.OrderNumber),
+                    new CreateIndexOptions { Unique = true, Sparse = true });
+                var supplierOrderSupIndex = new CreateIndexModel<SupplierOrder>(
+                    Builders<SupplierOrder>.IndexKeys.Ascending(so => so.SupplierId).Descending(so => so.CreatedAt));
+                var supplierOrderStatusIndex = new CreateIndexModel<SupplierOrder>(
+                    Builders<SupplierOrder>.IndexKeys.Ascending(so => so.Status));
+                await SupplierOrders.Indexes.CreateManyAsync(new[] { supplierOrderNumIndex, supplierOrderSupIndex, supplierOrderStatusIndex });
 
                 // Users Indexes
                 var userUsernameIndex = new CreateIndexModel<User>(

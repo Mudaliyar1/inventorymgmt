@@ -39,14 +39,10 @@ namespace InventoryManagementSystem.Services
             {
                 apiKey = _settings.ApiKey;
             }
-            if (string.IsNullOrWhiteSpace(apiKey))
-            {
-                apiKey = "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";
-            }
 
             if (string.IsNullOrWhiteSpace(apiKey))
             {
-                var err = "Brevo API Key is missing. Please configure BREVO_API_KEY in environment variables.";
+                var err = "Brevo API Key is missing. Please configure BREVO_API_KEY in environment variables or appsettings.json.";
                 _logger.LogError(err);
                 return (false, string.Empty, string.Empty, err);
             }
@@ -79,7 +75,6 @@ namespace InventoryManagementSystem.Services
             };
 
             var jsonPayload = JsonSerializer.Serialize(payload);
-            var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
             const int maxRetries = 3;
             int delayMs = 1000;
@@ -93,7 +88,7 @@ namespace InventoryManagementSystem.Services
                     using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.brevo.com/v3/smtp/email");
                     request.Headers.Add("api-key", apiKey.Trim());
                     request.Headers.Add("accept", "application/json");
-                    request.Content = content;
+                    request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
                     var response = await _httpClient.SendAsync(request);
                     lastResponse = await response.Content.ReadAsStringAsync();

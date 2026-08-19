@@ -152,7 +152,9 @@ namespace InventoryManagementSystem.Controllers
                 Specs = model.Specs ?? new MobileSpecifications()
             };
 
-            // Image Upload
+            // Image Uploads (Primary + Up to 50 Gallery Images)
+            var imageUrls = new List<string>();
+
             if (model.ProductImage != null && model.ProductImage.Length > 0)
             {
                 var uploadResult = await _imageService.UploadImageAsync(model.ProductImage, "products");
@@ -161,6 +163,7 @@ namespace InventoryManagementSystem.Controllers
                     product.ImageUrl = uploadResult.SecureUrl;
                     product.ImagePublicId = uploadResult.PublicId;
                     product.ImageOriginalFilename = uploadResult.OriginalFilename;
+                    imageUrls.Add(uploadResult.SecureUrl);
                 }
                 else
                 {
@@ -169,6 +172,27 @@ namespace InventoryManagementSystem.Controllers
                     return View(model);
                 }
             }
+
+            if (model.ProductImages != null && model.ProductImages.Any())
+            {
+                foreach (var file in model.ProductImages.Take(50))
+                {
+                    if (file == null || file.Length == 0) continue;
+                    var uploadResult = await _imageService.UploadImageAsync(file, "products");
+                    if (uploadResult.IsSuccess)
+                    {
+                        if (string.IsNullOrEmpty(product.ImageUrl))
+                        {
+                            product.ImageUrl = uploadResult.SecureUrl;
+                            product.ImagePublicId = uploadResult.PublicId;
+                            product.ImageOriginalFilename = uploadResult.OriginalFilename;
+                        }
+                        if (!imageUrls.Contains(uploadResult.SecureUrl)) imageUrls.Add(uploadResult.SecureUrl);
+                    }
+                }
+            }
+
+            product.ImageUrls = imageUrls;
 
             try
             {
@@ -221,6 +245,7 @@ namespace InventoryManagementSystem.Controllers
                 Description = product.Description,
                 Status = product.Status,
                 CurrentImageUrl = product.ImageUrl,
+                ExistingImageUrls = product.ImageUrls ?? new List<string>(),
                 Specs = product.Specs ?? new MobileSpecifications()
             };
 
@@ -232,8 +257,6 @@ namespace InventoryManagementSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(ProductEditViewModel model)
         {
-            Console.WriteLine($"[EDIT POST] Id={model.Id}, Name={model.Name}, Code={model.Code}, PurchasePrice={model.PurchasePrice}, SellingPrice={model.SellingPrice}");
-
             if (string.IsNullOrWhiteSpace(model.Id))
             {
                 TempData["ToastMessage"] = "Invalid product ID. Please try again.";
@@ -261,15 +284,10 @@ namespace InventoryManagementSystem.Controllers
 
             if (!ModelState.IsValid)
             {
-                var errors = string.Join("; ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage));
-                Console.WriteLine($"[EDIT POST] ModelState INVALID. Errors: {errors}");
                 await PopulateCategoriesList(model);
                 return View(model);
             }
 
-            Console.WriteLine($"[EDIT POST] ModelState valid. Proceeding to update product ID={model.Id}");
-
-            // Apply only editable fields on top of the existing document to preserve stock, dates, etc.
             existingProduct.Name = model.Name;
             existingProduct.Code = model.Code.ToUpper();
             existingProduct.Barcode = model.Barcode;
@@ -285,6 +303,9 @@ namespace InventoryManagementSystem.Controllers
             existingProduct.Description = model.Description ?? string.Empty;
             existingProduct.Status = model.Status;
             existingProduct.Specs = model.Specs ?? new MobileSpecifications();
+            existingProduct.UpdatedDate = DateTime.UtcNow;
+
+            var imageUrls = existingProduct.ImageUrls != null ? new List<string>(existingProduct.ImageUrls) : new List<string>();
 
             if (model.ProductImage != null && model.ProductImage.Length > 0)
             {
@@ -294,6 +315,7 @@ namespace InventoryManagementSystem.Controllers
                     existingProduct.ImageUrl = uploadResult.SecureUrl;
                     existingProduct.ImagePublicId = uploadResult.PublicId;
                     existingProduct.ImageOriginalFilename = uploadResult.OriginalFilename;
+                    if (!imageUrls.Contains(uploadResult.SecureUrl)) imageUrls.Add(uploadResult.SecureUrl);
                 }
                 else
                 {
@@ -303,10 +325,30 @@ namespace InventoryManagementSystem.Controllers
                 }
             }
 
+            if (model.ProductImages != null && model.ProductImages.Any())
+            {
+                foreach (var file in model.ProductImages.Take(50))
+                {
+                    if (file == null || file.Length == 0) continue;
+                    var uploadResult = await _imageService.UploadImageAsync(file, "products");
+                    if (uploadResult.IsSuccess)
+                    {
+                        if (string.IsNullOrEmpty(existingProduct.ImageUrl))
+                        {
+                            existingProduct.ImageUrl = uploadResult.SecureUrl;
+                            existingProduct.ImagePublicId = uploadResult.PublicId;
+                            existingProduct.ImageOriginalFilename = uploadResult.OriginalFilename;
+                        }
+                        if (!imageUrls.Contains(uploadResult.SecureUrl)) imageUrls.Add(uploadResult.SecureUrl);
+                    }
+                }
+            }
+
+            existingProduct.ImageUrls = imageUrls;
+
             try
             {
                 await _productService.UpdateProductAsync(existingProduct);
-                Console.WriteLine($"[EDIT POST] UpdateProductAsync completed for ID={model.Id}");
                 await _auditLogService.LogActivityAsync("Product Updated", User.Identity?.Name ?? "System", $"Product ID: {model.Id}", $"Updated product details for {model.Name}.");
 
                 TempData["ToastMessage"] = "Product updated successfully!";

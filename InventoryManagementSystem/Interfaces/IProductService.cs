@@ -8,8 +8,8 @@ namespace InventoryManagementSystem.Interfaces
     {
         Task<IEnumerable<Product>> GetAllProductsAsync();
         Task<Product?> GetProductByIdAsync(string id);
-        Task<Product?> GetProductByCodeAsync(string code);
-        Task<Product?> GetProductByBarcodeAsync(string barcode);
+        Task<Product?> GetProductByCodeAsync(string code, string? supplierId = null);
+        Task<Product?> GetProductByBarcodeAsync(string barcode, string? supplierId = null);
         Task CreateProductAsync(Product product);
         Task UpdateProductAsync(Product product);
         Task DeleteProductAsync(string id);

@@ -12,5 +12,6 @@ namespace InventoryManagementSystem.Interfaces
         Task<long> GetFilteredCountAsync(string? search, string? terms, string? payableStatus);
         Task<(bool Success, string Message, Supplier? Supplier)> SaveSupplierAsync(Supplier supplier, string executedBy);
         Task<(bool Success, string Message)> DeleteSupplierAsync(string id, string executedBy);
+        Task<Supplier?> AuthenticateSupplierAsync(string emailOrUsername, string password);
     }
 }
