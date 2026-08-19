@@ -216,7 +216,7 @@
 
       <div class="sb-label">System</div>
 
-      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "Admin", "Index"))
+      @if (isAdmin)
       {
         <a href="@Url.Action("Index","Admin")"
            class="sb-link @(ctrl=="Admin"?"active":"")"
@@ -226,7 +226,7 @@
         </a>
       }
 
-      @if (isAdmin || await PermissionService.HasLivePermissionAsync(User, "User", "Index"))
+      @if (isAdmin)
       {
         <a href="@Url.Action("Index","User")"
            class="sb-link @(ctrl=="User"?"active":"")"

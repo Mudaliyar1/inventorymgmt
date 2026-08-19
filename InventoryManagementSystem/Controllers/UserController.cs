@@ -83,7 +83,9 @@ namespace InventoryManagementSystem.Controllers
 
             model.Role = Role.Staff;
             model.PasswordHash = BCrypt.Net.BCrypt.HashPassword(rawPassword);
-            model.Permissions = selectedPermissions ?? new List<string>();
+            model.Permissions = (selectedPermissions ?? new List<string>())
+                .Where(p => !p.StartsWith("Admin.", StringComparison.OrdinalIgnoreCase) && !p.StartsWith("User.", StringComparison.OrdinalIgnoreCase))
+                .ToList();
             model.PermissionVersion = 1;
             model.LastPermissionUpdated = DateTime.UtcNow;
             model.CreatedDate = DateTime.UtcNow;
@@ -162,7 +164,9 @@ namespace InventoryManagementSystem.Controllers
             existing.PhoneNumber = model.PhoneNumber;
             existing.Role = Role.Staff;
             existing.EmployeeId = !string.IsNullOrWhiteSpace(model.EmployeeId) ? model.EmployeeId : existing.EmployeeId;
-            existing.Permissions = selectedPermissions ?? new List<string>();
+            existing.Permissions = (selectedPermissions ?? new List<string>())
+                .Where(p => !p.StartsWith("Admin.", StringComparison.OrdinalIgnoreCase) && !p.StartsWith("User.", StringComparison.OrdinalIgnoreCase))
+                .ToList();
             existing.PermissionVersion++;
             existing.LastPermissionUpdated = DateTime.UtcNow;
             existing.UpdatedDate = DateTime.UtcNow;

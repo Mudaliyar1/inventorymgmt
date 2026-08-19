@@ -21,9 +21,9 @@ namespace InventoryManagementSystem.Repositories
             return await _collection.Find(filter).FirstOrDefaultAsync();
         }
 
-        public async Task<IEnumerable<Supplier>> GetPagedSuppliersAsync(string? search, int page, int pageSize)
+        public async Task<IEnumerable<Supplier>> GetPagedSuppliersAsync(string? search, string? terms, string? payableStatus, int page, int pageSize)
         {
-            var filter = BuildFilter(search);
+            var filter = BuildFilter(search, terms, payableStatus);
             return await _collection.Find(filter)
                 .SortByDescending(s => s.CreatedDate)
                 .Skip((page - 1) * pageSize)
@@ -31,22 +31,49 @@ namespace InventoryManagementSystem.Repositories
                 .ToListAsync();
         }
 
-        public async Task<long> GetFilteredCountAsync(string? search)
+        public async Task<long> GetFilteredCountAsync(string? search, string? terms, string? payableStatus)
         {
-            var filter = BuildFilter(search);
+            var filter = BuildFilter(search, terms, payableStatus);
             return await _collection.CountDocumentsAsync(filter);
         }
 
-        private FilterDefinition<Supplier> BuildFilter(string? search)
+        private FilterDefinition<Supplier> BuildFilter(string? search, string? terms, string? payableStatus)
         {
-            if (string.IsNullOrWhiteSpace(search)) return Builders<Supplier>.Filter.Empty;
-            var s = search.Trim();
-            return Builders<Supplier>.Filter.Or(
-                Builders<Supplier>.Filter.Regex(sup => sup.CompanyName, new BsonRegularExpression(s, "i")),
-                Builders<Supplier>.Filter.Regex(sup => sup.ContactPerson, new BsonRegularExpression(s, "i")),
-                Builders<Supplier>.Filter.Regex(sup => sup.Phone, new BsonRegularExpression(s, "i")),
-                Builders<Supplier>.Filter.Regex(sup => sup.Gstin, new BsonRegularExpression(s, "i"))
-            );
+            var builder = Builders<Supplier>.Filter;
+            var filters = new List<FilterDefinition<Supplier>>();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var s = search.Trim();
+                var searchFilter = builder.Or(
+                    builder.Regex(sup => sup.CompanyName, new BsonRegularExpression(s, "i")),
+                    builder.Regex(sup => sup.ContactPerson, new BsonRegularExpression(s, "i")),
+                    builder.Regex(sup => sup.Phone, new BsonRegularExpression(s, "i")),
+                    builder.Regex(sup => sup.Email, new BsonRegularExpression(s, "i")),
+                    builder.Regex(sup => sup.Gstin, new BsonRegularExpression(s, "i")),
+                    builder.Regex(sup => sup.Address, new BsonRegularExpression(s, "i"))
+                );
+                filters.Add(searchFilter);
+            }
+
+            if (!string.IsNullOrWhiteSpace(terms))
+            {
+                filters.Add(builder.Eq(sup => sup.PaymentTerms, terms.Trim()));
+            }
+
+            if (!string.IsNullOrWhiteSpace(payableStatus))
+            {
+                if (payableStatus.Equals("HasBalance", StringComparison.OrdinalIgnoreCase))
+                {
+                    filters.Add(builder.Gt(sup => sup.OutstandingPayable, 0m));
+                }
+                else if (payableStatus.Equals("Clear", StringComparison.OrdinalIgnoreCase))
+                {
+                    filters.Add(builder.Lte(sup => sup.OutstandingPayable, 0m));
+                }
+            }
+
+            return filters.Any() ? builder.And(filters) : builder.Empty;
         }
     }
 }

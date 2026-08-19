@@ -54,7 +54,11 @@ namespace InventoryManagementSystem.Services
             }
             else
             {
-                permissions = user.Permissions ?? new List<string>();
+                // Strip any legacy Admin.* or User.* permission keys for employee accounts
+                permissions = (user.Permissions ?? new List<string>())
+                    .Where(p => !p.StartsWith("Admin.", StringComparison.OrdinalIgnoreCase) &&
+                                !p.StartsWith("User.", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
             }
 
             var liveState = new LiveUserState
@@ -83,6 +87,13 @@ namespace InventoryManagementSystem.Services
         {
             if (user?.Identity == null || !user.Identity.IsAuthenticated)
                 return false;
+
+            // Administrator Management (Admin) and Employee Management (User) are strictly restricted to Admin role
+            if (string.Equals(controllerName, "Admin", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(controllerName, "User", StringComparison.OrdinalIgnoreCase))
+            {
+                return user.IsInRole(Role.Admin);
+            }
 
             if (user.IsInRole(Role.Admin))
                 return true;

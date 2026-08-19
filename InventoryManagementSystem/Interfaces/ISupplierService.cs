@@ -8,8 +8,9 @@ namespace InventoryManagementSystem.Interfaces
     {
         Task<IEnumerable<Supplier>> GetAllSuppliersAsync();
         Task<Supplier?> GetSupplierByIdAsync(string id);
-        Task<IEnumerable<Supplier>> GetPagedSuppliersAsync(string? search, int page, int pageSize);
-        Task<long> GetFilteredCountAsync(string? search);
+        Task<IEnumerable<Supplier>> GetPagedSuppliersAsync(string? search, string? terms, string? payableStatus, int page, int pageSize);
+        Task<long> GetFilteredCountAsync(string? search, string? terms, string? payableStatus);
         Task<(bool Success, string Message, Supplier? Supplier)> SaveSupplierAsync(Supplier supplier, string executedBy);
+        Task<(bool Success, string Message)> DeleteSupplierAsync(string id, string executedBy);
     }
 }

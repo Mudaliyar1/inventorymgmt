@@ -16,9 +16,15 @@ namespace InventoryManagementSystem.Services
             var permissions = new List<PermissionDescriptor>();
             var assembly = typeof(PermissionDiscoveryService).Assembly;
 
-            // Discover all non-abstract Controller classes
+            // Discover all non-abstract Controller classes (Excluding Admin and User management controllers)
             var controllerTypes = assembly.GetTypes()
                 .Where(t => typeof(Controller).IsAssignableFrom(t) && !t.IsAbstract)
+                .Where(t => {
+                    var name = GetControllerName(t.Name);
+                    // Exclude Administrator Management (Admin) and Employee Management (User) from assignable employee permissions
+                    return !string.Equals(name, "Admin", StringComparison.OrdinalIgnoreCase) &&
+                           !string.Equals(name, "User", StringComparison.OrdinalIgnoreCase);
+                })
                 .OrderBy(t => GetModuleOrder(GetControllerName(t.Name)));
 
             foreach (var controllerType in controllerTypes)

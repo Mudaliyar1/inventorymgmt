@@ -28,14 +28,14 @@ namespace InventoryManagementSystem.Services
             return await _supplierRepository.GetByIdAsync(id);
         }
 
-        public async Task<IEnumerable<Supplier>> GetPagedSuppliersAsync(string? search, int page, int pageSize)
+        public async Task<IEnumerable<Supplier>> GetPagedSuppliersAsync(string? search, string? terms, string? payableStatus, int page, int pageSize)
         {
-            return await _supplierRepository.GetPagedSuppliersAsync(search, page, pageSize);
+            return await _supplierRepository.GetPagedSuppliersAsync(search, terms, payableStatus, page, pageSize);
         }
 
-        public async Task<long> GetFilteredCountAsync(string? search)
+        public async Task<long> GetFilteredCountAsync(string? search, string? terms, string? payableStatus)
         {
-            return await _supplierRepository.GetFilteredCountAsync(search);
+            return await _supplierRepository.GetFilteredCountAsync(search, terms, payableStatus);
         }
 
         public async Task<(bool Success, string Message, Supplier? Supplier)> SaveSupplierAsync(Supplier supplier, string executedBy)
@@ -88,6 +88,22 @@ namespace InventoryManagementSystem.Services
 
                 return (true, "Supplier profile updated.", supplier);
             }
+        }
+
+        public async Task<(bool Success, string Message)> DeleteSupplierAsync(string id, string executedBy)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return (false, "Supplier ID is required.");
+            var supplier = await _supplierRepository.GetByIdAsync(id);
+            if (supplier == null) return (false, "Supplier record not found.");
+
+            await _supplierRepository.DeleteAsync(id);
+            await _auditLogService.LogActivityAsync(
+                "Supplier Deleted",
+                executedBy,
+                supplier.CompanyName,
+                $"Deleted supplier '{supplier.CompanyName}'");
+
+            return (true, $"Supplier '{supplier.CompanyName}' deleted successfully.");
         }
     }
 }

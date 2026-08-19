@@ -20,8 +20,8 @@ namespace InventoryManagementSystem.Controllers
         public async Task<IActionResult> Index(string? search, string? terms, string? payableStatus, int page = 1)
         {
             int pageSize = 20;
-            var suppliers = await _supplierService.GetPagedSuppliersAsync(search, page, pageSize);
-            var totalCount = await _supplierService.GetFilteredCountAsync(search);
+            var suppliers = await _supplierService.GetPagedSuppliersAsync(search, terms, payableStatus, page, pageSize);
+            var totalCount = await _supplierService.GetFilteredCountAsync(search, terms, payableStatus);
 
             ViewBag.Search = search;
             ViewBag.Terms = terms;
@@ -31,6 +31,15 @@ namespace InventoryManagementSystem.Controllers
             ViewBag.TotalCount = totalCount;
 
             return View(suppliers);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetDetails(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return Json(new { success = false, message = "Invalid Supplier ID." });
+            var supplier = await _supplierService.GetSupplierByIdAsync(id);
+            if (supplier == null) return Json(new { success = false, message = "Supplier not found." });
+            return Json(new { success = true, supplier });
         }
 
         [HttpPost]
@@ -56,6 +65,17 @@ namespace InventoryManagementSystem.Controllers
                 TempData["ToastType"] = "danger";
             }
 
+            return RedirectToAction("Index");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(string id)
+        {
+            var executedBy = User.Identity?.Name ?? "Admin";
+            var (success, message) = await _supplierService.DeleteSupplierAsync(id, executedBy);
+            TempData["ToastMessage"] = message;
+            TempData["ToastType"] = success ? "success" : "danger";
             return RedirectToAction("Index");
         }
     }
