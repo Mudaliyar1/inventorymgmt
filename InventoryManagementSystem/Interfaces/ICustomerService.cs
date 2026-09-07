@@ -12,5 +12,6 @@ namespace InventoryManagementSystem.Interfaces
         Task<IEnumerable<Customer>> GetPagedCustomersAsync(string? search, int page, int pageSize);
         Task<long> GetFilteredCountAsync(string? search);
         Task<(bool Success, string Message, Customer? Customer)> SaveCustomerAsync(Customer customer, string executedBy);
+        Task<(bool Success, string Message)> DeleteCustomerAsync(string id, string executedBy);
     }
 }

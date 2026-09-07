@@ -290,5 +290,18 @@ namespace InventoryManagementSystem.Controllers
 
             return RedirectToAction(nameof(Details), new { id });
         }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(string id)
+        {
+            var executedBy = User.Identity?.Name ?? "Admin";
+            var (success, message) = await _purchaseReturnService.DeleteReturnAsync(id, executedBy);
+
+            TempData["ToastMessage"] = message;
+            TempData["ToastType"] = success ? "success" : "danger";
+
+            return RedirectToAction(nameof(Index));
+        }
     }
 }

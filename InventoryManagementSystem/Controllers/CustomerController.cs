@@ -81,5 +81,23 @@ namespace InventoryManagementSystem.Controllers
 
             return RedirectToAction("Index");
         }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(string id)
+        {
+            var executedBy = User.Identity?.Name ?? "Admin";
+            var (success, message) = await _customerService.DeleteCustomerAsync(id, executedBy);
+
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest" || Request.Headers["Accept"].ToString().Contains("application/json"))
+            {
+                return Json(new { success, message });
+            }
+
+            TempData["ToastMessage"] = message;
+            TempData["ToastType"] = success ? "success" : "danger";
+
+            return RedirectToAction("Index");
+        }
     }
 }

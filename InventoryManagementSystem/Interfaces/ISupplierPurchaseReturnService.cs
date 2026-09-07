@@ -23,6 +23,7 @@ namespace InventoryManagementSystem.Interfaces
         Task<(bool Success, string Message)> RejectReturnAsync(string returnId, string executedBy, string rejectionReason);
         Task<(bool Success, string Message)> ShipReturnAsync(string returnId, string executedBy);
         Task<(bool Success, string Message)> CancelReturnAsync(string returnId, string executedBy);
+        Task<(bool Success, string Message)> DeleteReturnAsync(string returnId, string executedBy, string? supplierIdFilter = null);
         Task SyncAcceptedReturnsToShopCatalogAsync();
     }
 }

@@ -468,6 +468,81 @@ namespace InventoryManagementSystem.Services
             return (true, $"Purchase Return #{returnRecord.ReturnNumber} cancelled successfully.");
         }
 
+        public async Task<(bool Success, string Message)> DeleteReturnAsync(string returnId, string executedBy, string? supplierIdFilter = null)
+        {
+            if (string.IsNullOrWhiteSpace(returnId)) return (false, "Return ID is required.");
+
+            var returnRecord = await _returnRepository.GetByIdAsync(returnId);
+            if (returnRecord == null) return (false, "Purchase return record not found.");
+
+            if (!string.IsNullOrWhiteSpace(supplierIdFilter) && returnRecord.SupplierId != supplierIdFilter)
+            {
+                return (false, "Access denied. You can only delete return records belonging to your supplier account.");
+            }
+
+            // If stock was deducted when shipped, restore inventory stock and device statuses
+            if (returnRecord.StockDeducted)
+            {
+                foreach (var item in returnRecord.Items)
+                {
+                    var prod = await _productRepository.GetByIdAsync(item.ProductId);
+                    if (prod != null)
+                    {
+                        int prevStock = prod.CurrentStock;
+                        prod.CurrentStock += item.Quantity;
+                        prod.UpdatedDate = DateTime.UtcNow;
+                        await _productRepository.UpdateAsync(prod.Id, prod);
+
+                        await _stockTxRepository.CreateAsync(new StockTransaction
+                        {
+                            ProductId = prod.Id,
+                            ProductName = prod.Name,
+                            ProductCode = prod.Code,
+                            ExecutedBy = executedBy,
+                            Username = executedBy,
+                            Quantity = item.Quantity,
+                            Type = "Stock In",
+                            Reason = $"Restored upon deletion of Return #{returnRecord.ReturnNumber}",
+                            PreviousStock = prevStock,
+                            CurrentStock = prod.CurrentStock,
+                            Source = "Supplier Return Deletion",
+                            UnitCost = item.UnitPurchasePrice,
+                            Brand = prod.Brand,
+                            ModelName = prod.ModelName,
+                            Variant = prod.Variant,
+                            Color = prod.Color,
+                            Timestamp = DateTime.UtcNow
+                        });
+                    }
+                }
+
+                if (returnRecord.DeviceDetails != null && returnRecord.DeviceDetails.Any())
+                {
+                    foreach (var devDetail in returnRecord.DeviceDetails)
+                    {
+                        var dev = await _deviceRepository.GetByIdAsync(devDetail.DeviceId);
+                        if (dev != null && dev.Status == "ReturnedToSupplier")
+                        {
+                            dev.Status = "In Stock";
+                            dev.Notes = $"Restored to In Stock after Return #{returnRecord.ReturnNumber} was deleted on {DateTime.UtcNow:dd-MMM-yyyy} by {executedBy}.";
+                            dev.UpdatedDate = DateTime.UtcNow;
+                            await _deviceRepository.UpdateAsync(dev.Id, dev);
+                        }
+                    }
+                }
+            }
+
+            await _returnRepository.DeleteAsync(returnRecord.Id);
+
+            await _auditLogService.LogActivityAsync(
+                "SUPPLIER_RETURN_DELETED",
+                executedBy,
+                returnRecord.ReturnNumber,
+                $"Deleted Purchase Return #{returnRecord.ReturnNumber} for supplier {returnRecord.SupplierName} (Value: ₹{returnRecord.TotalReturnValue:N2}, Status: {returnRecord.Status})");
+
+            return (true, $"Purchase Return #{returnRecord.ReturnNumber} deleted successfully.");
+        }
+
         private async Task SendReturnNotificationEmailAsync(SupplierPurchaseReturn returnRecord, Supplier supplier)
         {
             try

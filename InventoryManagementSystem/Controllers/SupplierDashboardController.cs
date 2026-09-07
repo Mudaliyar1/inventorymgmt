@@ -1158,6 +1158,20 @@ namespace InventoryManagementSystem.Controllers
             return RedirectToAction(nameof(ReturnDetails), new { id = returnId });
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeletePurchaseReturn(string id)
+        {
+            var supplierId = CurrentSupplierId;
+            var executedBy = User.Identity?.Name ?? "Supplier";
+            var (success, message) = await _purchaseReturnService.DeleteReturnAsync(id, executedBy, supplierId);
+
+            TempData["ToastMessage"] = message;
+            TempData["ToastType"] = success ? "success" : "danger";
+
+            return RedirectToAction(nameof(Returns));
+        }
+
         #region Supplier Stock In & Stock Out Pages
 
         [HttpGet]

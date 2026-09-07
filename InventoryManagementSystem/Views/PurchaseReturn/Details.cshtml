@@ -45,6 +45,12 @@
                 </button>
             </form>
         }
+        <form asp-action="Delete" asp-route-id="@r.Id" method="post" onsubmit="return confirm('Are you sure you want to permanently delete purchase return #@r.ReturnNumber?');">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn-d btn-ghost text-danger border border-danger" title="Delete Return">
+                <i class="bi bi-trash me-1"></i> Delete Return
+            </button>
+        </form>
     </div>
 </div>
 

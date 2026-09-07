@@ -97,5 +97,27 @@ namespace InventoryManagementSystem.Services
                 return (true, "Customer profile updated.", customer);
             }
         }
+
+        public async Task<(bool Success, string Message)> DeleteCustomerAsync(string id, string executedBy)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return (false, "Customer ID is required.");
+            var customer = await _customerRepository.GetByIdAsync(id);
+            if (customer == null) return (false, "Customer record not found.");
+
+            if (customer.OutstandingBalance > 0)
+            {
+                return (false, $"Cannot delete customer '{customer.Name}' because they have an outstanding credit balance of ₹{customer.OutstandingBalance:N2}. Please clear the balance first.");
+            }
+
+            await _customerRepository.DeleteAsync(id);
+
+            await _auditLogService.LogActivityAsync(
+                "Customer Deleted",
+                executedBy,
+                customer.Name,
+                $"Deleted customer profile '{customer.Name}' (Phone: {customer.Phone})");
+
+            return (true, $"Customer '{customer.Name}' deleted successfully.");
+        }
     }
 }
