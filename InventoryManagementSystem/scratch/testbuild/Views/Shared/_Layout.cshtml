@@ -1,0 +1,458 @@
+@using System.Security.Claims
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="SIMS – Smart Inventory Management System" />
+  <title>@ViewData["Title"] – SIMS</title>
+  <link rel="icon" type="image/png" href="~/favicon.png" />
+  <link rel="shortcut icon" type="image/png" href="~/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+  <script>
+    (function() {
+      var t = localStorage.getItem('sims_theme');
+      if (t === 'light') { document.documentElement.setAttribute('data-theme', 'light'); }
+      else { document.documentElement.setAttribute('data-theme', 'dark'); }
+    })();
+  </script>
+</head>
+
+<body
+  data-flash-msg="@TempData["ToastMessage"]"
+  data-flash-type="@TempData["ToastType"]"
+  data-perm-version="@((User.Identity?.IsAuthenticated == true) ? (await PermissionService.GetLiveUserStateAsync(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "")).PermissionVersion : 1)">
+
+<!-- Liquid Glass Atmospheric Ambient Background Layer -->
+<div class="glass-atmosphere" aria-hidden="true">
+  <div class="glass-orb glass-orb-1"></div>
+  <div class="glass-orb glass-orb-2"></div>
+  <div class="glass-orb glass-orb-3"></div>
+  <div class="glass-orb glass-orb-4"></div>
+</div>
+
+@if (User.Identity?.IsAuthenticated == true)
+{
+  var ctrl     = ViewContext.RouteData.Values["controller"]?.ToString();
+  var act      = ViewContext.RouteData.Values["action"]?.ToString();
+  var fullName = User.FindFirst("FullName")?.Value ?? User.Identity.Name;
+  var uname    = User.Identity.Name;
+  var profPic  = User.FindFirst("ProfilePictureUrl")?.Value ?? "";
+  var isAdmin    = User.IsInRole("Admin");
+  var isSupplier = User.IsInRole("Supplier");
+
+  <!-- Sidebar overlay (mobile) -->
+  <div id="sb-overlay" class="sb-overlay"></div>
+
+  <!-- ══════════════════════════════════════════
+       SIDEBAR
+  ══════════════════════════════════════════════ -->
+  <aside id="sidebar" aria-label="Main Navigation">
+
+    <!-- Brand -->
+    <a class="sb-brand" href="@(isSupplier ? Url.Action("Index","SupplierDashboard") : Url.Action("Index","Home"))">
+      <img src="~/images/logo-dark.png" alt="SIMS Logo" class="sb-brand-logo logo-dark-mode" style="height:32px;width:auto;object-fit:contain;flex-shrink:0" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <img src="~/images/logo-light.png" alt="SIMS Logo" class="sb-brand-logo logo-light-mode" style="height:32px;width:auto;object-fit:contain;flex-shrink:0" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="sb-brand-icon" style="display:none"><i class="bi bi-box-seam-fill"></i></div>
+      <span class="sb-brand-name">SIMS</span>
+    </a>
+
+    <!-- Nav scroll area -->
+    <div class="sb-scroll">
+
+    @if (isSupplier)
+    {
+      <div class="sb-label">Supplier Portal</div>
+
+      <a href="@Url.Action("Index","SupplierDashboard")"
+         class="sb-link @(ctrl=="SupplierDashboard"&&act=="Index"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Portal Dashboard" data-bs-placement="right">
+        <i class="bi bi-speedometer2 sb-icon"></i>
+        <span class="sb-text">Portal Dashboard</span>
+      </a>
+
+      <a href="@Url.Action("Inventory","SupplierDashboard")"
+         class="sb-link @(ctrl=="SupplierDashboard"&&act=="Inventory"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Stock Inventory" data-bs-placement="right">
+        <i class="bi bi-boxes sb-icon"></i>
+        <span class="sb-text">Stock Inventory</span>
+      </a>
+
+      <a href="@Url.Action("StockIn","SupplierDashboard")"
+         class="sb-link @(ctrl=="SupplierDashboard"&&act=="StockIn"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Stock In Intake" data-bs-placement="right">
+        <i class="bi bi-arrow-down-circle sb-icon" style="color:var(--success)"></i>
+        <span class="sb-text">Stock In</span>
+      </a>
+
+      <a href="@Url.Action("StockOut","SupplierDashboard")"
+         class="sb-link @(ctrl=="SupplierDashboard"&&act=="StockOut"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Stock Out Deduction" data-bs-placement="right">
+        <i class="bi bi-arrow-up-circle sb-icon" style="color:var(--danger)"></i>
+        <span class="sb-text">Stock Out</span>
+      </a>
+
+      <a href="@Url.Action("Stats","SupplierDashboard")"
+         class="sb-link @(ctrl=="SupplierDashboard"&&act=="Stats"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Sales & Stats Analytics" data-bs-placement="right">
+        <i class="bi bi-graph-up-arrow sb-icon"></i>
+        <span class="sb-text">Sales & Stats</span>
+      </a>
+
+      <a href="@Url.Action("Products","SupplierDashboard")"
+         class="sb-link @(ctrl=="SupplierDashboard"&&(act=="Products"||act=="CreateProduct"||act=="EditProduct")?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Supplied Products" data-bs-placement="right">
+        <i class="bi bi-phone sb-icon"></i>
+        <span class="sb-text">My Products</span>
+      </a>
+
+      <a href="@Url.Action("Index","Category")"
+         class="sb-link @(ctrl=="Category"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Product Categories" data-bs-placement="right">
+        <i class="bi bi-tag sb-icon"></i>
+        <span class="sb-text">Categories</span>
+      </a>
+
+      <a href="@Url.Action("Orders","SupplierDashboard")"
+         class="sb-link @(ctrl=="SupplierDashboard"&&(act=="Orders"||act=="OrderDetails")?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Received Orders" data-bs-placement="right">
+        <i class="bi bi-cart-check sb-icon"></i>
+        <span class="sb-text">Received Orders</span>
+      </a>
+
+      <a href="@Url.Action("Returns","SupplierDashboard")"
+         class="sb-link @(ctrl=="SupplierDashboard"&&(act=="Returns"||act=="ReturnDetails"||act=="PurchaseReturns"||act=="PurchaseReturnDetails")?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Damaged & Returned Stock" data-bs-placement="right">
+        <i class="bi bi-box-seam sb-icon" style="color:var(--danger)"></i>
+        <span class="sb-text">Damaged & Returned Stock</span>
+      </a>
+
+      <a href="@Url.Action("Profile","SupplierDashboard")"
+         class="sb-link @(ctrl=="SupplierDashboard"&&act=="Profile"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Supplier Profile" data-bs-placement="right">
+        <i class="bi bi-person-circle sb-icon"></i>
+        <span class="sb-text">My Profile</span>
+      </a>
+    }
+    else
+    {
+      <!-- MAIN / DASHBOARD -->
+      <div class="sb-label">MAIN / DASHBOARD</div>
+
+      <a href="@Url.Action("Index","Home")"
+         class="sb-link @(ctrl=="Home"&&act=="Index"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Dashboard" data-bs-placement="right">
+        <i class="bi bi-grid-1x2 sb-icon"></i>
+        <span class="sb-text">Dashboard</span>
+      </a>
+
+      <!-- MOBILE SHOP -->
+      <div class="sb-label">MOBILE SHOP</div>
+
+      <a href="@Url.Action("Index","Imei")"
+         class="sb-link @(ctrl=="Imei"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="IMEI & Devices" data-bs-placement="right">
+        <i class="bi bi-qr-code-scan sb-icon"></i>
+        <span class="sb-text">IMEI & Devices</span>
+      </a>
+
+      <a href="@Url.Action("Create","Sales")"
+         class="sb-link @(ctrl=="Sales"&&act=="Create"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="POS Billing" data-bs-placement="right">
+        <i class="bi bi-receipt sb-icon"></i>
+        <span class="sb-text">POS Billing</span>
+      </a>
+
+      <a href="@Url.Action("Index","Exchange")"
+         class="sb-link @(ctrl=="Exchange"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Trade-In Exchange" data-bs-placement="right">
+        <i class="bi bi-arrow-left-right sb-icon"></i>
+        <span class="sb-text">Trade-In Exchange</span>
+      </a>
+
+      <a href="@Url.Action("Index","Return")"
+         class="sb-link @(ctrl=="Return"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Returns & Refunds" data-bs-placement="right">
+        <i class="bi bi-arrow-counterclockwise sb-icon"></i>
+        <span class="sb-text">Returns & Refunds</span>
+      </a>
+
+      <a href="@Url.Action("Index","Repair")"
+         class="sb-link @(ctrl=="Repair"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Service & Repairs" data-bs-placement="right">
+        <i class="bi bi-tools sb-icon"></i>
+        <span class="sb-text">Service & Repairs</span>
+      </a>
+
+      <!-- DIRECTORY -->
+      <div class="sb-label">DIRECTORY</div>
+
+      <a href="@Url.Action("Index","Customer")"
+         class="sb-link @(ctrl=="Customer"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Customers" data-bs-placement="right">
+        <i class="bi bi-person-heart sb-icon"></i>
+        <span class="sb-text">Customers</span>
+      </a>
+
+      <a href="@Url.Action("Index","Supplier")"
+         class="sb-link @(ctrl=="Supplier"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Suppliers" data-bs-placement="right">
+        <i class="bi bi-truck sb-icon"></i>
+        <span class="sb-text">Suppliers</span>
+      </a>
+
+      <!-- INVENTORY & STOCK -->
+      <div class="sb-label">INVENTORY & STOCK</div>
+
+      <a href="@Url.Action("Index","Product")"
+         class="sb-link @(ctrl=="Product"&&act=="Index"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Products & Specs" data-bs-placement="right">
+        <i class="bi bi-box-seam sb-icon"></i>
+        <span class="sb-text">Products & Specs</span>
+      </a>
+
+      <a href="@Url.Action("Index","Category")"
+         class="sb-link @(ctrl=="Category"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Categories" data-bs-placement="right">
+        <i class="bi bi-tag sb-icon"></i>
+        <span class="sb-text">Categories</span>
+      </a>
+
+      <a href="@Url.Action("StockIn","Stock")"
+         class="sb-link @(ctrl=="Stock"&&act=="StockIn"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Stock In Intake" data-bs-placement="right">
+        <i class="bi bi-arrow-down-circle sb-icon" style="color:var(--success)"></i>
+        <span class="sb-text">Stock In</span>
+      </a>
+
+      <a href="@Url.Action("StockOut","Stock")"
+         class="sb-link @(ctrl=="Stock"&&act=="StockOut"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Stock Out Deduction" data-bs-placement="right">
+        <i class="bi bi-arrow-up-circle sb-icon" style="color:var(--danger)"></i>
+        <span class="sb-text">Stock Out</span>
+      </a>
+
+      <a href="@Url.Action("History","Stock")"
+         class="sb-link @(ctrl=="Stock"&&act=="History"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Stock History Audit" data-bs-placement="right">
+        <i class="bi bi-clock-history sb-icon"></i>
+        <span class="sb-text">Stock History</span>
+      </a>
+
+      <a href="@Url.Action("Index","PurchaseReturn")"
+         class="sb-link @(ctrl=="PurchaseReturn"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Purchase Returns" data-bs-placement="right">
+        <i class="bi bi-box-arrow-left sb-icon" style="color:var(--danger)"></i>
+        <span class="sb-text">Purchase Returns</span>
+      </a>
+
+      <a href="@Url.Action("InventorySummary","Stock")"
+         class="sb-link @(ctrl=="Stock"&&act=="InventorySummary"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Inventory Summary Overview" data-bs-placement="right">
+        <i class="bi bi-file-earmark-text sb-icon"></i>
+        <span class="sb-text">Inventory Summary</span>
+      </a>
+
+      <!-- RECORDS & REPORTS -->
+      <div class="sb-label">RECORDS & REPORTS</div>
+
+      <a href="@Url.Action("Index","Sales")"
+         class="sb-link @(ctrl=="Sales"&&(act=="Index"||act=="Details"||act=="Invoice")?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Invoice Records" data-bs-placement="right">
+        <i class="bi bi-journal-text sb-icon"></i>
+        <span class="sb-text">Invoice Records</span>
+      </a>
+
+      <a href="@Url.Action("Index","Report")"
+         class="sb-link @(ctrl=="Report"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Reports & Analytics" data-bs-placement="right">
+        <i class="bi bi-bar-chart-line sb-icon"></i>
+        <span class="sb-text">Reports</span>
+      </a>
+
+      <a href="@Url.Action("Index","SupplierOrder")"
+         class="sb-link @(ctrl=="SupplierOrder"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Order Management" data-bs-placement="right">
+        <i class="bi bi-cart-check sb-icon"></i>
+        <span class="sb-text">Order Management</span>
+      </a>
+
+      <a href="@Url.Action("Index","Admin")"
+         class="sb-link @(ctrl=="Admin"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Administrator Management" data-bs-placement="right">
+        <i class="bi bi-shield-lock sb-icon"></i>
+        <span class="sb-text">Administrators</span>
+      </a>
+
+      <a href="@Url.Action("Index","User")"
+         class="sb-link @(ctrl=="User"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Employee Directory" data-bs-placement="right">
+        <i class="bi bi-person-badge sb-icon"></i>
+        <span class="sb-text">Employees</span>
+      </a>
+
+      <a href="@Url.Action("Profile","Account")"
+         class="sb-link @(ctrl=="Account"&&act=="Profile"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="My User Profile" data-bs-placement="right">
+        <i class="bi bi-person-circle sb-icon"></i>
+        <span class="sb-text">My Profile</span>
+      </a>
+
+      <a href="@Url.Action("Index","Settings")"
+         class="sb-link @(ctrl=="Settings"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="System Settings" data-bs-placement="right">
+        <i class="bi bi-sliders sb-icon"></i>
+        <span class="sb-text">Settings</span>
+      </a>
+
+      <a href="@Url.Action("Index","SystemLog")"
+         class="sb-link @(ctrl=="SystemLog"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="System Activity Logs" data-bs-placement="right">
+        <i class="bi bi-terminal sb-icon"></i>
+        <span class="sb-text">System Logs</span>
+      </a>
+
+      <a href="@Url.Action("Index","InventoryAlert")"
+         class="sb-link @(ctrl=="InventoryAlert"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Email & Stock Alerts" data-bs-placement="right">
+        <i class="bi bi-bell sb-icon"></i>
+        <span class="sb-text">Email Alerts</span>
+      </a>
+    }
+    </div><!-- /sb-scroll -->
+
+    <!-- Footer collapse -->
+    <div class="sb-footer">
+      <button id="sb-collapse-btn" class="sb-collapse-btn" aria-label="Toggle sidebar">
+        <i class="bi bi-layout-sidebar-reverse"></i>
+        <span>Collapse</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ══════════════════════════════════════════
+       MAIN
+  ══════════════════════════════════════════════ -->
+  <div id="main">
+
+    <!-- TOP NAVBAR -->
+    <header class="topbar">
+      <!-- Mobile hamburger -->
+      <button id="sb-mobile-btn" class="topbar-hamburger" aria-label="Open menu">
+        <i class="bi bi-list"></i>
+      </button>
+
+      <!-- Breadcrumb -->
+      <div class="topbar-breadcrumb">
+        <span>SIMS</span>
+        <i class="bi bi-chevron-right crumb-sep" style="font-size:10px"></i>
+        <span class="crumb-current">@(ViewData["Title"] ?? ctrl)</span>
+      </div>
+
+      <!-- Search -->
+      <div class="topbar-search">
+        <i class="bi bi-search topbar-search-icon"></i>
+        <input type="search" placeholder="Search…" autocomplete="off" aria-label="Search">
+      </div>
+
+      <!-- Right actions -->
+      <div class="topbar-actions">
+
+        <span id="topbar-date" class="topbar-date"></span>
+
+        <!-- Theme Toggle -->
+        <button class="topbar-btn theme-toggle-btn" type="button" onclick="toggleSIMSTheme()" aria-label="Toggle Dark/Light theme" data-bs-toggle="tooltip" data-bs-title="Toggle Theme">
+          <i class="bi bi-sun-fill"></i>
+        </button>
+
+        <!-- Notifications -->
+        <div class="dropdown" style="position:relative">
+          <button class="topbar-btn" type="button"
+                  id="notifDropdownBtn"
+                  data-dd-toggle="dropdown"
+                  aria-expanded="false"
+                  aria-label="Notifications">
+            <i class="bi bi-bell"></i>
+            <span id="notif-badge" class="notif-dot" style="display:none"></span>
+          </button>
+          <div class="dropdown-menu dropdown-menu-end notif-panel p-0" aria-labelledby="notifDropdownBtn">
+            <div class="notif-header">
+              <h6>Notifications</h6>
+              <span style="font-size:11px;color:var(--text-muted)">Recent alerts</span>
+            </div>
+            <div id="notif-list">
+              <div class="empty-s" style="padding:24px">
+                <i class="bi bi-bell-slash empty-s-icon"></i>
+                <div class="empty-s-title">Loading…</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- User dropdown -->
+        <div class="dropdown" style="position:relative">
+          <button class="topbar-user" type="button"
+                  id="userDropdownBtn"
+                  data-dd-toggle="dropdown"
+                  aria-expanded="false"
+                  aria-label="User menu">
+            @if (!string.IsNullOrEmpty(profPic))
+            {
+              <img src="@profPic" alt="@fullName" class="topbar-avatar"
+                   onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            }
+            <div style="width:30px;height:30px;border-radius:50%;background:var(--primary-dim);display:@(string.IsNullOrEmpty(profPic)?"flex":"none");align-items:center;justify-content:center;color:var(--primary-text);font-size:14px;font-weight:700;flex-shrink:0">
+              @(fullName?.Length > 0 ? fullName[0].ToString().ToUpper() : "U")
+            </div>
+            <span class="topbar-username">@uname</span>
+            <i class="bi bi-chevron-down" style="font-size:10px;color:var(--text-muted)"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end dd-menu" aria-labelledby="userDropdownBtn">
+            <li class="px-2 pt-2 pb-2">
+              <div style="font-size:13.5px;font-weight:700;color:var(--text-primary)">@fullName</div>
+              <div style="font-size:11px;color:var(--text-muted)">@@@uname</div>
+            </li>
+            <li><hr class="dd-divider mx-1"></li>
+            <li><a class="dd-item" href="@Url.Action("Profile","Account")"><i class="bi bi-person"></i> My Profile</a></li>
+            @if (isAdmin)
+            {
+              <li><a class="dd-item" href="@Url.Action("Index","Settings")"><i class="bi bi-sliders"></i> Settings</a></li>
+            }
+            <li><hr class="dd-divider mx-1"></li>
+            <li><a class="dd-item dd-danger" href="@Url.Action("Logout","Account")"><i class="bi bi-box-arrow-right"></i> Sign Out</a></li>
+          </ul>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Body -->
+    <main class="page-body" role="main">
+      @RenderBody()
+    </main>
+
+  </div><!-- /main -->
+}
+else
+{
+  @RenderBody()
+}
+
+<!-- Toast stack -->
+<div id="toast-stack" class="toast-stack" aria-live="polite"></div>
+
+<!-- Scripts -->
+<script src="~/lib/jquery/dist/jquery.min.js"></script>
+<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="~/js/app.js" asp-append-version="true"></script>
+<script src="~/js/site.js" asp-append-version="true"></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

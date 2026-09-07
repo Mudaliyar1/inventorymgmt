@@ -106,6 +106,7 @@ namespace InventoryManagementSystem.Controllers
                 completedDate = ticket.CompletedDate?.ToString("yyyy-MM-dd HH:mm IST"),
                 customerName = ticket.CustomerName,
                 customerPhone = ticket.CustomerPhone,
+                customerEmail = ticket.CustomerEmail,
                 deviceBrand = ticket.DeviceBrand,
                 deviceModel = ticket.DeviceModel,
                 imei = ticket.IMEI,

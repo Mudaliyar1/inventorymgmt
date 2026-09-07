@@ -21,6 +21,14 @@ namespace InventoryManagementSystem.Repositories
             return await _collection.Find(filter).FirstOrDefaultAsync();
         }
 
+        public async Task<Supplier?> GetByEmailAsync(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email)) return null;
+            var clean = email.Trim();
+            var filter = Builders<Supplier>.Filter.Regex(s => s.Email, new BsonRegularExpression($"^{System.Text.RegularExpressions.Regex.Escape(clean)}$", "i"));
+            return await _collection.Find(filter).FirstOrDefaultAsync();
+        }
+
         public async Task<IEnumerable<Supplier>> GetPagedSuppliersAsync(string? search, string? terms, string? payableStatus, int page, int pageSize)
         {
             var filter = BuildFilter(search, terms, payableStatus);

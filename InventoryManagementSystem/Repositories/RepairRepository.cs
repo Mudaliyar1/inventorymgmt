@@ -47,6 +47,7 @@ namespace InventoryManagementSystem.Repositories
                     Builders<RepairTicket>.Filter.Regex(r => r.IMEI, new BsonRegularExpression(s, "i")),
                     Builders<RepairTicket>.Filter.Regex(r => r.CustomerName, new BsonRegularExpression(s, "i")),
                     Builders<RepairTicket>.Filter.Regex(r => r.CustomerPhone, new BsonRegularExpression(s, "i")),
+                    Builders<RepairTicket>.Filter.Regex(r => r.CustomerEmail, new BsonRegularExpression(s, "i")),
                     Builders<RepairTicket>.Filter.Regex(r => r.DeviceModel, new BsonRegularExpression(s, "i")),
                     Builders<RepairTicket>.Filter.Regex(r => r.TechnicianName, new BsonRegularExpression(s, "i"))
                 );

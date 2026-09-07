@@ -7,6 +7,7 @@ namespace InventoryManagementSystem.Interfaces
     public interface ISupplierRepository : IBaseRepository<Supplier>
     {
         Task<Supplier?> GetByNameAsync(string companyName);
+        Task<Supplier?> GetByEmailAsync(string email);
         Task<IEnumerable<Supplier>> GetPagedSuppliersAsync(string? search, string? terms, string? payableStatus, int page, int pageSize);
         Task<long> GetFilteredCountAsync(string? search, string? terms, string? payableStatus);
     }

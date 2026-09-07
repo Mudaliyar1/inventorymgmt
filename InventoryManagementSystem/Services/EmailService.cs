@@ -1,5 +1,8 @@
 using MailKit.Net.Smtp;
 using MailKit.Security;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
 using InventoryManagementSystem.Configuration;
@@ -12,14 +15,45 @@ namespace InventoryManagementSystem.Services
     public class EmailService : IEmailService
     {
         private readonly BrevoSettings _settings;
+        private readonly IBrevoEmailService _brevoApiEmailService;
+        private readonly IWebHostEnvironment _env;
+        private readonly ILogger<EmailService> _logger;
 
-        public EmailService(IOptions<BrevoSettings> settings)
+        public EmailService(
+            IOptions<BrevoSettings> settings,
+            IBrevoEmailService brevoApiEmailService,
+            IWebHostEnvironment env,
+            ILogger<EmailService> logger)
         {
             _settings = settings.Value;
+            _brevoApiEmailService = brevoApiEmailService;
+            _env = env;
+            _logger = logger;
         }
 
         public async Task SendEmailAsync(string toEmail, string subject, string htmlMessage)
         {
+            // 1. First check if Brevo REST API can be used (if ApiKey is set)
+            var apiKey = Environment.GetEnvironmentVariable("BREVO_API_KEY");
+            if (!string.IsNullOrWhiteSpace(apiKey))
+            {
+                var (success, _, _, error) = await _brevoApiEmailService.SendTransactionalEmailAsync(toEmail, subject, htmlMessage);
+                if (success) return;
+                _logger.LogWarning("Brevo REST API email attempt failed: {Error}. Trying SMTP fallback.", error);
+            }
+
+            // 2. Validate SMTP credentials before attempting connection
+            if (string.IsNullOrWhiteSpace(_settings.Host) || string.IsNullOrWhiteSpace(_settings.Username) || string.IsNullOrWhiteSpace(_settings.Password))
+            {
+                _logger.LogWarning("[EMAIL] SMTP credentials (Host/Username/Password) are not configured in appsettings.json. Skipping SMTP attempt.");
+                if (_env.IsDevelopment())
+                {
+                    Console.WriteLine($"[EMAIL NOTICE] Cannot send email to {toEmail} via SMTP: Username or Password is empty in appsettings.json -> BrevoSettings.");
+                }
+                return;
+            }
+
+            // 3. Send via MailKit SMTP
             var emailMessage = new MimeMessage();
             emailMessage.From.Add(new MailboxAddress(_settings.FromName, _settings.FromEmail));
             emailMessage.To.Add(new MailboxAddress("", toEmail));
@@ -34,15 +68,20 @@ namespace InventoryManagementSystem.Services
                 await client.ConnectAsync(_settings.Host, _settings.Port, SecureSocketOptions.StartTls);
                 await client.AuthenticateAsync(_settings.Username, _settings.Password);
                 await client.SendAsync(emailMessage);
+                _logger.LogInformation("[EMAIL] Email successfully sent via SMTP to {Email}", toEmail);
             }
             catch (Exception ex)
             {
-                // In production, log this with the proper logging service.
+                _logger.LogError(ex, "Email sending failed: {Message}", ex.Message);
                 Console.WriteLine($"Email sending failed: {ex.Message}");
             }
             finally
             {
-                await client.DisconnectAsync(true);
+                try
+                {
+                    await client.DisconnectAsync(true);
+                }
+                catch { }
             }
         }
 
@@ -147,6 +186,32 @@ namespace InventoryManagementSystem.Services
 <a href='{resetLink}' class='btn'>Reset Password</a>
 <p style='margin-top: 25px;'>If you did not request a password reset, please ignore this email. Your password will remain unchanged.</p>";
             await SendEmailAsync(toEmail, "Reset Your Password - SIMS", GetStandardHtmlTemplate("Reset Your Password", content));
+        }
+
+        public async Task SendPasswordResetOtpEmailAsync(string toEmail, string otpCode, string recipientName)
+        {
+            if (_env.IsDevelopment())
+            {
+                Console.WriteLine("=================================================");
+                Console.WriteLine($"[SIMS DEV OTP] Verification OTP for {toEmail}: {otpCode}");
+                Console.WriteLine("=================================================");
+            }
+
+            var content = $@"
+<p>Hello <strong>{System.Net.WebUtility.HtmlEncode(recipientName)}</strong>,</p>
+<p>We received a request to reset your password for your <strong>Smart Inventory Management System (SIMS)</strong> account.</p>
+<p>Please use the following 6-digit One-Time Password (OTP) to reset your password:</p>
+
+<div style='background-color: #1e2538; border: 2px dashed #3b82f6; border-radius: 10px; padding: 18px 24px; text-align: center; margin: 24px 0;'>
+    <div style='font-size: 12px; color: #94a3b8; text-transform: uppercase; font-weight: 700; letter-spacing: 1px; margin-bottom: 6px;'>Your Verification OTP</div>
+    <div style='font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #38bdf8; font-family: monospace;'>{otpCode}</div>
+    <div style='font-size: 12px; color: #f59e0b; margin-top: 8px; font-weight: 600;'>Valid for 15 minutes only</div>
+</div>
+
+<p style='font-size: 13px; color: #94a3b8;'>Enter this OTP on the password reset screen along with your new password (minimum 8 characters).</p>
+<p style='margin-top: 20px; font-size: 12px; color: #64748b;'>If you did not request a password reset, please ignore this email or notify your system administrator immediately. Your password will remain unchanged.</p>";
+
+            await SendEmailAsync(toEmail, $"SIMS Password Reset OTP: {otpCode}", GetStandardHtmlTemplate("Password Reset OTP", content));
         }
 
         public async Task SendPasswordChangedEmailAsync(string toEmail, string username)

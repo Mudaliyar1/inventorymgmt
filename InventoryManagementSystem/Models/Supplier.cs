@@ -52,6 +52,12 @@ namespace InventoryManagementSystem.Models
         [BsonElement("LastLogin")]
         public DateTime? LastLogin { get; set; }
 
+        [BsonElement("ResetToken")]
+        public string ResetToken { get; set; } = string.Empty;
+
+        [BsonElement("ResetTokenExpiry")]
+        public DateTime? ResetTokenExpiry { get; set; }
+
         [BsonElement("CreatedDate")]
         public DateTime CreatedDate { get; set; } = DateTime.UtcNow;
 

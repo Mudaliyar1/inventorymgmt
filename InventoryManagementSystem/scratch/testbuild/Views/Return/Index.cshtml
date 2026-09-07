@@ -1,0 +1,522 @@
+@model IEnumerable<InventoryManagementSystem.Models.ReturnRecord>
+@{
+    ViewData["Title"] = "Customer Returns & Refund Management";
+    var recentInvoices = ViewBag.RecentInvoices as IEnumerable<InventoryManagementSystem.Models.Sale> ?? new List<InventoryManagementSystem.Models.Sale>();
+    var products = ViewBag.Products as IEnumerable<InventoryManagementSystem.Models.Product> ?? new List<InventoryManagementSystem.Models.Product>();
+}
+
+<div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+        <h3 class="fw-bold mb-1"><i class="bi bi-arrow-return-left me-2 text-primary"></i>Returns &amp; Refund Management</h3>
+        <p class="text-muted small mb-0">Process customer returns for IMEI-tracked mobile devices or accessories</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <button type="button" class="btn btn-outline-primary rounded-pill px-3" id="returnFilterToggleBtn" onclick="toggleFilterPanel('returnFilterPanel', 'returnFilterToggleBtn')">
+            <i class="bi bi-funnel-fill me-1"></i><span>Filters: ON</span>
+        </button>
+        <button type="button" class="btn btn-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#processReturnModal">
+            <i class="bi bi-plus-circle me-1"></i> Process Customer Return
+        </button>
+    </div>
+</div>
+
+<!-- Detailed Filters Bar (Toggleable Panel) -->
+<div class="card border shadow-sm rounded-4 mb-4" id="returnFilterPanel">
+    <div class="card-body p-3">
+        <form method="get" class="row g-3">
+            <!-- Row 1: Search & Categories -->
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-search me-1"></i>Search Keywords</label>
+                <div class="search-pill">
+                    <i class="bi bi-search search-pill-icon"></i>
+                    <input type="text" name="search" value="@ViewBag.Search" class="search-pill-input" placeholder="Return #, Invoice #, IMEI, Customer...">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-question-circle me-1"></i>Return Reason</label>
+                <select name="reason" class="form-select">
+                    <option value="">All Return Reasons</option>
+                    <option value="Defective / Malfunctioning" selected="@(ViewBag.Reason == "Defective / Malfunctioning")">Defective / Malfunctioning</option>
+                    <option value="Customer Regret / Changed Mind" selected="@(ViewBag.Reason == "Customer Regret / Changed Mind")">Customer Regret / Changed Mind</option>
+                    <option value="Wrong Item Delivered / Selected" selected="@(ViewBag.Reason == "Wrong Item Delivered / Selected")">Wrong Item Delivered / Selected</option>
+                    <option value="Transit / Unboxing Damage" selected="@(ViewBag.Reason == "Transit / Unboxing Damage")">Transit / Unboxing Damage</option>
+                    <option value="Other / Warranty Claim" selected="@(ViewBag.Reason == "Other / Warranty Claim")">Other / Warranty Claim</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-shield-exclamation me-1"></i>Item Condition</label>
+                <select name="condition" class="form-select">
+                    <option value="">All Item Conditions</option>
+                    <option value="Resellable (In Stock)" selected="@(ViewBag.Condition == "Resellable (In Stock)")">Resellable (In Stock)</option>
+                    <option value="Damaged (RTV / Scrap)" selected="@(ViewBag.Condition == "Damaged (RTV / Scrap)")">Damaged (RTV / Scrap)</option>
+                    <option value="Under Inspection" selected="@(ViewBag.Condition == "Under Inspection")">Under Inspection</option>
+                </select>
+            </div>
+
+            <!-- Row 2: Target & Amounts -->
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-signpost-split me-1"></i>Destination Target</label>
+                <select name="target" class="form-select">
+                    <option value="">All Inventory Targets</option>
+                    <option value="Stock In" selected="@(ViewBag.Target == "Stock In")">Restocked to Inventory</option>
+                    <option value="Damaged Scrap" selected="@(ViewBag.Target == "Damaged Scrap")">Write-Off / Scrap</option>
+                    <option value="Repair Service" selected="@(ViewBag.Target == "Repair Service")">Sent for Repair</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-currency-rupee me-1"></i>Min Refund Amount (₹)</label>
+                <input type="number" step="100" name="minRefund" value="@ViewBag.MinRefund" class="form-control" placeholder="Min ₹">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold text-muted mb-1"><i class="bi bi-currency-rupee me-1"></i>Max Refund Amount (₹)</label>
+                <input type="number" step="100" name="maxRefund" value="@ViewBag.MaxRefund" class="form-control" placeholder="Max ₹">
+            </div>
+            <div class="col-md-2 d-flex align-items-end gap-1">
+                <button type="submit" class="btn btn-dark w-100 rounded-pill"><i class="bi bi-funnel me-1"></i>Filter</button>
+                <a href="@Url.Action("Index")" class="btn btn-outline-secondary rounded-circle" title="Reset Filters"><i class="bi bi-arrow-counterclockwise"></i></a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Table Card -->
+<div class="card border-0 shadow-sm rounded-4">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light text-muted small uppercase">
+                    <tr>
+                        <th class="ps-4">Return #</th>
+                        <th>Invoice &amp; Date</th>
+                        <th>Customer</th>
+                        <th>Product / IMEI</th>
+                        <th>Reason</th>
+                        <th>Refund Amount</th>
+                        <th>Processed By</th>
+                        <th class="text-end pe-4" style="width:140px">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model == null || !Model.Any())
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted">No return transactions recorded yet.</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var r in Model)
+                        {
+                            <tr>
+                                <td class="ps-4 font-monospace fw-bold text-primary">@r.ReturnNumber</td>
+                                <td>
+                                    <div class="fw-semibold">@(string.IsNullOrEmpty(r.InvoiceNumber) ? "-" : r.InvoiceNumber)</div>
+                                    <div class="small text-muted">@r.ReturnDate.ToString("yyyy-MM-dd HH:mm IST")</div>
+                                </td>
+                                <td>
+                                    <div class="fw-semibold">@r.CustomerName</div>
+                                    <div class="small text-muted">@r.CustomerPhone</div>
+                                </td>
+                                <td>
+                                    <div class="fw-medium">@r.ProductName</div>
+                                    @if (!string.IsNullOrEmpty(r.IMEI))
+                                    {
+                                        <div class="font-monospace small text-primary">IMEI: @r.IMEI</div>
+                                    }
+                                    else
+                                    {
+                                        <div class="small text-muted">Qty: @r.Quantity</div>
+                                    }
+                                </td>
+                                <td><span class="badge bg-secondary-subtle text-secondary">@r.Reason</span></td>
+                                <td class="fw-bold text-danger">₹@r.RefundAmount.ToString("N2")</td>
+                                <td class="small text-muted">@r.ExecutedBy</td>
+                                <td class="text-end pe-4">
+                                    <div class="d-flex gap-1 justify-content-end">
+                                        <button type="button" class="btn btn-sm btn-outline-info rounded-pill py-0 px-2" onclick="openReturnDetails('@r.Id')" title="View Details">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary rounded-pill py-0 px-2" onclick="openEditReturnModal('@r.Id')" title="Edit Return">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <form asp-action="DeleteReturn" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete Return #@r.ReturnNumber?');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@r.Id" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill py-0 px-2" title="Delete Return">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Process Return -->
+<div class="modal fade" id="processReturnModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="fw-bold modal-title"><i class="bi bi-arrow-return-left me-2 text-primary"></i>Process Customer Return</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="ProcessReturn" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-body py-3">
+
+                    <!-- STEP 1: BILL SELECTION & AUTO-FILL -->
+                    <div class="card p-3 mb-3 border-0 bg-light rounded-3">
+                        <label class="form-label small fw-bold text-primary mb-2">
+                            <i class="bi bi-receipt me-1"></i> Step 1: Select Bill / Invoice Number (Auto-Fills Return Form)
+                        </label>
+                        <div class="row g-2">
+                            <div class="col-md-7">
+                                <select id="BillSelect" class="form-select font-monospace">
+                                    <option value="">-- Select Bill / Invoice Number --</option>
+                                    @foreach (var inv in recentInvoices)
+                                    {
+                                        <option value="@inv.InvoiceNumber">
+                                            @inv.InvoiceNumber — @inv.CustomerName (@inv.Date.ToString("yyyy-MM-dd")) — ₹@inv.GrandTotal.ToString("N2")
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="input-group">
+                                    <input type="text" id="ManualInvoiceInput" class="form-control font-monospace" placeholder="Or type Invoice # (e.g. INV-1001)">
+                                    <button type="button" id="FetchInvoiceBtn" class="btn btn-outline-primary">
+                                        <i class="bi bi-magic"></i> Auto-fill
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ITEM PICKER FROM SELECTED BILL -->
+                        <div id="BillItemPickerContainer" class="mt-3" style="display:none;">
+                            <label class="form-label small fw-semibold text-success">
+                                <i class="bi bi-box-seam me-1"></i> Select Purchased Item from Selected Bill
+                            </label>
+                            <select id="BillItemSelect" class="form-select border-success">
+                                <option value="">-- Select Item Purchased in this Bill --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- HIDDEN INVOICE NUMBER FIELD -->
+                    <input type="hidden" name="InvoiceNumber" id="ReturnInvoiceNumber">
+
+                    <!-- STEP 2: RETURN DETAILS -->
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Customer Name</label>
+                            <input type="text" name="CustomerName" id="ReturnCustomerName" class="form-control" placeholder="Customer Name">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Customer Phone</label>
+                            <input type="tel" name="CustomerPhone" id="ReturnCustomerPhone" class="form-control phone-input" placeholder="Customer Phone">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">IMEI Number (Mobile Device Return)</label>
+                            <input type="text" name="IMEI" id="ReturnIMEI" class="form-control font-monospace imei-input" placeholder="15-digit IMEI number">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Or Accessory Product</label>
+                            <select name="ProductId" id="ReturnProductId" class="form-select">
+                                <option value="">-- Select Accessory Product --</option>
+                                @foreach (var p in products)
+                                {
+                                    <option value="@p.Id">@p.Name (Stock: @p.CurrentStock)</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Return Quantity</label>
+                            <input type="number" name="Quantity" id="ReturnQuantity" value="1" min="1" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Refund Amount (₹) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" name="RefundAmount" id="ReturnRefundAmount" required class="form-control fw-bold text-danger" placeholder="0.00">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Return Reason <span class="text-danger">*</span></label>
+                            <select name="Reason" required class="form-select">
+                                <option value="Defective / Faulty Unit">Defective / Faulty Unit</option>
+                                <option value="Customer Mind Change">Customer Mind Change</option>
+                                <option value="Wrong Item Purchased">Wrong Item Purchased</option>
+                                <option value="Damaged in Box">Damaged in Box</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Device Restock Destination</label>
+                            <select name="DeviceStatusTarget" class="form-select">
+                                <option value="Returned">Returned to Inventory (Restock as InStock)</option>
+                                <option value="Damaged">Mark as Damaged / Defective (Do Not Sell)</option>
+                                <option value="UnderRepair">Send to Repair Workshop</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4"><i class="bi bi-check2-circle me-1"></i> Submit Return</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: View Return Details -->
+<div class="modal fade" id="viewReturnModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="fw-bold modal-title"><i class="bi bi-info-circle me-2 text-info"></i>Return Transaction Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-3" id="viewReturnModalBody">
+                <div class="text-center py-4"><div class="spinner-border text-primary"></div></div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Edit Return Record -->
+<div class="modal fade" id="editReturnModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="fw-bold modal-title"><i class="bi bi-pencil-square me-2 text-primary"></i>Edit Return Record</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="UpdateReturn" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Id" id="editReturnId" />
+                <div class="modal-body py-3">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Customer Name</label>
+                            <input type="text" name="CustomerName" id="editReturnCustomerName" class="form-control" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Customer Phone</label>
+                            <input type="tel" name="CustomerPhone" id="editReturnCustomerPhone" class="form-control phone-input" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Refund Amount (₹)</label>
+                            <input type="number" step="0.01" name="RefundAmount" id="editReturnRefundAmount" class="form-control fw-bold text-danger" required />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Return Reason</label>
+                            <select name="Reason" id="editReturnReason" class="form-select" required>
+                                <option value="Defective / Faulty Unit">Defective / Faulty Unit</option>
+                                <option value="Customer Mind Change">Customer Mind Change</option>
+                                <option value="Wrong Item Purchased">Wrong Item Purchased</option>
+                                <option value="Damaged in Box">Damaged in Box</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">Condition Notes / Remarks</label>
+                            <textarea name="Notes" id="editReturnNotes" class="form-control" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4"><i class="bi bi-check2-circle me-1"></i> Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const billSelect = document.getElementById('BillSelect');
+    const manualInput = document.getElementById('ManualInvoiceInput');
+    const fetchBtn = document.getElementById('FetchInvoiceBtn');
+    const billItemContainer = document.getElementById('BillItemPickerContainer');
+    const billItemSelect = document.getElementById('BillItemSelect');
+
+    const invNumInput = document.getElementById('ReturnInvoiceNumber');
+    const custNameInput = document.getElementById('ReturnCustomerName');
+    const custPhoneInput = document.getElementById('ReturnCustomerPhone');
+    const imeiInput = document.getElementById('ReturnIMEI');
+    const prodSelect = document.getElementById('ReturnProductId');
+    const qtyInput = document.getElementById('ReturnQuantity');
+    const refundInput = document.getElementById('ReturnRefundAmount');
+
+    let currentBillItems = [];
+
+    async function loadBill(invoiceNum) {
+        if (!invoiceNum) return;
+
+        try {
+            const res = await fetch(`/Return/GetInvoiceDetails?invoiceNumber=${encodeURIComponent(invoiceNum)}`);
+            const data = await res.json();
+
+            if (data.success) {
+                invNumInput.value = data.invoiceNumber;
+                custNameInput.value = data.customerName || '';
+                custPhoneInput.value = data.customerPhone || '';
+
+                currentBillItems = data.items || [];
+                if (currentBillItems.length > 0) {
+                    billItemSelect.innerHTML = '<option value="">-- Select Purchased Item --</option>' +
+                        currentBillItems.map((item, idx) => {
+                            let details = 'Qty: ' + item.quantity;
+                            if (item.imei1 || item.imei) {
+                                details = `IMEI 1: ${item.imei1 || item.imei}`;
+                                if (item.imei2) details += ` | IMEI 2: ${item.imei2}`;
+                            }
+                            const returnedTag = item.isReturned ? ' ⚠️ [ALREADY RETURNED]' : '';
+                            const disabled = item.isReturned ? 'disabled' : '';
+                            return `<option value="${idx}" ${disabled}>${item.productName} (${details}) — ₹${item.sellingPrice.toFixed(2)}${returnedTag}</option>`;
+                        }).join('');
+
+                    billItemContainer.style.display = 'block';
+                    let availableIdx = currentBillItems.findIndex(i => !i.isReturned);
+                    if (availableIdx !== -1) {
+                        billItemSelect.value = availableIdx.toString();
+                        billItemSelect.dispatchEvent(new Event('change'));
+                    }
+                } else {
+                    billItemContainer.style.display = 'none';
+                }
+
+                if (data.returnStatus && data.returnStatus !== 'None') {
+                    if (window.showToast) window.showToast(`Bill #${data.invoiceNumber} status: ${data.returnStatus} (Refunded: ₹${data.totalRefundedAmount.toFixed(2)})`, 'info');
+                } else {
+                    if (window.showToast) window.showToast(`Bill #${data.invoiceNumber} autofilled successfully`, 'success');
+                }
+            } else {
+                if (window.showToast) window.showToast(data.message || 'Bill not found', 'warning');
+            }
+        } catch (err) {
+            console.error('Error fetching invoice:', err);
+        }
+    }
+
+    if (billSelect) {
+        billSelect.addEventListener('change', function () {
+            if (this.value) loadBill(this.value);
+        });
+    }
+
+    if (fetchBtn && manualInput) {
+        fetchBtn.addEventListener('click', function () {
+            if (manualInput.value.trim()) loadBill(manualInput.value.trim());
+        });
+    }
+
+    if (billItemSelect) {
+        billItemSelect.addEventListener('change', function () {
+            const idx = this.value;
+            if (idx === "" || !currentBillItems[idx]) return;
+
+            const item = currentBillItems[idx];
+            const primaryImei = item.imei1 || item.imei || "";
+            if (primaryImei) {
+                imeiInput.value = primaryImei;
+                prodSelect.value = "";
+            } else {
+                imeiInput.value = "";
+                if (item.productId) prodSelect.value = item.productId;
+            }
+
+            qtyInput.value = item.quantity || 1;
+            refundInput.value = (item.total || (item.sellingPrice * (item.quantity || 1))).toFixed(2);
+        });
+    }
+});
+
+async function openReturnDetails(id) {
+    const modalBody = document.getElementById('viewReturnModalBody');
+    modalBody.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+    
+    const modalEl = document.getElementById('viewReturnModal');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    try {
+        const res = await fetch(`/Return/GetDetails?id=${id}`);
+        const data = await res.json();
+        if (data.success) {
+            modalBody.innerHTML = `
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <h6 class="fw-bold text-primary mb-2"><i class="bi bi-hash me-1"></i>Return Record</h6>
+                            <div><strong>Return #:</strong> <code class="fw-bold">${data.returnNumber}</code></div>
+                            <div><strong>Date:</strong> ${data.returnDate}</div>
+                            <div><strong>Invoice #:</strong> ${data.invoiceNumber || 'N/A'}</div>
+                            <div><strong>Processed By:</strong> ${data.executedBy}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded-3">
+                            <h6 class="fw-bold text-success mb-2"><i class="bi bi-person me-1"></i>Customer Details</h6>
+                            <div><strong>Customer Name:</strong> ${data.customerName || 'N/A'}</div>
+                            <div><strong>Contact Phone:</strong> ${data.customerPhone || 'N/A'}</div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="p-3 bg-light rounded-3">
+                            <h6 class="fw-bold text-dark mb-2"><i class="bi bi-box-seam me-1"></i>Returned Product & Refund</h6>
+                            <div><strong>Product Name:</strong> ${data.productName || 'N/A'}</div>
+                            <div><strong>Product Code:</strong> <code>${data.productCode || 'N/A'}</code></div>
+                            ${data.imei ? `<div><strong>IMEI Number:</strong> <code class="text-primary fw-bold">${data.imei}</code></div>` : ''}
+                            <div><strong>Quantity:</strong> ${data.quantity}</div>
+                            <div><strong>Refund Amount:</strong> <span class="fw-bold text-danger">₹${data.refundAmount.toFixed(2)}</span></div>
+                            <div><strong>Reason:</strong> <span class="badge bg-secondary">${data.reason}</span></div>
+                            <div><strong>Restock Target:</strong> <span class="badge bg-info text-dark">${data.deviceStatusTarget || 'Returned'}</span></div>
+                            ${data.notes ? `<div class="mt-2"><strong>Notes:</strong> ${data.notes}</div>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            modalBody.innerHTML = `<div class="alert alert-danger">${data.message || 'Failed to load details.'}</div>`;
+        }
+    } catch (err) {
+        modalBody.innerHTML = `<div class="alert alert-danger">Error fetching return details: ${err}</div>`;
+    }
+}
+
+async function openEditReturnModal(id) {
+    try {
+        const res = await fetch(`/Return/GetDetails?id=${id}`);
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('editReturnId').value = data.id;
+            document.getElementById('editReturnCustomerName').value = data.customerName || '';
+            document.getElementById('editReturnCustomerPhone').value = data.customerPhone || '';
+            document.getElementById('editReturnRefundAmount').value = data.refundAmount || 0;
+            document.getElementById('editReturnReason').value = data.reason || 'Defective / Faulty Unit';
+            document.getElementById('editReturnNotes').value = data.notes || '';
+
+            const modalEl = document.getElementById('editReturnModal');
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        } else {
+            alert(data.message || 'Failed to load return details.');
+        }
+    } catch (err) {
+        alert('Error loading return record for editing.');
+    }
+}
+</script>
+}

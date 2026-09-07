@@ -22,6 +22,9 @@ namespace InventoryManagementSystem.Models
         [BsonElement("CustomerPhone")]
         public string CustomerPhone { get; set; } = string.Empty;
 
+        [BsonElement("CustomerEmail")]
+        public string CustomerEmail { get; set; } = string.Empty;
+
         [BsonElement("DeviceBrand")]
         public string DeviceBrand { get; set; } = string.Empty;
 

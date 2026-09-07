@@ -1,0 +1,131 @@
+@model ProfileViewModel
+@{
+    ViewData["Title"] = "My Profile";
+}
+
+<div class="ph">
+    <div>
+        <h1 class="ph-title">Account Settings</h1>
+        <p class="ph-sub">Manage your profile, avatar photo, and security password.</p>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Profile Card -->
+    <div class="col-lg-4">
+        <div class="card-d card-p-lg text-center">
+            <div style="position:relative;display:inline-block;margin-bottom:16px">
+                <img src="@Model.CurrentProfilePictureUrl" alt="Avatar" class="avatar-xl">
+                <span style="position:absolute;bottom:0;right:0;width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;border:2px solid var(--card-bg)">
+                    @if (Model.Role == Role.Admin) { <i class="bi bi-shield-check"></i> }
+                    else { <i class="bi bi-person"></i> }
+                </span>
+            </div>
+            <h4 style="font-weight:700;color:var(--text-primary);margin-bottom:4px">@Model.FullName</h4>
+            <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px">
+                @@@Model.Username &bull; <span class="badge-d badge-blue">@Model.Role</span>
+            </p>
+            <div style="font-size:13px;color:var(--text-secondary)">@Model.Email</div>
+        </div>
+    </div>
+
+    <!-- Edit Tabs Card -->
+    <div class="col-lg-8">
+        <div class="card-d card-p-lg">
+            <ul class="nav nav-pills mb-4 border-bottom border-secondary border-opacity-25 pb-3" id="profileTab" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active me-2 btn-d btn-ghost" id="info-tab" data-bs-toggle="tab" data-bs-target="#info-pane" type="button" role="tab">
+                        <i class="bi bi-person me-1"></i> Profile Details
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link btn-d btn-ghost" id="security-tab" data-bs-toggle="tab" data-bs-target="#security-pane" type="button" role="tab">
+                        <i class="bi bi-shield-lock me-1"></i> Change Password
+                    </button>
+                </li>
+            </ul>
+
+            <form asp-action="Profile" method="post" enctype="multipart/form-data">
+                <div asp-validation-summary="ModelOnly" class="alert-d alert-danger mb-4"></div>
+
+                <div class="tab-content" id="profileTabContent">
+                    <!-- Pane 1: Profile Details -->
+                    <div class="tab-pane fade show active" id="info-pane" role="tabpanel">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="fg">
+                                    <label class="fg-label" asp-for="FullName">Full Name <span class="req">*</span></label>
+                                    <input asp-for="FullName" class="fg-control" required />
+                                    <span asp-validation-for="FullName" class="fg-error"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="fg">
+                                    <label class="fg-label" asp-for="Email">Email Address <span class="req">*</span></label>
+                                    <input asp-for="Email" type="email" class="fg-control" required />
+                                    <span asp-validation-for="Email" class="fg-error"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="fg">
+                                    <label class="fg-label" asp-for="PhoneNumber">Phone Number <span class="req">*</span></label>
+                                    <input asp-for="PhoneNumber" class="fg-control" required />
+                                    <span asp-validation-for="PhoneNumber" class="fg-error"></span>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="fg">
+                                    <label class="fg-label" asp-for="ProfileImage">Update Profile Picture</label>
+                                    <div class="upload-area" onclick="document.getElementById('ProfileImage').click()">
+                                        <div class="upload-area-text"><i class="bi bi-cloud-upload me-1"></i> Choose image file</div>
+                                        <div class="upload-area-hint">JPG, PNG or WEBP · Max 5 MB</div>
+                                    </div>
+                                    <input asp-for="ProfileImage" id="ProfileImage" type="file" accept=".jpg,.jpeg,.png,.webp" style="display:none">
+                                    <span asp-validation-for="ProfileImage" class="fg-error mt-2"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pane 2: Change Password -->
+                    <div class="tab-pane fade" id="security-pane" role="tabpanel">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <div class="fg">
+                                    <label class="fg-label" asp-for="CurrentPassword">Current Password</label>
+                                    <input asp-for="CurrentPassword" type="password" class="fg-control" />
+                                    <span asp-validation-for="CurrentPassword" class="fg-error"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="fg">
+                                    <label class="fg-label" asp-for="NewPassword">New Password</label>
+                                    <input asp-for="NewPassword" type="password" class="fg-control" />
+                                    <span asp-validation-for="NewPassword" class="fg-error"></span>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="fg">
+                                    <label class="fg-label" asp-for="ConfirmNewPassword">Confirm New Password</label>
+                                    <input asp-for="ConfirmNewPassword" type="password" class="fg-control" />
+                                    <span asp-validation-for="ConfirmNewPassword" class="fg-error"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="s-divider">
+                <div class="d-flex align-items-center justify-content-end gap-3">
+                    <button type="submit" class="btn-d btn-primary">
+                        <i class="bi bi-check2"></i> Save Profile
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

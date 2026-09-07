@@ -177,24 +177,21 @@ namespace InventoryManagementSystem.Controllers
                 return View(model);
             }
 
-            var token = await _authService.GeneratePasswordResetTokenAsync(model.Email);
-            if (token != null)
-            {
-                var resetLink = Url.Action("ResetPassword", "Account", new { email = model.Email, token = token }, Request.Scheme);
-                if (!string.IsNullOrEmpty(resetLink))
-                {
-                    await _emailService.SendForgotPasswordEmailAsync(model.Email, resetLink);
-                }
-            }
+            var (success, message) = await _authService.GeneratePasswordResetOtpAsync(model.Email);
+            TempData["ToastMessage"] = message;
+            TempData["ToastType"] = success ? "success" : "danger";
 
-            ViewBag.Message = "If that email address exists in our system, we have sent a reset password link to it.";
-            return View();
+            return RedirectToAction(nameof(ResetPassword), new { email = model.Email.Trim() });
         }
 
         [HttpGet]
-        public IActionResult ResetPassword(string email, string token)
+        public IActionResult ResetPassword(string? email, string? otp, string? token)
         {
-            var model = new ResetPasswordViewModel { Email = email, Token = token };
+            var model = new ResetPasswordViewModel
+            {
+                Email = email ?? string.Empty,
+                Otp = !string.IsNullOrWhiteSpace(otp) ? otp : (!string.IsNullOrWhiteSpace(token) ? token : string.Empty)
+            };
             return View(model);
         }
 
@@ -207,20 +204,37 @@ namespace InventoryManagementSystem.Controllers
                 return View(model);
             }
 
-            var success = await _authService.ResetPasswordAsync(model.Email, model.Token, model.Password);
+            var (success, message) = await _authService.ResetPasswordWithOtpAsync(model.Email, model.Otp, model.Password);
             if (!success)
             {
-                ModelState.AddModelError(string.Empty, "Failed to reset password. The link may have expired or is invalid.");
+                ModelState.AddModelError(string.Empty, message);
+                TempData["ToastMessage"] = message;
+                TempData["ToastType"] = "danger";
                 return View(model);
             }
 
-            await _auditLogService.LogActivityAsync("Password Reset", model.Email, model.Email, "User successfully reset their password.");
-            await _emailService.SendPasswordChangedEmailAsync(model.Email, model.Email);
-
-            TempData["ToastMessage"] = "Password reset successful. You can now log in.";
+            TempData["ToastMessage"] = "Password reset successfully! You can now log in with your new password.";
             TempData["ToastType"] = "success";
 
             return RedirectToAction(nameof(Login));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResendOtp(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                TempData["ToastMessage"] = "Please provide your email address to resend OTP.";
+                TempData["ToastType"] = "danger";
+                return RedirectToAction(nameof(ForgotPassword));
+            }
+
+            var (success, message) = await _authService.GeneratePasswordResetOtpAsync(email);
+            TempData["ToastMessage"] = message;
+            TempData["ToastType"] = success ? "success" : "info";
+
+            return RedirectToAction(nameof(ResetPassword), new { email = email.Trim() });
         }
 
         [Authorize]
