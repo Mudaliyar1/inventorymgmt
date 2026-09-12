@@ -26,22 +26,42 @@
             <!-- Customer Card -->
             <div class="card-d card-p-lg mb-4">
                 <div class="s-title"><i class="bi bi-person-badge me-2" style="color:var(--primary)"></i>Customer Information</div>
+                <input type="hidden" asp-for="CustomerId" id="CustomerId" />
                 <div class="row g-3">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="fg">
                             <label class="fg-label" asp-for="CustomerName">Customer Name <span class="req">*</span></label>
-                            <input asp-for="CustomerName" class="fg-control" placeholder="Walk-in Customer" required />
+                            <input asp-for="CustomerName" id="CustomerName" class="fg-control" placeholder="Walk-in Customer" list="customerSuggestions" oninput="onCustomerInput(this.value)" autocomplete="off" required />
+                            <datalist id="customerSuggestions">
+                                @if (ViewBag.Customers is IEnumerable<InventoryManagementSystem.Models.Customer> custList)
+                                {
+                                    foreach (var c in custList)
+                                    {
+                                        <option value="@c.Name">@c.Name (@c.Phone)</option>
+                                    }
+                                }
+                            </datalist>
                             <span asp-validation-for="CustomerName" class="fg-error"></span>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="fg">
                             <label class="fg-label" asp-for="CustomerPhone">Customer Contact</label>
                             <div class="fg-prefix-wrap">
                                 <span class="fg-prefix"><i class="bi bi-telephone me-1" style="font-size:11px"></i>+91</span>
-                                <input asp-for="CustomerPhone" class="fg-control" placeholder="98765 43210" />
+                                <input asp-for="CustomerPhone" id="CustomerPhone" class="fg-control" placeholder="98765 43210" />
                             </div>
                             <span asp-validation-for="CustomerPhone" class="fg-error"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label" asp-for="CustomerEmail">Customer Email <span class="text-muted small" style="font-size:11px;font-weight:400">(Optional - sends e-bill &amp; PDF)</span></label>
+                            <div class="fg-prefix-wrap">
+                                <span class="fg-prefix"><i class="bi bi-envelope me-1" style="font-size:11px"></i></span>
+                                <input asp-for="CustomerEmail" id="CustomerEmail" type="email" class="fg-control" placeholder="customer@example.com" />
+                            </div>
+                            <span asp-validation-for="CustomerEmail" class="fg-error"></span>
                         </div>
                     </div>
                 </div>
@@ -499,6 +519,32 @@
             const dueBox = document.getElementById('dueAmountBox');
             if (dueBox) {
                 dueBox.style.display = dueAmount > 0 ? 'flex' : 'none';
+            }
+        }
+
+        const registeredCustomers = [
+            @if (ViewBag.Customers is IEnumerable<InventoryManagementSystem.Models.Customer> cList)
+            {
+                foreach (var c in cList)
+                {
+                    @:{ id: '@c.Id', name: '@Html.Raw(c.Name.Replace("'", "\\'"))', phone: '@c.Phone', email: '@Html.Raw((c.Email ?? "").Replace("'", "\\'"))' },
+                }
+            }
+        ];
+
+        function onCustomerInput(val) {
+            const trimmed = (val || '').trim().toLowerCase();
+            const custIdInput = document.getElementById('CustomerId');
+            const phoneInput = document.getElementById('CustomerPhone');
+            const emailInput = document.getElementById('CustomerEmail');
+            
+            const matched = registeredCustomers.find(c => c.name.toLowerCase() === trimmed);
+            if (matched) {
+                if (custIdInput) custIdInput.value = matched.id;
+                if (phoneInput && !phoneInput.value) phoneInput.value = matched.phone;
+                if (emailInput && !emailInput.value) emailInput.value = matched.email;
+            } else {
+                if (custIdInput) custIdInput.value = '';
             }
         }
 

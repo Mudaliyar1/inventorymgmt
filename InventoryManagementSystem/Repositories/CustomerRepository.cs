@@ -21,9 +21,19 @@ namespace InventoryManagementSystem.Repositories
             return await _collection.Find(filter).FirstOrDefaultAsync();
         }
 
-        public async Task<IEnumerable<Customer>> GetPagedCustomersAsync(string? search, int page, int pageSize)
+        public async Task<Customer?> GetByPhoneAndNameAsync(string phone, string name)
         {
-            var filter = BuildFilter(search);
+            if (string.IsNullOrWhiteSpace(phone) || string.IsNullOrWhiteSpace(name)) return null;
+            var filter = Builders<Customer>.Filter.And(
+                Builders<Customer>.Filter.Eq(c => c.Phone, phone.Trim()),
+                Builders<Customer>.Filter.Regex(c => c.Name, new BsonRegularExpression($"^{System.Text.RegularExpressions.Regex.Escape(name.Trim())}$", "i"))
+            );
+            return await _collection.Find(filter).FirstOrDefaultAsync();
+        }
+
+        public async Task<IEnumerable<Customer>> GetPagedCustomersAsync(string? search, string? hasGstin, decimal? minPurchases, decimal? maxPurchases, int page, int pageSize)
+        {
+            var filter = BuildFilter(search, hasGstin, minPurchases, maxPurchases);
             return await _collection.Find(filter)
                 .SortByDescending(c => c.CreatedDate)
                 .Skip((page - 1) * pageSize)
@@ -31,9 +41,9 @@ namespace InventoryManagementSystem.Repositories
                 .ToListAsync();
         }
 
-        public async Task<long> GetFilteredCountAsync(string? search)
+        public async Task<long> GetFilteredCountAsync(string? search, string? hasGstin, decimal? minPurchases, decimal? maxPurchases)
         {
-            var filter = BuildFilter(search);
+            var filter = BuildFilter(search, hasGstin, minPurchases, maxPurchases);
             return await _collection.CountDocumentsAsync(filter);
         }
 
@@ -45,16 +55,52 @@ namespace InventoryManagementSystem.Repositories
             await _collection.UpdateOneAsync(Builders<Customer>.Filter.Eq(c => c.Id, customerId), update);
         }
 
-        private FilterDefinition<Customer> BuildFilter(string? search)
+        private FilterDefinition<Customer> BuildFilter(string? search, string? hasGstin = null, decimal? minPurchases = null, decimal? maxPurchases = null)
         {
-            if (string.IsNullOrWhiteSpace(search)) return Builders<Customer>.Filter.Empty;
-            var s = search.Trim();
-            return Builders<Customer>.Filter.Or(
-                Builders<Customer>.Filter.Regex(c => c.Name, new BsonRegularExpression(s, "i")),
-                Builders<Customer>.Filter.Regex(c => c.Phone, new BsonRegularExpression(s, "i")),
-                Builders<Customer>.Filter.Regex(c => c.Email, new BsonRegularExpression(s, "i")),
-                Builders<Customer>.Filter.Regex(c => c.Gstin, new BsonRegularExpression(s, "i"))
-            );
+            var builder = Builders<Customer>.Filter;
+            var filters = new List<FilterDefinition<Customer>>();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var s = search.Trim();
+                filters.Add(builder.Or(
+                    builder.Regex(c => c.Name, new BsonRegularExpression(s, "i")),
+                    builder.Regex(c => c.Phone, new BsonRegularExpression(s, "i")),
+                    builder.Regex(c => c.Email, new BsonRegularExpression(s, "i")),
+                    builder.Regex(c => c.Gstin, new BsonRegularExpression(s, "i")),
+                    builder.Regex(c => c.Address, new BsonRegularExpression(s, "i"))
+                ));
+            }
+
+            if (!string.IsNullOrWhiteSpace(hasGstin))
+            {
+                if (hasGstin.Equals("Yes", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    filters.Add(builder.And(
+                        builder.Ne(c => c.Gstin, null),
+                        builder.Ne(c => c.Gstin, string.Empty)
+                    ));
+                }
+                else if (hasGstin.Equals("No", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    filters.Add(builder.Or(
+                        builder.Eq(c => c.Gstin, null),
+                        builder.Eq(c => c.Gstin, string.Empty)
+                    ));
+                }
+            }
+
+            if (minPurchases.HasValue && minPurchases.Value > 0)
+            {
+                filters.Add(builder.Gte(c => c.TotalPurchases, minPurchases.Value));
+            }
+
+            if (maxPurchases.HasValue && maxPurchases.Value > 0)
+            {
+                filters.Add(builder.Lte(c => c.TotalPurchases, maxPurchases.Value));
+            }
+
+            return filters.Any() ? builder.And(filters) : builder.Empty;
         }
     }
 }

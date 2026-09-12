@@ -94,10 +94,13 @@ namespace InventoryManagementSystem.Data
                 await Devices.Indexes.CreateManyAsync(new[] { deviceImei1Index, deviceImei2Index, deviceSerialIndex, deviceProdIndex });
 
                 // Customers Indexes
+                try { await Customers.Indexes.DropOneAsync("Phone_1"); } catch { }
                 var customerPhoneIndex = new CreateIndexModel<Customer>(
                     Builders<Customer>.IndexKeys.Ascending(c => c.Phone),
-                    new CreateIndexOptions { Unique = true, Sparse = true });
-                await Customers.Indexes.CreateOneAsync(customerPhoneIndex);
+                    new CreateIndexOptions { Sparse = true });
+                var customerPhoneNameIndex = new CreateIndexModel<Customer>(
+                    Builders<Customer>.IndexKeys.Ascending(c => c.Phone).Ascending(c => c.Name));
+                await Customers.Indexes.CreateManyAsync(new[] { customerPhoneIndex, customerPhoneNameIndex });
 
                 // Suppliers Indexes
                 var supplierNameIndex = new CreateIndexModel<Supplier>(

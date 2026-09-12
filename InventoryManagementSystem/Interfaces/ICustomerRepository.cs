@@ -7,8 +7,9 @@ namespace InventoryManagementSystem.Interfaces
     public interface ICustomerRepository : IBaseRepository<Customer>
     {
         Task<Customer?> GetByPhoneAsync(string phone);
-        Task<IEnumerable<Customer>> GetPagedCustomersAsync(string? search, int page, int pageSize);
-        Task<long> GetFilteredCountAsync(string? search);
+        Task<Customer?> GetByPhoneAndNameAsync(string phone, string name);
+        Task<IEnumerable<Customer>> GetPagedCustomersAsync(string? search, string? hasGstin, decimal? minPurchases, decimal? maxPurchases, int page, int pageSize);
+        Task<long> GetFilteredCountAsync(string? search, string? hasGstin, decimal? minPurchases, decimal? maxPurchases);
         Task UpdatePurchasesAsync(string customerId, decimal purchaseAmount);
     }
 }

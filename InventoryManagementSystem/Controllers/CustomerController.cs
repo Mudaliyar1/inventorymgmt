@@ -27,8 +27,8 @@ namespace InventoryManagementSystem.Controllers
         public async Task<IActionResult> Index(string? search, string? hasGstin, decimal? minPurchases, decimal? maxPurchases, int page = 1)
         {
             int pageSize = 20;
-            var customers = await _customerService.GetPagedCustomersAsync(search, page, pageSize);
-            var totalCount = await _customerService.GetFilteredCountAsync(search);
+            var customers = await _customerService.GetPagedCustomersAsync(search, hasGstin, minPurchases, maxPurchases, page, pageSize);
+            var totalCount = await _customerService.GetFilteredCountAsync(search, hasGstin, minPurchases, maxPurchases);
 
             ViewBag.Search = search;
             ViewBag.HasGstin = hasGstin;
@@ -47,13 +47,29 @@ namespace InventoryManagementSystem.Controllers
             var customer = await _customerService.GetCustomerByIdAsync(id);
             if (customer == null) return NotFound();
 
-            var (sales, _) = await _salesService.GetFilteredSalesAsync(null, customer.Name, null, null, null, 1, 100);
+            var allSales = await _salesService.GetAllSalesAsync();
+            var customerSales = allSales.Where(s =>
+                (!string.IsNullOrEmpty(s.CustomerId) && s.CustomerId == customer.Id) ||
+                (!string.IsNullOrEmpty(s.CustomerPhone) && s.CustomerPhone.Trim() == customer.Phone.Trim() && 
+                 string.Equals(s.CustomerName?.Trim(), customer.Name?.Trim(), System.StringComparison.OrdinalIgnoreCase))
+            ).OrderByDescending(s => s.Date).ToList();
+
             var devices = await _deviceService.GetPagedDevicesAsync(customer.Phone, null, null, null, 1, 100);
 
-            ViewBag.Sales = sales;
+            ViewBag.Sales = customerSales;
             ViewBag.Devices = devices;
 
             return View(customer);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RecalculateStats()
+        {
+            var success = await _customerService.RecalculateAllCustomerStatsAsync();
+            TempData["ToastMessage"] = success ? "Customer directory purchase metrics synced successfully from invoices." : "Failed to recalculate metrics.";
+            TempData["ToastType"] = success ? "success" : "danger";
+            return RedirectToAction(nameof(Index));
         }
 
         [HttpPost]

@@ -144,14 +144,9 @@
 
                     <div class="col-md-6">
                         <div class="fg">
-                            <div class="d-flex align-items-center justify-content-between mb-1">
-                                <label class="fg-label mb-0" asp-for="Code">SKU / Product Code <span class="req">*</span></label>
-                                <button type="button" class="btn-d btn-ghost btn-sm-d py-0" style="height:22px;font-size:11px;padding:0 8px;" onclick="generateSKU()">
-                                    <i class="bi bi-magic me-1"></i> Auto Generate
-                                </button>
-                            </div>
+                            <label class="fg-label" asp-for="Code">SKU / Product Code <span class="req">*</span></label>
                             <div class="fg-action-wrap">
-                                <input asp-for="Code" id="Code" class="fg-control" required>
+                                <input asp-for="Code" id="Code" class="fg-control" placeholder="e.g. SAM-S24U-256" required>
                                 <button type="button" class="fg-action-btn" onclick="generateSKU()" title="Generate SKU Code">
                                     <i class="bi bi-magic"></i> Generate
                                 </button>
@@ -162,14 +157,9 @@
 
                     <div class="col-md-6">
                         <div class="fg">
-                            <div class="d-flex align-items-center justify-content-between mb-1">
-                                <label class="fg-label mb-0" asp-for="Barcode">Barcode / UPC <span class="req">*</span></label>
-                                <button type="button" class="btn-d btn-ghost btn-sm-d py-0" style="height:22px;font-size:11px;padding:0 8px;" onclick="generateBarcode()">
-                                    <i class="bi bi-upc-scan me-1"></i> Auto Generate
-                                </button>
-                            </div>
+                            <label class="fg-label" asp-for="Barcode">Barcode / UPC <span class="req">*</span></label>
                             <div class="fg-action-wrap">
-                                <input asp-for="Barcode" id="Barcode" class="fg-control" required>
+                                <input asp-for="Barcode" id="Barcode" class="fg-control" placeholder="e.g. 890123456789" required>
                                 <button type="button" class="fg-action-btn" onclick="generateBarcode()" title="Generate Barcode">
                                     <i class="bi bi-upc-scan"></i> Generate
                                 </button>

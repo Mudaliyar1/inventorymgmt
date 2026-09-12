@@ -58,27 +58,65 @@ namespace InventoryManagementSystem.Services
                 {
                     throw new InvalidOperationException("Invalid Customer Contact Number format. Phone number must be 10 numeric digits.");
                 }
+            }
 
-                var existingCust = await _customerRepository.GetByPhoneAsync(sale.CustomerPhone.Trim());
-                if (existingCust != null)
+            Customer? matchedCustomer = null;
+
+            // A) If CustomerId was explicitly passed from POS selection:
+            if (!string.IsNullOrWhiteSpace(sale.CustomerId))
+            {
+                matchedCustomer = await _customerRepository.GetByIdAsync(sale.CustomerId);
+            }
+
+            // B) If not found by ID, look up by Phone AND Name:
+            if (matchedCustomer == null && !string.IsNullOrWhiteSpace(sale.CustomerPhone) && !string.IsNullOrWhiteSpace(sale.CustomerName))
+            {
+                matchedCustomer = await _customerRepository.GetByPhoneAndNameAsync(sale.CustomerPhone.Trim(), sale.CustomerName.Trim());
+            }
+
+            // C) If still not found by Phone+Name, check if there's a customer with the same phone AND exact same or empty name:
+            if (matchedCustomer == null && !string.IsNullOrWhiteSpace(sale.CustomerPhone))
+            {
+                var byPhone = await _customerRepository.GetByPhoneAsync(sale.CustomerPhone.Trim());
+                if (byPhone != null && (string.IsNullOrWhiteSpace(sale.CustomerName) || string.Equals(byPhone.Name.Trim(), sale.CustomerName.Trim(), StringComparison.OrdinalIgnoreCase)))
                 {
-                    sale.CustomerId = existingCust.Id;
-                    if (string.IsNullOrWhiteSpace(sale.CustomerName)) sale.CustomerName = existingCust.Name;
-                    await _customerRepository.UpdatePurchasesAsync(existingCust.Id, sale.GrandTotal);
+                    matchedCustomer = byPhone;
                 }
-                else if (!string.IsNullOrWhiteSpace(sale.CustomerName))
+            }
+
+            if (matchedCustomer != null)
+            {
+                sale.CustomerId = matchedCustomer.Id;
+                if (string.IsNullOrWhiteSpace(sale.CustomerName)) sale.CustomerName = matchedCustomer.Name;
+                if (string.IsNullOrWhiteSpace(sale.CustomerPhone)) sale.CustomerPhone = matchedCustomer.Phone;
+
+                // Sync email if entered in POS
+                if (!string.IsNullOrWhiteSpace(sale.CustomerEmail) && string.IsNullOrWhiteSpace(matchedCustomer.Email))
                 {
-                    var newCust = new Customer
-                    {
-                        Name = sale.CustomerName.Trim(),
-                        Phone = sale.CustomerPhone.Trim(),
-                        TotalPurchases = sale.GrandTotal,
-                        CreatedDate = DateTime.UtcNow,
-                        UpdatedDate = DateTime.UtcNow
-                    };
-                    await _customerRepository.CreateAsync(newCust);
-                    sale.CustomerId = newCust.Id;
+                    matchedCustomer.Email = sale.CustomerEmail.Trim();
+                    await _customerRepository.UpdateAsync(matchedCustomer.Id, matchedCustomer);
                 }
+                else if (string.IsNullOrWhiteSpace(sale.CustomerEmail) && !string.IsNullOrWhiteSpace(matchedCustomer.Email))
+                {
+                    sale.CustomerEmail = matchedCustomer.Email;
+                }
+
+                await _customerRepository.UpdatePurchasesAsync(matchedCustomer.Id, sale.GrandTotal);
+            }
+            else if (!string.IsNullOrWhiteSpace(sale.CustomerName) && sale.CustomerName.Trim() != "Walk-in Customer")
+            {
+                // Create a distinct customer profile for this customer
+                var newCust = new Customer
+                {
+                    Name = sale.CustomerName.Trim(),
+                    Phone = sale.CustomerPhone?.Trim() ?? string.Empty,
+                    Email = sale.CustomerEmail?.Trim() ?? string.Empty,
+                    TotalPurchases = sale.GrandTotal,
+                    CreatedDate = DateTime.UtcNow,
+                    UpdatedDate = DateTime.UtcNow
+                };
+                await _customerRepository.CreateAsync(newCust);
+                sale.CustomerId = newCust.Id;
             }
 
             // 2. Validate items & IMEIs
@@ -302,7 +340,8 @@ namespace InventoryManagementSystem.Services
             decimal discount,
             decimal amountPaid,
             List<SaleItem> newItems,
-            string updatedBy)
+            string updatedBy,
+            string? customerEmail = null)
         {
             var existingSale = await _saleRepository.GetByIdAsync(saleId);
             if (existingSale == null) return null;
@@ -344,6 +383,10 @@ namespace InventoryManagementSystem.Services
 
             existingSale.CustomerName = customerName ?? string.Empty;
             existingSale.CustomerPhone = customerPhone ?? string.Empty;
+            if (customerEmail != null)
+            {
+                existingSale.CustomerEmail = customerEmail.Trim();
+            }
             existingSale.PaymentStatus = paymentStatus ?? "Paid";
             existingSale.Discount = discount;
             existingSale.SubTotal = subTotal;
@@ -470,6 +513,10 @@ namespace InventoryManagementSystem.Services
                                 if (!string.IsNullOrWhiteSpace(sale.CustomerPhone))
                                 {
                                     c.Item().Text($"Phone: {sale.CustomerPhone}").FontSize(9);
+                                }
+                                if (!string.IsNullOrWhiteSpace(sale.CustomerEmail))
+                                {
+                                    c.Item().Text($"Email: {sale.CustomerEmail}").FontSize(9);
                                 }
                             });
 

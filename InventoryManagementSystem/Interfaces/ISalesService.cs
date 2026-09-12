@@ -11,6 +11,7 @@ namespace InventoryManagementSystem.Interfaces
         Task<string> GenerateInvoiceNumberAsync();
         Task<Sale?> GetSaleByIdAsync(string id);
         Task<Sale?> GetSaleByInvoiceNumberAsync(string invoiceNumber);
+        Task<IEnumerable<Sale>> GetAllSalesAsync();
         Task<IEnumerable<Sale>> GetPagedSalesAsync(int page, int pageSize);
         Task<long> GetTotalSalesCountAsync();
 
@@ -37,7 +38,8 @@ namespace InventoryManagementSystem.Interfaces
             decimal discount,
             decimal amountPaid,
             List<SaleItem> newItems,
-            string updatedBy);
+            string updatedBy,
+            string? customerEmail = null);
 
         Task<bool> DeleteSaleAsync(string id);
         Task<long> DeleteSalesAsync(IEnumerable<string> ids);

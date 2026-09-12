@@ -19,6 +19,8 @@ namespace InventoryManagementSystem.Controllers
         private readonly ICustomerService _customerService;
         private readonly IDeviceService _deviceService;
         private readonly IAuditLogService _auditLogService;
+        private readonly IEmailService _emailService;
+        private readonly Microsoft.Extensions.Logging.ILogger<SalesController> _logger;
         private readonly Data.MongoDbContext _context;
 
         public SalesController(
@@ -27,6 +29,8 @@ namespace InventoryManagementSystem.Controllers
             ICustomerService customerService,
             IDeviceService deviceService,
             IAuditLogService auditLogService,
+            IEmailService emailService,
+            Microsoft.Extensions.Logging.ILogger<SalesController> logger,
             Data.MongoDbContext context)
         {
             _salesService = salesService;
@@ -34,6 +38,8 @@ namespace InventoryManagementSystem.Controllers
             _customerService = customerService;
             _deviceService = deviceService;
             _auditLogService = auditLogService;
+            _emailService = emailService;
+            _logger = logger;
             _context = context;
         }
 
@@ -177,7 +183,32 @@ namespace InventoryManagementSystem.Controllers
                 var createdSale = await _salesService.CreateSaleAsync(sale);
                 await _auditLogService.LogActivityAsync("Sale Created", User.Identity?.Name ?? "System", $"Invoice: {createdSale?.InvoiceNumber}", $"Customer: {sale.CustomerName}. Total: ₹{sale.GrandTotal:N2}, Status: {sale.PaymentStatus}");
 
-                TempData["ToastMessage"] = $"Mobile Shop Invoice {createdSale?.InvoiceNumber} generated successfully!";
+                string toastMessage = $"Mobile Shop Invoice #{createdSale?.InvoiceNumber} generated successfully!";
+                if (createdSale != null && !string.IsNullOrWhiteSpace(createdSale.CustomerEmail))
+                {
+                    try
+                    {
+                        var pdfBytes = _salesService.GenerateInvoicePdf(createdSale);
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                await _emailService.SendInvoiceEmailAsync(createdSale.CustomerEmail.Trim(), createdSale, pdfBytes);
+                            }
+                            catch (Exception emailEx)
+                            {
+                                _logger.LogError(emailEx, "Background invoice email dispatch failed for {Email}", createdSale.CustomerEmail);
+                            }
+                        });
+                        toastMessage += $" Digital invoice & PDF bill dispatched to {createdSale.CustomerEmail}.";
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to prepare PDF/invoice email for {Email}", createdSale.CustomerEmail);
+                    }
+                }
+
+                TempData["ToastMessage"] = toastMessage;
                 TempData["ToastType"] = "success";
                 return RedirectToAction(nameof(Index));
             }
@@ -228,7 +259,8 @@ namespace InventoryManagementSystem.Controllers
             decimal amountPaid,
             List<string> productIds,
             List<int> quantities,
-            List<decimal> prices)
+            List<decimal> prices,
+            string? customerEmail = null)
         {
             if (string.IsNullOrWhiteSpace(id)) return NotFound();
 
@@ -269,7 +301,7 @@ namespace InventoryManagementSystem.Controllers
             {
                 var currentUser = User.Identity?.Name ?? "System";
                 var updatedSale = await _salesService.UpdateSaleAsync(
-                    id, customerName, customerPhone, paymentStatus, discount, amountPaid, newItems, currentUser);
+                    id, customerName, customerPhone, paymentStatus, discount, amountPaid, newItems, currentUser, customerEmail);
 
                 if (updatedSale != null)
                 {
@@ -290,6 +322,53 @@ namespace InventoryManagementSystem.Controllers
             var allProds = await _productService.GetAllProductsAsync();
             ViewBag.AllProducts = allProds.Where(p => p.Status == "Active").ToList();
             return View(existingSale);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SendInvoiceEmail(string id, string? email)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return BadRequest();
+
+            var sale = await _salesService.GetSaleByIdAsync(id);
+            if (sale == null) return NotFound();
+
+            var targetEmail = !string.IsNullOrWhiteSpace(email) ? email.Trim() : sale.CustomerEmail?.Trim();
+            if (string.IsNullOrWhiteSpace(targetEmail))
+            {
+                TempData["ToastMessage"] = "Please provide a valid customer email address.";
+                TempData["ToastType"] = "warning";
+                return RedirectToAction(nameof(Invoice), new { id });
+            }
+
+            try
+            {
+                if (!string.Equals(sale.CustomerEmail, targetEmail, StringComparison.OrdinalIgnoreCase))
+                {
+                    sale.CustomerEmail = targetEmail;
+                    var saleColl = _context.GetCollection<Sale>("Sales");
+                    await saleColl.UpdateOneAsync(
+                        MongoDB.Driver.Builders<Sale>.Filter.Eq(s => s.Id, sale.Id),
+                        MongoDB.Driver.Builders<Sale>.Update.Set(s => s.CustomerEmail, targetEmail)
+                    );
+                }
+
+                var pdfBytes = _salesService.GenerateInvoicePdf(sale);
+                await _emailService.SendInvoiceEmailAsync(targetEmail, sale, pdfBytes);
+
+                await _auditLogService.LogActivityAsync("Invoice Emailed", User.Identity?.Name ?? "System", $"Invoice: {sale.InvoiceNumber}", $"Sent invoice PDF and receipt to {targetEmail}");
+
+                TempData["ToastMessage"] = $"Invoice #{sale.InvoiceNumber} and PDF bill successfully sent to {targetEmail}!";
+                TempData["ToastType"] = "success";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send invoice email to {Email}", targetEmail);
+                TempData["ToastMessage"] = $"Failed to send invoice email: {ex.Message}";
+                TempData["ToastType"] = "danger";
+            }
+
+            return RedirectToAction(nameof(Invoice), new { id });
         }
 
         [HttpGet]

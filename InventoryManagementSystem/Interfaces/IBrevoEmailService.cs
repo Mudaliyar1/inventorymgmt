@@ -9,6 +9,8 @@ namespace InventoryManagementSystem.Interfaces
             string recipientEmail,
             string subject,
             string htmlContent,
-            List<string>? ccRecipients = null);
+            List<string>? ccRecipients = null,
+            string? attachmentFileName = null,
+            byte[]? attachmentBytes = null);
     }
 }

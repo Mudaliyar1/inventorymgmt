@@ -32,7 +32,9 @@ namespace InventoryManagementSystem.Services
             string recipientEmail,
             string subject,
             string htmlContent,
-            List<string>? ccRecipients = null)
+            List<string>? ccRecipients = null,
+            string? attachmentFileName = null,
+            byte[]? attachmentBytes = null)
         {
             var apiKey = Environment.GetEnvironmentVariable("BREVO_API_KEY");
             if (string.IsNullOrWhiteSpace(apiKey))
@@ -66,13 +68,38 @@ namespace InventoryManagementSystem.Services
                 }
             }
 
-            var payload = new
+            object payload;
+            if (attachmentBytes != null && attachmentBytes.Length > 0)
             {
-                sender = new { name = senderName, email = senderEmail },
-                to = toList,
-                subject = subject,
-                htmlContent = htmlContent
-            };
+                var base64Data = Convert.ToBase64String(attachmentBytes);
+                var attachments = new List<object>
+                {
+                    new
+                    {
+                        content = base64Data,
+                        name = string.IsNullOrWhiteSpace(attachmentFileName) ? "Invoice.pdf" : attachmentFileName
+                    }
+                };
+
+                payload = new
+                {
+                    sender = new { name = senderName, email = senderEmail },
+                    to = toList,
+                    subject = subject,
+                    htmlContent = htmlContent,
+                    attachment = attachments
+                };
+            }
+            else
+            {
+                payload = new
+                {
+                    sender = new { name = senderName, email = senderEmail },
+                    to = toList,
+                    subject = subject,
+                    htmlContent = htmlContent
+                };
+            }
 
             var jsonPayload = JsonSerializer.Serialize(payload);
 

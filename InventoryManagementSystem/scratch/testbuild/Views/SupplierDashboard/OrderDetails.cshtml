@@ -112,35 +112,101 @@
         <div class="card-d card-p-lg">
             <div class="s-title"><i class="bi bi-gear me-2" style="color:var(--primary)"></i>Update Order Status</div>
 
-            <form asp-action="UpdateOrderStatus" method="post">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="orderId" value="@Model.Id" />
-
-                <div class="fg mb-3">
-                    <label class="fg-label">Select Action / Status</label>
-                    <select name="newStatus" class="fg-control">
-                        <option value="Accepted" selected="@(Model.Status == "Accepted")">Accept Purchase Order</option>
-                        <option value="Processing" selected="@(Model.Status == "Processing")">Mark as Processing / Packing</option>
-                        <option value="Shipped" selected="@(Model.Status == "Shipped")">Mark as Shipped / Dispatched</option>
-                        <option value="Delivered" selected="@(Model.Status == "Delivered")">Mark as Delivered</option>
-                        <option value="Rejected" selected="@(Model.Status == "Rejected")">Reject Purchase Order</option>
-                    </select>
+            @if (Model.Status == "Delivered" || Model.Status == "Completed")
+            {
+                <div class="p-3 mb-3 rounded" style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.25);">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                        <span style="font-weight:700;color:var(--success)">Order Delivered &amp; Fulfilled</span>
+                    </div>
+                    <div style="font-size:12px;color:var(--text-muted);line-height:1.4">
+                        Stock has been credited to SIMS store inventory catalog. Fulfillment is complete and status is finalized.
+                    </div>
+                    @if (Model.DeliveredAt.HasValue)
+                    {
+                        <div class="mt-2 text-muted" style="font-size:11px">
+                            Delivered on: <strong>@Model.DeliveredAt.Value.ToString("dd-MMM-yyyy HH:mm") IST</strong>
+                        </div>
+                    }
                 </div>
 
-                <div class="fg mb-3">
-                    <label class="fg-label">Expected Delivery Date</label>
-                    <input type="date" name="expectedDeliveryDate" value="@(Model.ExpectedDeliveryDate?.ToString("yyyy-MM-dd"))" class="fg-control" />
-                </div>
+                <form asp-action="UpdateOrderStatus" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="orderId" value="@Model.Id" />
+                    <input type="hidden" name="newStatus" value="@Model.Status" />
 
-                <div class="fg mb-3">
-                    <label class="fg-label">Supplier Notes / Dispatch Tracking Info</label>
-                    <textarea name="supplierNotes" rows="3" class="fg-control" placeholder="Add tracking ID, dispatch details or notes for SIMS admin...">@Model.SupplierNotes</textarea>
-                </div>
+                    <div class="fg mb-3">
+                        <label class="fg-label">Supplier Notes / Dispatch Tracking Info</label>
+                        <textarea name="supplierNotes" rows="3" class="fg-control" placeholder="Add tracking ID, dispatch details or notes for SIMS admin...">@Model.SupplierNotes</textarea>
+                    </div>
 
-                <button type="submit" class="btn-d btn-primary w-100">
-                    <i class="bi bi-check2-circle me-1"></i> Update Order Status
-                </button>
-            </form>
+                    <button type="submit" class="btn-d btn-outline w-100">
+                        <i class="bi bi-pencil me-1"></i> Update Notes Only
+                    </button>
+                </form>
+            }
+            else if (Model.Status == "Rejected" || Model.Status == "Cancelled")
+            {
+                <div class="p-3 mb-3 rounded" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <i class="bi bi-x-circle-fill text-danger fs-5"></i>
+                        <span style="font-weight:700;color:var(--danger)">Order @Model.Status</span>
+                    </div>
+                    <div style="font-size:12px;color:var(--text-muted);line-height:1.4">
+                        This purchase order is @Model.Status.ToLower() and closed. No status updates are permitted.
+                    </div>
+                </div>
+            }
+            else
+            {
+                <form asp-action="UpdateOrderStatus" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="orderId" value="@Model.Id" />
+
+                    <div class="fg mb-3">
+                        <label class="fg-label">Select Action / Status</label>
+                        <select name="newStatus" class="fg-control">
+                            @if (Model.Status == "Pending")
+                            {
+                                <option value="Accepted">Accept Purchase Order</option>
+                                <option value="Rejected">Reject Purchase Order</option>
+                            }
+                            else if (Model.Status == "Accepted")
+                            {
+                                <option value="Accepted" selected>Accepted (Current)</option>
+                                <option value="Processing">Mark as Processing / Packing</option>
+                                <option value="Shipped">Mark as Shipped / Dispatched</option>
+                                <option value="Delivered">Mark as Delivered</option>
+                            }
+                            else if (Model.Status == "Processing")
+                            {
+                                <option value="Processing" selected>Processing / Packing (Current)</option>
+                                <option value="Shipped">Mark as Shipped / Dispatched</option>
+                                <option value="Delivered">Mark as Delivered</option>
+                            }
+                            else if (Model.Status == "Shipped")
+                            {
+                                <option value="Shipped" selected>Shipped / Dispatched (Current)</option>
+                                <option value="Delivered">Mark as Delivered</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="fg mb-3">
+                        <label class="fg-label">Expected Delivery Date</label>
+                        <input type="date" name="expectedDeliveryDate" value="@(Model.ExpectedDeliveryDate?.ToString("yyyy-MM-dd"))" class="fg-control" />
+                    </div>
+
+                    <div class="fg mb-3">
+                        <label class="fg-label">Supplier Notes / Dispatch Tracking Info</label>
+                        <textarea name="supplierNotes" rows="3" class="fg-control" placeholder="Add tracking ID, dispatch details or notes for SIMS admin...">@Model.SupplierNotes</textarea>
+                    </div>
+
+                    <button type="submit" class="btn-d btn-primary w-100">
+                        <i class="bi bi-check2-circle me-1"></i> Update Order Status
+                    </button>
+                </form>
+            }
 
             <hr class="s-divider" />
 

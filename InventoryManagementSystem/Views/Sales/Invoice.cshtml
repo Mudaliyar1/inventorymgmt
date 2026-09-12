@@ -18,6 +18,9 @@
         <a href="@Url.Action("Edit","Sales",new{id=Model.Id})" class="btn-d btn-outline btn-sm-d">
             <i class="bi bi-pencil-square"></i> Edit Bill
         </a>
+        <button type="button" class="btn-d btn-outline btn-sm-d text-info" data-bs-toggle="modal" data-bs-target="#emailInvoiceModal">
+            <i class="bi bi-envelope"></i> Email Invoice
+        </button>
         <button onclick="window.print()" class="btn-d btn-outline btn-sm-d">
             <i class="bi bi-printer"></i> Print Invoice
         </button>
@@ -52,6 +55,10 @@
             @if (!string.IsNullOrEmpty(Model.CustomerPhone))
             {
                 <div style="font-size:12px;color:var(--text-secondary)">Phone: @Model.CustomerPhone</div>
+            }
+            @if (!string.IsNullOrEmpty(Model.CustomerEmail))
+            {
+                <div style="font-size:12px;color:var(--text-secondary)">Email: @Model.CustomerEmail</div>
             }
         </div>
         <div class="col-6 text-end">
@@ -172,6 +179,45 @@
     <div class="text-center border-top pt-4 mt-5" style="border-color:var(--border)!important">
         <p style="font-size:13px;color:var(--text-muted);margin-bottom:4px">Thank you for shopping with us!</p>
         <p style="font-size:11px;color:var(--text-disabled);margin:0">This is a computer-generated tax invoice and requires no physical signature. GSTIN: @gstin</p>
+    </div>
+</div>
+
+<!-- Email Invoice Modal -->
+<div class="modal fade" id="emailInvoiceModal" tabindex="-1" aria-labelledby="emailInvoiceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--card-bg, #1E293B);color:var(--text-primary);border:1px solid var(--border);">
+            <div class="modal-header" style="border-bottom:1px solid var(--border);">
+                <h5 class="modal-title" id="emailInvoiceModalLabel">
+                    <i class="bi bi-envelope-paper me-2 text-primary"></i>Email Invoice #@Model.InvoiceNumber
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-action="SendInvoiceEmail" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@Model.Id" />
+                <div class="modal-body">
+                    <p style="font-size:13px;color:var(--text-muted)">
+                        Send full bill breakdown and attached official tax invoice PDF directly to the customer's email address.
+                    </p>
+                    <div class="fg mb-3">
+                        <label class="fg-label">Customer Recipient Email <span class="text-danger">*</span></label>
+                        <div class="fg-prefix-wrap">
+                            <span class="fg-prefix"><i class="bi bi-envelope"></i></span>
+                            <input type="email" name="email" value="@Model.CustomerEmail" required class="fg-control" placeholder="customer@example.com" />
+                        </div>
+                    </div>
+                    <div class="p-2 rounded" style="background:rgba(37,99,235,0.08);border:1px solid rgba(37,99,235,0.2);font-size:12px;">
+                        <i class="bi bi-paperclip me-1 text-primary"></i> Includes attached: <strong>Invoice_@(Model.InvoiceNumber).pdf</strong>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid var(--border);">
+                    <button type="button" class="btn-d btn-outline btn-sm-d" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn-d btn-primary btn-sm-d">
+                        <i class="bi bi-send me-1"></i> Send Invoice &amp; PDF
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 

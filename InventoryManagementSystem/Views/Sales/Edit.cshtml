@@ -36,11 +36,19 @@
                     <input type="text" name="customerName" value="@Model.CustomerName" class="fg-control" required placeholder="e.g. Ramesh Kumar" />
                 </div>
 
-                <div class="fg mb-0">
+                <div class="fg mb-3">
                     <label class="fg-label">Customer Phone</label>
                     <div class="fg-prefix-wrap">
                         <span class="fg-prefix"><i class="bi bi-telephone me-1" style="font-size:11px"></i>+91</span>
                         <input type="text" name="customerPhone" value="@Model.CustomerPhone" class="fg-control" placeholder="98765 43210" />
+                    </div>
+                </div>
+
+                <div class="fg mb-0">
+                    <label class="fg-label">Customer Email</label>
+                    <div class="fg-prefix-wrap">
+                        <span class="fg-prefix"><i class="bi bi-envelope me-1" style="font-size:11px"></i></span>
+                        <input type="email" name="customerEmail" value="@Model.CustomerEmail" class="fg-control" placeholder="customer@example.com" />
                     </div>
                 </div>
             </div>

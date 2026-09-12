@@ -12,6 +12,12 @@
         <button type="button" class="btn btn-outline-primary rounded-pill px-3" id="customerFilterToggleBtn" onclick="toggleFilterPanel('customerFilterPanel', 'customerFilterToggleBtn')">
             <i class="bi bi-funnel-fill me-1"></i><span>Filters: ON</span>
         </button>
+        <form asp-action="RecalculateStats" method="post" class="d-inline">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-secondary rounded-pill px-3" title="Sync and Recalculate Purchase Totals from Invoices">
+                <i class="bi bi-arrow-repeat me-1"></i> Sync Purchases
+            </button>
+        </form>
         <button type="button" class="btn btn-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#addCustomerModal">
             <i class="bi bi-person-plus me-1"></i> Add New Customer
         </button>

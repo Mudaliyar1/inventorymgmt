@@ -6,8 +6,13 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
 using InventoryManagementSystem.Configuration;
+using InventoryManagementSystem.Data;
+using InventoryManagementSystem.Extensions;
 using InventoryManagementSystem.Interfaces;
+using InventoryManagementSystem.Models;
+using MongoDB.Driver;
 using System;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace InventoryManagementSystem.Services
@@ -16,17 +21,20 @@ namespace InventoryManagementSystem.Services
     {
         private readonly BrevoSettings _settings;
         private readonly IBrevoEmailService _brevoApiEmailService;
+        private readonly MongoDbContext _context;
         private readonly IWebHostEnvironment _env;
         private readonly ILogger<EmailService> _logger;
 
         public EmailService(
             IOptions<BrevoSettings> settings,
             IBrevoEmailService brevoApiEmailService,
+            MongoDbContext context,
             IWebHostEnvironment env,
             ILogger<EmailService> logger)
         {
             _settings = settings.Value;
             _brevoApiEmailService = brevoApiEmailService;
+            _context = context;
             _env = env;
             _logger = logger;
         }
@@ -83,6 +91,240 @@ namespace InventoryManagementSystem.Services
                 }
                 catch { }
             }
+        }
+
+        public async Task SendEmailWithAttachmentAsync(string toEmail, string subject, string htmlMessage, byte[] attachmentBytes, string attachmentFileName, string contentType = "application/pdf")
+        {
+            // 1. First check if Brevo REST API can be used (if ApiKey is set)
+            var apiKey = Environment.GetEnvironmentVariable("BREVO_API_KEY");
+            if (!string.IsNullOrWhiteSpace(apiKey))
+            {
+                var (success, _, _, error) = await _brevoApiEmailService.SendTransactionalEmailAsync(toEmail, subject, htmlMessage, null, attachmentFileName, attachmentBytes);
+                if (success) return;
+                _logger.LogWarning("Brevo REST API email with attachment attempt failed: {Error}. Trying SMTP fallback.", error);
+            }
+
+            // 2. Validate SMTP credentials before attempting connection
+            if (string.IsNullOrWhiteSpace(_settings.Host) || string.IsNullOrWhiteSpace(_settings.Username) || string.IsNullOrWhiteSpace(_settings.Password))
+            {
+                _logger.LogWarning("[EMAIL] SMTP credentials (Host/Username/Password) are not configured in appsettings.json. Skipping SMTP attempt.");
+                if (_env.IsDevelopment())
+                {
+                    Console.WriteLine($"[EMAIL NOTICE] Cannot send email with attachment to {toEmail} via SMTP: Username or Password is empty in appsettings.json -> BrevoSettings.");
+                }
+                return;
+            }
+
+            // 3. Send via MailKit SMTP with attachment
+            var emailMessage = new MimeMessage();
+            emailMessage.From.Add(new MailboxAddress(_settings.FromName, _settings.FromEmail));
+            emailMessage.To.Add(new MailboxAddress("", toEmail));
+            emailMessage.Subject = subject;
+
+            var bodyBuilder = new BodyBuilder { HtmlBody = htmlMessage };
+            if (attachmentBytes != null && attachmentBytes.Length > 0)
+            {
+                bodyBuilder.Attachments.Add(attachmentFileName ?? "Invoice.pdf", attachmentBytes, ContentType.Parse(contentType ?? "application/pdf"));
+            }
+            emailMessage.Body = bodyBuilder.ToMessageBody();
+
+            using var client = new SmtpClient();
+            try
+            {
+                await client.ConnectAsync(_settings.Host, _settings.Port, SecureSocketOptions.StartTls);
+                await client.AuthenticateAsync(_settings.Username, _settings.Password);
+                await client.SendAsync(emailMessage);
+                _logger.LogInformation("[EMAIL] Email with attachment successfully sent via SMTP to {Email}", toEmail);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Email sending with attachment failed: {Message}", ex.Message);
+                Console.WriteLine($"Email sending with attachment failed: {ex.Message}");
+            }
+            finally
+            {
+                try
+                {
+                    await client.DisconnectAsync(true);
+                }
+                catch { }
+            }
+        }
+
+        public async Task SendInvoiceEmailAsync(string toEmail, Sale sale, byte[] pdfBytes)
+        {
+            var settings = await _context.Settings.Find(FilterDefinition<Settings>.Empty).FirstOrDefaultAsync() ?? new Settings();
+            var companyName = !string.IsNullOrWhiteSpace(settings.CompanyName) ? settings.CompanyName : "SIMS SMART INVENTORY SYSTEM";
+            var companyAddress = !string.IsNullOrWhiteSpace(settings.Address) ? settings.Address : "Central Electronics Hub, India";
+            var companyPhone = !string.IsNullOrWhiteSpace(settings.CompanyPhone) ? settings.CompanyPhone : "+91 98765 43210";
+            var companyEmail = !string.IsNullOrWhiteSpace(settings.CompanyEmail) ? settings.CompanyEmail : "support@sims.com";
+            var companyGstin = !string.IsNullOrWhiteSpace(sale.CompanyGstin) ? sale.CompanyGstin : (!string.IsNullOrWhiteSpace(settings.GstinNumber) ? settings.GstinNumber : "27AAAAA0000A1Z5");
+
+            var statusBadgeColor = sale.PaymentStatus switch
+            {
+                "Paid" => "#10b981",
+                "Partial" => "#f59e0b",
+                "Draft" => "#6b7280",
+                _ => "#ef4444"
+            };
+
+            var formattedDate = sale.Date.ToIstString("dd-MMM-yyyy HH:mm IST");
+
+            var itemsHtml = new StringBuilder();
+            foreach (var item in sale.Items)
+            {
+                var imeiHtml = string.Empty;
+                if (!string.IsNullOrWhiteSpace(item.IMEI1))
+                {
+                    imeiHtml = $"<div style='font-size:11px;color:#94a3b8;font-family:monospace;'>IMEI: {item.IMEI1}</div>";
+                }
+                else if (!string.IsNullOrWhiteSpace(item.SerialNumber))
+                {
+                    imeiHtml = $"<div style='font-size:11px;color:#94a3b8;font-family:monospace;'>SN: {item.SerialNumber}</div>";
+                }
+
+                itemsHtml.Append($@"
+                <tr style='border-bottom:1px solid #334155;'>
+                    <td style='padding:12px 8px;'>
+                        <div style='font-weight:600;color:#f8fafc;'>{item.ProductName}</div>
+                        <div style='font-size:12px;color:#94a3b8;'>{item.Brand} {item.ModelName} {(string.IsNullOrEmpty(item.Variant) ? "" : "· " + item.Variant)} {(string.IsNullOrEmpty(item.Color) ? "" : "· " + item.Color)}</div>
+                        {imeiHtml}
+                    </td>
+                    <td style='padding:12px 8px;text-align:center;color:#cbd5e1;'>{item.Quantity}</td>
+                    <td style='padding:12px 8px;text-align:right;color:#cbd5e1;'>₹{item.SellingPrice:N2}</td>
+                    <td style='padding:12px 8px;text-align:right;font-weight:700;color:#10b981;'>₹{item.Total:N2}</td>
+                </tr>");
+            }
+
+            var discountsHtml = string.Empty;
+            if (sale.Discount > 0 || sale.ExchangeDiscount > 0)
+            {
+                discountsHtml = $@"
+                <tr>
+                    <td colspan='3' style='padding:6px 8px;text-align:right;color:#94a3b8;'>Discounts Applied:</td>
+                    <td style='padding:6px 8px;text-align:right;color:#f59e0b;font-weight:600;'>- ₹{(sale.Discount + sale.ExchangeDiscount):N2}</td>
+                </tr>";
+            }
+
+            var emailHtml = $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8' />
+    <title>Tax Invoice #{sale.InvoiceNumber}</title>
+    <style>
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0f172a; color: #f8fafc; margin: 0; padding: 20px; }}
+        .wrapper {{ max-width: 650px; margin: 0 auto; background-color: #1e293b; border-radius: 12px; overflow: hidden; border: 1px solid #334155; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }}
+        .header {{ background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); padding: 30px; text-align: left; }}
+        .content {{ padding: 30px; }}
+        .badge {{ display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; }}
+        .summary-table {{ width: 100%; border-collapse: collapse; margin-top: 15px; }}
+        .footer {{ background-color: #0f172a; padding: 20px 30px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #334155; }}
+    </style>
+</head>
+<body>
+    <div class='wrapper'>
+        <div class='header'>
+            <table style='width:100%;'>
+                <tr>
+                    <td>
+                        <h2 style='margin:0;color:#ffffff;font-size:22px;font-weight:800;letter-spacing:0.5px;'>{companyName.ToUpper()}</h2>
+                        <div style='color:#cbd5e1;font-size:12px;margin-top:4px;'>{companyAddress}</div>
+                        <div style='color:#93c5fd;font-size:12px;'>Ph: {companyPhone} · GSTIN: {companyGstin}</div>
+                    </td>
+                    <td style='text-align:right;vertical-align:top;'>
+                        <div style='background:rgba(255,255,255,0.15);padding:6px 12px;border-radius:6px;display:inline-block;'>
+                            <div style='font-size:11px;color:#bfdbfe;text-transform:uppercase;'>Invoice Number</div>
+                            <div style='font-size:16px;font-weight:800;color:#ffffff;font-family:monospace;'>{sale.InvoiceNumber}</div>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <div class='content'>
+            <div style='border-bottom:1px solid #334155;padding-bottom:15px;margin-bottom:20px;'>
+                <table style='width:100%;'>
+                    <tr>
+                        <td style='vertical-align:top;'>
+                            <div style='font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:700;'>Billed To</div>
+                            <div style='font-size:16px;font-weight:700;color:#f8fafc;margin-top:2px;'>{(string.IsNullOrWhiteSpace(sale.CustomerName) ? "Walk-in Customer" : sale.CustomerName)}</div>
+                            {(string.IsNullOrWhiteSpace(sale.CustomerPhone) ? "" : $"<div style='font-size:13px;color:#cbd5e1;'>Phone: {sale.CustomerPhone}</div>")}
+                            <div style='font-size:13px;color:#cbd5e1;'>Email: {toEmail}</div>
+                        </td>
+                        <td style='vertical-align:top;text-align:right;'>
+                            <div style='font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:700;'>Invoice Details</div>
+                            <div style='font-size:13px;color:#cbd5e1;margin-top:2px;'>Date: <strong>{formattedDate}</strong></div>
+                            <div style='font-size:13px;color:#cbd5e1;'>Payment: <strong>{sale.PaymentMethod}</strong></div>
+                            <div style='margin-top:4px;'><span class='badge' style='background:{statusBadgeColor}22;color:{statusBadgeColor};border:1px solid {statusBadgeColor};'>{sale.PaymentStatus}</span></div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Items Table -->
+            <table class='summary-table' style='width:100%;'>
+                <thead>
+                    <tr style='background:#0f172a;color:#94a3b8;font-size:12px;text-transform:uppercase;'>
+                        <th style='padding:10px 8px;text-align:left;border-radius:6px 0 0 6px;'>Item Description</th>
+                        <th style='padding:10px 8px;text-align:center;'>Qty</th>
+                        <th style='padding:10px 8px;text-align:right;'>Unit Price</th>
+                        <th style='padding:10px 8px;text-align:right;border-radius:0 6px 6px 0;'>Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {itemsHtml}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan='3' style='padding:12px 8px 4px;text-align:right;color:#94a3b8;'>Subtotal:</td>
+                        <td style='padding:12px 8px 4px;text-align:right;color:#f8fafc;font-weight:600;'>₹{sale.SubTotal:N2}</td>
+                    </tr>
+                    {discountsHtml}
+                    <tr>
+                        <td colspan='3' style='padding:4px 8px;text-align:right;color:#94a3b8;'>GST ({sale.GstPercentage}%):</td>
+                        <td style='padding:4px 8px;text-align:right;color:#f8fafc;font-weight:600;'>₹{sale.GstAmount:N2}</td>
+                    </tr>
+                    <tr style='border-top:1px solid #475569;'>
+                        <td colspan='3' style='padding:10px 8px;text-align:right;color:#ffffff;font-size:15px;font-weight:800;'>Grand Total:</td>
+                        <td style='padding:10px 8px;text-align:right;color:#10b981;font-size:18px;font-weight:800;'>₹{sale.GrandTotal:N2}</td>
+                    </tr>
+                    <tr>
+                        <td colspan='3' style='padding:2px 8px;text-align:right;color:#94a3b8;font-size:12px;'>Amount Paid:</td>
+                        <td style='padding:2px 8px;text-align:right;color:#cbd5e1;font-size:12px;'>₹{sale.AmountPaid:N2}</td>
+                    </tr>
+                    {(sale.DueAmount > 0 ? $"<tr><td colspan='3' style='padding:2px 8px;text-align:right;color:#ef4444;font-size:12px;font-weight:700;'>Balance Due:</td><td style='padding:2px 8px;text-align:right;color:#ef4444;font-size:12px;font-weight:700;'>₹{sale.DueAmount:N2}</td></tr>" : "")}
+                </tfoot>
+            </table>
+
+            <!-- Attachment Notice Card -->
+            <div style='background:rgba(37,99,235,0.1);border:1px solid rgba(37,99,235,0.3);border-radius:8px;padding:14px;margin-top:25px;'>
+                <table style='width:100%;'>
+                    <tr>
+                        <td style='width:36px;vertical-align:top;font-size:24px;'>📎</td>
+                        <td>
+                            <div style='font-weight:700;color:#93c5fd;font-size:13px;'>Official Tax Invoice PDF Attached</div>
+                            <div style='font-size:12px;color:#cbd5e1;margin-top:2px;'>
+                                A complete PDF copy (<strong>Invoice_{sale.InvoiceNumber}.pdf</strong>) has been generated and attached to this email. Please download or save it for warranty claims and official records.
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class='footer'>
+            <div style='margin-bottom:6px;'>Thank you for choosing <strong>{companyName}</strong>! We appreciate your business.</div>
+            <div>For assistance or inquiries, reach out at <a href='mailto:{companyEmail}' style='color:#3b82f6;text-decoration:none;'>{companyEmail}</a> or call {companyPhone}.</div>
+            <div style='margin-top:10px;font-size:11px;color:#475569;'>&copy; {DateTime.UtcNow.Year} {companyName}. Generated electronically by SIMS.</div>
+        </div>
+    </div>
+</body>
+</html>";
+
+            var attachmentFileName = $"Invoice_{sale.InvoiceNumber}.pdf";
+            var subject = $"Tax Invoice #{sale.InvoiceNumber} - {companyName}";
+            await SendEmailWithAttachmentAsync(toEmail, subject, emailHtml, pdfBytes, attachmentFileName);
         }
 
         private string GetStandardHtmlTemplate(string title, string content)

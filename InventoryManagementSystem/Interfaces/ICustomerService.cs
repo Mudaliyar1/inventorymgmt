@@ -9,9 +9,11 @@ namespace InventoryManagementSystem.Interfaces
         Task<IEnumerable<Customer>> GetAllCustomersAsync();
         Task<Customer?> GetCustomerByIdAsync(string id);
         Task<Customer?> GetCustomerByPhoneAsync(string phone);
-        Task<IEnumerable<Customer>> GetPagedCustomersAsync(string? search, int page, int pageSize);
-        Task<long> GetFilteredCountAsync(string? search);
+        Task<Customer?> GetCustomerByPhoneAndNameAsync(string phone, string name);
+        Task<IEnumerable<Customer>> GetPagedCustomersAsync(string? search, string? hasGstin, decimal? minPurchases, decimal? maxPurchases, int page, int pageSize);
+        Task<long> GetFilteredCountAsync(string? search, string? hasGstin, decimal? minPurchases, decimal? maxPurchases);
         Task<(bool Success, string Message, Customer? Customer)> SaveCustomerAsync(Customer customer, string executedBy);
         Task<(bool Success, string Message)> DeleteCustomerAsync(string id, string executedBy);
+        Task<bool> RecalculateAllCustomerStatsAsync();
     }
 }

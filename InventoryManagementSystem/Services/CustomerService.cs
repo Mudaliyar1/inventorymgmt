@@ -10,11 +10,13 @@ namespace InventoryManagementSystem.Services
     public class CustomerService : ICustomerService
     {
         private readonly ICustomerRepository _customerRepository;
+        private readonly ISaleRepository _saleRepository;
         private readonly IAuditLogService _auditLogService;
 
-        public CustomerService(ICustomerRepository customerRepository, IAuditLogService auditLogService)
+        public CustomerService(ICustomerRepository customerRepository, ISaleRepository saleRepository, IAuditLogService auditLogService)
         {
             _customerRepository = customerRepository;
+            _saleRepository = saleRepository;
             _auditLogService = auditLogService;
         }
 
@@ -33,14 +35,19 @@ namespace InventoryManagementSystem.Services
             return await _customerRepository.GetByPhoneAsync(phone);
         }
 
-        public async Task<IEnumerable<Customer>> GetPagedCustomersAsync(string? search, int page, int pageSize)
+        public async Task<Customer?> GetCustomerByPhoneAndNameAsync(string phone, string name)
         {
-            return await _customerRepository.GetPagedCustomersAsync(search, page, pageSize);
+            return await _customerRepository.GetByPhoneAndNameAsync(phone, name);
         }
 
-        public async Task<long> GetFilteredCountAsync(string? search)
+        public async Task<IEnumerable<Customer>> GetPagedCustomersAsync(string? search, string? hasGstin, decimal? minPurchases, decimal? maxPurchases, int page, int pageSize)
         {
-            return await _customerRepository.GetFilteredCountAsync(search);
+            return await _customerRepository.GetPagedCustomersAsync(search, hasGstin, minPurchases, maxPurchases, page, pageSize);
+        }
+
+        public async Task<long> GetFilteredCountAsync(string? search, string? hasGstin, decimal? minPurchases, decimal? maxPurchases)
+        {
+            return await _customerRepository.GetFilteredCountAsync(search, hasGstin, minPurchases, maxPurchases);
         }
 
         public async Task<(bool Success, string Message, Customer? Customer)> SaveCustomerAsync(Customer customer, string executedBy)
@@ -59,12 +66,12 @@ namespace InventoryManagementSystem.Services
                 return (false, "Invalid Email address format. Example: customer@domain.com", null);
             }
 
-            var existing = await _customerRepository.GetByPhoneAsync(customer.Phone);
+            var existing = await _customerRepository.GetByPhoneAndNameAsync(customer.Phone, customer.Name);
 
             if (string.IsNullOrEmpty(customer.Id))
             {
                 // Create
-                if (existing != null) return (false, $"Customer with phone '{customer.Phone}' already exists.", existing);
+                if (existing != null) return (false, $"Customer '{customer.Name}' with phone '{customer.Phone}' already exists.", existing);
                 customer.CreatedDate = DateTime.UtcNow;
                 customer.UpdatedDate = DateTime.UtcNow;
                 await _customerRepository.CreateAsync(customer);
@@ -82,7 +89,7 @@ namespace InventoryManagementSystem.Services
                 // Update
                 if (existing != null && existing.Id != customer.Id)
                 {
-                    return (false, $"Another customer with phone '{customer.Phone}' already exists.", null);
+                    return (false, $"Another customer profile for '{customer.Name}' with phone '{customer.Phone}' already exists.", null);
                 }
 
                 customer.UpdatedDate = DateTime.UtcNow;
@@ -95,6 +102,56 @@ namespace InventoryManagementSystem.Services
                     $"Updated customer profile '{customer.Name}' ({customer.Phone})");
 
                 return (true, "Customer profile updated.", customer);
+            }
+        }
+
+        public async Task<bool> RecalculateAllCustomerStatsAsync()
+        {
+            try
+            {
+                var allSales = await _saleRepository.GetAllAsync();
+                var allCustomers = (await _customerRepository.GetAllAsync()).ToList();
+
+                // Group sales by CustomerId
+                var salesByCustId = allSales
+                    .Where(s => !string.IsNullOrWhiteSpace(s.CustomerId))
+                    .GroupBy(s => s.CustomerId)
+                    .ToDictionary(g => g.Key, g => g.Sum(s => s.GrandTotal));
+
+                // Also group sales without CustomerId by Phone + Name
+                var orphanSales = allSales
+                    .Where(s => string.IsNullOrWhiteSpace(s.CustomerId) && !string.IsNullOrWhiteSpace(s.CustomerName))
+                    .GroupBy(s => (s.CustomerPhone?.Trim() ?? string.Empty, s.CustomerName.Trim().ToLowerInvariant()));
+
+                foreach (var cust in allCustomers)
+                {
+                    decimal total = 0m;
+                    if (salesByCustId.TryGetValue(cust.Id, out var custTotal))
+                    {
+                        total += custTotal;
+                    }
+
+                    // Also match any orphan sales matching this customer's phone and name
+                    var key = (cust.Phone?.Trim() ?? string.Empty, cust.Name.Trim().ToLowerInvariant());
+                    var matchedOrphan = orphanSales.FirstOrDefault(g => g.Key.Equals(key));
+                    if (matchedOrphan != null)
+                    {
+                        total += matchedOrphan.Sum(s => s.GrandTotal);
+                    }
+
+                    if (cust.TotalPurchases != total)
+                    {
+                        cust.TotalPurchases = total;
+                        cust.UpdatedDate = DateTime.UtcNow;
+                        await _customerRepository.UpdateAsync(cust.Id, cust);
+                    }
+                }
+
+                return true;
+            }
+            catch
+            {
+                return false;
             }
         }
 

@@ -23,6 +23,9 @@ namespace InventoryManagementSystem.Models
         [BsonElement("CustomerPhone")]
         public string CustomerPhone { get; set; } = string.Empty;
 
+        [BsonElement("CustomerEmail")]
+        public string CustomerEmail { get; set; } = string.Empty;
+
         [BsonElement("Date")]
         public DateTime Date { get; set; } = DateTime.UtcNow;
 
