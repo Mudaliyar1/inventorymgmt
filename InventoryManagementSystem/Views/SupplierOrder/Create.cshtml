@@ -2,18 +2,296 @@
 @{
     ViewData["Title"] = "Create Purchase Order";
     var suppliers = ViewBag.Suppliers as IEnumerable<InventoryManagementSystem.Models.Supplier> ?? new List<InventoryManagementSystem.Models.Supplier>();
-    var categories = ViewBag.Categories as IEnumerable<InventoryManagementSystem.Models.Category> ?? new List<InventoryManagementSystem.Models.Category>();
+    var supplierProductCounts = ViewBag.SupplierProductCounts as Dictionary<string, int> ?? new Dictionary<string, int>();
     var selectedSupplierId = ViewBag.SelectedSupplierId as string;
+    var selectedSupplier = ViewBag.SelectedSupplier as InventoryManagementSystem.Models.Supplier;
+    var availableBrands = ViewBag.AvailableBrands as List<InventoryManagementSystem.Controllers.BrandSummaryViewModel> ?? new List<InventoryManagementSystem.Controllers.BrandSummaryViewModel>();
+    var selectedBrand = ViewBag.SelectedBrand as string;
+    var categories = ViewBag.Categories as IEnumerable<InventoryManagementSystem.Models.Category> ?? new List<InventoryManagementSystem.Models.Category>();
     var selectedCategoryId = ViewBag.CategoryId as string;
+    var availableModels = ViewBag.AvailableModels as List<string> ?? new List<string>();
+    var selectedModelName = ViewBag.ModelName as string;
+    var availableProductNames = ViewBag.AvailableProductNames as List<string> ?? new List<string>();
+    var selectedProductName = ViewBag.ProductName as string;
+    var minPrice = ViewBag.MinPrice as decimal?;
+    var maxPrice = ViewBag.MaxPrice as decimal?;
+    var sortBy = ViewBag.SortBy as string ?? "newest";
     var search = ViewBag.Search as string;
-    var supplierDict = suppliers.ToDictionary(s => s.Id);
+
+    bool hasSupplier = !string.IsNullOrWhiteSpace(selectedSupplierId) && selectedSupplier != null;
+    bool hasBrand = hasSupplier && !string.IsNullOrWhiteSpace(selectedBrand);
+    int stepNumber = !hasSupplier ? 1 : (!hasBrand ? 2 : 3);
 }
 
+<style>
+    /* Hierarchical Stepper Styles */
+    .po-stepper {
+        display: flex;
+        align-items: center;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 12px 20px;
+        margin-bottom: 24px;
+        gap: 12px;
+        overflow-x: auto;
+    }
+    .po-step {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-decoration: none;
+        white-space: nowrap;
+        transition: color var(--ease);
+    }
+    .po-step.active {
+        color: var(--primary);
+        font-weight: 700;
+    }
+    .po-step.completed {
+        color: var(--success);
+    }
+    .po-step-circle {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 700;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+    }
+    .po-step.active .po-step-circle {
+        background: var(--primary-dim);
+        border-color: var(--primary);
+        color: var(--primary);
+        box-shadow: 0 0 12px var(--primary-dim);
+    }
+    .po-step.completed .po-step-circle {
+        background: var(--success-dim);
+        border-color: var(--success);
+        color: var(--success);
+    }
+    .po-step-divider {
+        flex: 1;
+        min-width: 20px;
+        height: 2px;
+        background: var(--border);
+        border-radius: 2px;
+    }
+    .po-step-divider.completed {
+        background: var(--success);
+    }
+
+    /* Breadcrumbs */
+    .po-breadcrumbs {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+    }
+    .po-breadcrumbs a {
+        color: var(--text-secondary);
+        text-decoration: none;
+        transition: color var(--ease);
+    }
+    .po-breadcrumbs a:hover {
+        color: var(--primary);
+    }
+    .po-breadcrumbs .current {
+        color: var(--primary);
+        font-weight: 700;
+    }
+
+    /* Master Dropdown Bar */
+    .master-filter-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 18px 20px;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Supplier & Brand Cards */
+    .brand-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        transition: all 0.25s var(--ease);
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        position: relative;
+        overflow: hidden;
+        height: 100%;
+        text-decoration: none;
+        color: inherit;
+    }
+    .brand-card:hover {
+        transform: translateY(-4px);
+        border-color: var(--primary);
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25), 0 0 16px var(--primary-dim);
+        color: inherit;
+    }
+    .brand-icon-wrap {
+        width: 60px;
+        height: 60px;
+        border-radius: 16px;
+        background: var(--primary-dim);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 26px;
+        font-weight: 800;
+        color: var(--primary);
+        margin-bottom: 16px;
+        border: 1px solid var(--border);
+        transition: transform 0.25s var(--ease);
+    }
+    .brand-card:hover .brand-icon-wrap {
+        transform: scale(1.08);
+        background: var(--primary);
+        color: #fff;
+    }
+
+    /* Product Card */
+    .po-prod-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 16px;
+        transition: all 0.2s var(--ease);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 100%;
+    }
+    .po-prod-card:hover {
+        border-color: var(--primary);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    }
+    .po-prod-img-wrap {
+        width: 100%;
+        height: 160px;
+        background: var(--bg);
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        margin-bottom: 14px;
+        border: 1px solid var(--border);
+        position: relative;
+    }
+    .po-prod-img-wrap img {
+        max-height: 140px;
+        max-width: 90%;
+        object-fit: contain;
+        transition: transform 0.25s var(--ease);
+    }
+    .po-prod-card:hover .po-prod-img-wrap img {
+        transform: scale(1.05);
+    }
+
+    /* Cart Sidebar */
+    .po-cart-sidebar {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        position: sticky;
+        top: 80px;
+    }
+    .cart-item-row {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: 10px 12px;
+        margin-bottom: 10px;
+        transition: border-color var(--ease);
+    }
+    .cart-item-row:hover {
+        border-color: var(--primary);
+    }
+    .cart-qty-btn {
+        width: 26px;
+        height: 26px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: var(--bg-card);
+        color: var(--text-primary);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 700;
+        transition: all 0.15s;
+    }
+    .cart-qty-btn:hover {
+        background: var(--primary);
+        color: #fff;
+        border-color: var(--primary);
+    }
+</style>
+
+<!-- Breadcrumbs Hierarchy -->
+<div class="po-breadcrumbs">
+    <a href="@Url.Action("Index")"><i class="bi bi-cart4 me-1"></i>Order Management</a>
+    <i class="bi bi-chevron-right" style="font-size:10px"></i>
+    @if (!hasSupplier)
+    {
+        <span class="current">Select Supplier</span>
+    }
+    else
+    {
+        <a href="@Url.Action("Create")">@selectedSupplier?.CompanyName</a>
+        <i class="bi bi-chevron-right" style="font-size:10px"></i>
+        @if (!hasBrand)
+        {
+            <span class="current">Select Brand</span>
+        }
+        else
+        {
+            <a href="@Url.Action("Create", new { selectedSupplierId = selectedSupplierId })">Brands</a>
+            <i class="bi bi-chevron-right" style="font-size:10px"></i>
+            <span class="current">@selectedBrand Products</span>
+        }
+    }
+</div>
+
 <!-- Page Header -->
-<div class="ph">
+<div class="ph mb-3">
     <div>
-        <h1 class="ph-title"><i class="bi bi-cart-plus me-2" style="color:var(--primary)"></i>Create Supplier Purchase Order</h1>
-        <p class="ph-sub">Browse supplier product cards, inspect detailed specs, enter quantities, and generate purchase orders</p>
+        <h1 class="ph-title">
+            <i class="bi bi-bag-plus me-2" style="color:var(--primary)"></i>Create Supplier Purchase Order
+        </h1>
+        <p class="ph-sub">
+            @if (!hasSupplier)
+            {
+                <span>Step 1: Choose a supplier vendor using the dropdown or vendor cards below</span>
+            }
+            else if (!hasBrand)
+            {
+                <span>Step 2: Select a mobile phone brand supplied by <strong style="color:var(--primary)">@selectedSupplier?.CompanyName</strong></span>
+            }
+            else
+            {
+                <span>Step 3: Browse and select <strong style="color:var(--primary)">@selectedBrand</strong> devices supplied by <strong>@selectedSupplier?.CompanyName</strong></span>
+            }
+        </p>
     </div>
     <div class="ph-actions">
         <a href="@Url.Action("Index")" class="btn-d btn-outline">
@@ -22,149 +300,544 @@
     </div>
 </div>
 
-<!-- Supplier Selection & Product Filter Card -->
-<div class="card-d card-p-lg mb-4" style="background:var(--bg-card);border:1px solid var(--border)">
-    <form method="get" class="row g-3 align-items-end">
-        <div class="col-lg-4 col-md-6">
-            <label class="fg-label"><i class="bi bi-truck me-1 text-primary"></i>1. Select Supplier Vendor <span class="req">*</span></label>
-            <select name="selectedSupplierId" class="fg-control" required onchange="this.form.submit()">
-                <option value="">-- Choose Supplier Vendor --</option>
+<!-- Step Navigation Bar -->
+<div class="po-stepper">
+    <a href="@Url.Action("Create")" class="po-step @(stepNumber == 1 ? "active" : "completed")">
+        <div class="po-step-circle">
+            @if (stepNumber > 1) { <i class="bi bi-check-lg"></i> } else { <span>1</span> }
+        </div>
+        <span>1. Supplier @(hasSupplier ? $"({selectedSupplier?.CompanyName})" : "")</span>
+    </a>
+    
+    <div class="po-step-divider @(stepNumber > 1 ? "completed" : "")"></div>
+
+    <a href="@(hasSupplier ? Url.Action("Create", new { selectedSupplierId = selectedSupplierId }) : "javascript:void(0)")" 
+       class="po-step @(stepNumber == 2 ? "active" : (stepNumber > 2 ? "completed" : ""))"
+       style="@(!hasSupplier ? "pointer-events:none;opacity:0.6" : "")">
+        <div class="po-step-circle">
+            @if (stepNumber > 2) { <i class="bi bi-check-lg"></i> } else { <span>2</span> }
+        </div>
+        <span>2. Brand @(hasBrand ? $"({selectedBrand})" : "")</span>
+    </a>
+
+    <div class="po-step-divider @(stepNumber > 2 ? "completed" : "")"></div>
+
+    <div class="po-step @(stepNumber == 3 ? "active" : "")">
+        <div class="po-step-circle">3</div>
+        <span>3. Products</span>
+    </div>
+
+    <div class="po-step-divider"></div>
+
+    <div class="po-step">
+        <div class="po-step-circle">4</div>
+        <span>4. Review Order</span>
+    </div>
+</div>
+
+<!-- ========================================================
+     MASTER HIERARCHY DROPDOWNS BAR (SUPPLIER, BRAND, PRODUCT, PRICE)
+     ======================================================== -->
+<div class="master-filter-card">
+    <form method="get" class="row g-2 align-items-end" id="masterHierarchyForm">
+        <!-- 1. Supplier Name Dropdown -->
+        <div class="col-lg-3 col-md-6">
+            <label class="fg-label">
+                <i class="bi bi-truck me-1 text-primary"></i>Supplier Name
+            </label>
+            <select name="selectedSupplierId" class="fg-control" onchange="onSupplierDropdownChange(this)">
+                <option value="">-- Choose Supplier Name --</option>
                 @foreach (var sup in suppliers)
                 {
-                    <option value="@sup.Id" selected="@(selectedSupplierId == sup.Id)">@sup.CompanyName (@sup.ContactPerson)</option>
+                    int pCount = supplierProductCounts.TryGetValue(sup.Id, out var count) ? count : 0;
+                    <option value="@sup.Id" selected="@(selectedSupplierId == sup.Id)">
+                        @sup.CompanyName (@pCount Products)
+                    </option>
                 }
             </select>
         </div>
+
+        <!-- 2. Brand Name Dropdown -->
         <div class="col-lg-3 col-md-6">
-            <label class="fg-label"><i class="bi bi-tag me-1 text-info"></i>Filter Category</label>
-            <select name="categoryId" class="fg-control" onchange="this.form.submit()">
-                <option value="">All Categories</option>
-                @foreach (var cat in categories)
+            <label class="fg-label">
+                <i class="bi bi-phone me-1 text-info"></i>Brand Name
+            </label>
+            <select name="brand" class="fg-control" onchange="onBrandDropdownChange(this)" @(!hasSupplier ? "disabled" : "")>
+                <option value="">@(hasSupplier ? "-- Choose Brand Name --" : "-- Select Supplier First --")</option>
+                @foreach (var b in availableBrands)
                 {
-                    <option value="@cat.Id" selected="@(selectedCategoryId == cat.Id)">@cat.Name</option>
+                    <option value="@b.Brand" selected="@(string.Equals(selectedBrand, b.Brand, StringComparison.OrdinalIgnoreCase))">
+                        @b.Brand (@b.ProductCount Products)
+                    </option>
                 }
             </select>
         </div>
-        <div class="col-lg-3 col-md-8">
-            <label class="fg-label"><i class="bi bi-search me-1 text-muted"></i>Search Product</label>
-            <input type="text" name="search" value="@search" class="fg-control" placeholder="Brand, Model, Name, SKU..." />
+
+        <!-- 3. Product Name Dropdown -->
+        <div class="col-lg-3 col-md-6">
+            <label class="fg-label">
+                <i class="bi bi-box-seam me-1 text-success"></i>Product Name
+            </label>
+            <select name="productName" class="fg-control" onchange="this.form.submit()" @(!hasBrand ? "disabled" : "")>
+                <option value="">@(hasBrand ? "-- All Product Names --" : "-- Select Brand First --")</option>
+                @foreach (var pName in availableProductNames)
+                {
+                    <option value="@pName" selected="@(string.Equals(selectedProductName, pName, StringComparison.OrdinalIgnoreCase))">
+                        @pName
+                    </option>
+                }
+            </select>
         </div>
-        <div class="col-lg-2 col-md-4 d-flex align-items-center gap-2">
-            <button type="submit" class="btn-d btn-primary w-100"><i class="bi bi-filter"></i> Filter</button>
-            <a href="@Url.Action("Create")" class="btn-d btn-outline"><i class="bi bi-arrow-counterclockwise"></i></a>
+
+        <!-- 4. Price Sort Dropdown (LOW TO HIGH / HIGH TO LOW) -->
+        <div class="col-lg-2 col-md-4">
+            <label class="fg-label">
+                <i class="bi bi-arrow-down-up me-1 text-warning"></i>Sort Price
+            </label>
+            <select name="sortBy" class="fg-control" onchange="this.form.submit()">
+                <option value="price_asc" selected="@(sortBy == "price_asc")">Price: Low to High (₹)</option>
+                <option value="price_desc" selected="@(sortBy == "price_desc")">Price: High to Low (₹)</option>
+                <option value="newest" selected="@(sortBy == "newest")">Newest In Catalog</option>
+                <option value="stock_desc" selected="@(sortBy == "stock_desc")">Stock: High to Low</option>
+            </select>
+        </div>
+
+        <!-- 5. Reset Dropdowns Button -->
+        <div class="col-lg-1 col-md-2 d-flex">
+            <a href="@Url.Action("Create")" class="btn-d btn-outline w-100 text-center" title="Reset All Dropdown Filters">
+                <i class="bi bi-arrow-counterclockwise"></i>
+            </a>
         </div>
     </form>
 </div>
 
-<!-- Product Cards Grid Form -->
-<form asp-action="Review" method="post" id="poBasketForm">
-    <input type="hidden" name="supplierId" value="@selectedSupplierId" />
+<div class="row g-4">
+    <!-- Main Content Area -->
+    <div class="@(hasSupplier ? "col-xl-8 col-lg-8" : "col-12")">
 
-    <div class="d-flex align-items-center justify-content-between mb-3">
-        <div style="font-size:14px;font-weight:700;color:var(--text-primary)">
-            @if (!string.IsNullOrEmpty(selectedSupplierId))
-            {
-                var selSup = suppliers.FirstOrDefault(s => s.Id == selectedSupplierId);
-                <span>Products Supplied by <strong style="color:var(--primary)">@(selSup?.CompanyName)</strong> (@Model.Count() Available)</span>
-            }
-            else
-            {
-                <span>Available Product Catalog (@Model.Count() Items)</span>
-            }
-        </div>
-        <button type="submit" class="btn-d btn-primary btn-lg-d" id="reviewPoBtn">
-            <i class="bi bi-clipboard-check me-1"></i> Review Order Basket (<span id="basketCount">0</span> items)
-        </button>
-    </div>
+        @* ========================================================
+           STEP 1: SUPPLIER SELECTION & CARDS
+           ======================================================== *@
+        @if (!hasSupplier)
+        {
+            <div class="card-d card-p-lg mb-4" style="background:var(--bg-card);border:1px solid var(--border)">
+                <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2">
+                    <div>
+                        <h4 class="mb-1" style="font-weight:800;color:var(--text-primary)"><i class="bi bi-truck me-2 text-primary"></i>Available Supplier Vendors</h4>
+                        <p class="mb-0 text-muted" style="font-size:13px">Select a supplier from the dropdown above or click on any vendor card below.</p>
+                    </div>
+                    <div style="min-width:240px">
+                        <input type="text" id="supplierSearchInput" class="fg-control" placeholder="Quick filter suppliers..." oninput="filterSupplierCards()" />
+                    </div>
+                </div>
 
-    @if (Model == null || !Model.Any())
-    {
-        <div class="card-d card-p p-5 text-center text-muted">
-            <i class="bi bi-box text-muted d-block mb-3" style="font-size:40px"></i>
-            <h5 style="color:var(--text-primary)">No Products Found</h5>
-            <p class="mb-0">Please select a supplier vendor above or adjust your search filters to browse products.</p>
-        </div>
-    }
-    else
-    {
-        <div class="row g-3 mb-4">
-            @for (int i = 0; i < Model.Count(); i++)
-            {
-                var p = Model.ElementAt(i);
-                var currentSupplier = (!string.IsNullOrEmpty(p.SupplierId) && supplierDict.TryGetValue(p.SupplierId, out var sVal)) ? sVal : null;
-                var modalJson = System.Text.Json.JsonSerializer.Serialize(p);
-                var supplierJson = currentSupplier != null ? System.Text.Json.JsonSerializer.Serialize(currentSupplier) : "null";
-                var supplierPrice = p.SupplierPrice > 0 ? p.SupplierPrice : p.PurchasePrice;
+                @if (!suppliers.Any())
+                {
+                    <div class="p-5 text-center text-muted">
+                        <i class="bi bi-exclamation-circle text-warning d-block mb-3" style="font-size:42px"></i>
+                        <h5 style="color:var(--text-primary)">No Active Suppliers Registered</h5>
+                        <p>Please register suppliers in the Supplier Directory before creating purchase orders.</p>
+                        <a href="/Supplier/Create" class="btn-d btn-primary"><i class="bi bi-plus-lg me-1"></i>Add New Supplier</a>
+                    </div>
+                }
+                else
+                {
+                    <div class="row g-3" id="supplierGrid">
+                        @foreach (var sup in suppliers)
+                        {
+                            int pCount = supplierProductCounts.TryGetValue(sup.Id, out var count) ? count : 0;
+                            var supJson = System.Text.Json.JsonSerializer.Serialize(sup);
+                            <div class="col-md-6 col-xl-4 supplier-item-card" data-keywords="@sup.CompanyName.ToLower() @sup.ContactPerson.ToLower() @sup.Phone.ToLower() @sup.City.ToLower()">
+                                <div class="card-d card-p h-100 d-flex flex-column justify-content-between" style="background:var(--bg);border:1px solid var(--border)">
+                                    <div>
+                                        <div class="d-flex align-items-start justify-content-between mb-2">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div style="width:38px;height:38px;border-radius:10px;background:var(--primary-dim);display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:18px">
+                                                    <i class="bi bi-building"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="mb-0 fw-bold" style="color:var(--text-primary)">@sup.CompanyName</h6>
+                                                    <span class="text-muted" style="font-size:11px">@sup.ContactPerson</span>
+                                                </div>
+                                            </div>
+                                            <span class="badge-d @(pCount > 0 ? "badge-info" : "badge-gray")" style="font-size:11px">
+                                                @pCount Products
+                                            </span>
+                                        </div>
 
-                <div class="col-xl-3 col-lg-4 col-md-6">
-                    <div class="card-d card-p h-100 d-flex flex-column justify-content-between" style="background:var(--bg-card);border:1px solid var(--border)">
-                        <div>
-                            <!-- Header Info -->
-                            <div class="d-flex align-items-start justify-content-between mb-2">
-                                <span class="badge-d badge-gray" style="font-size:11px">@p.Brand</span>
-                                <span class="badge-d @(p.CurrentStock <= p.MinimumStock ? "badge-warning" : "badge-success")" style="font-size:10px">
-                                    Stock: @p.CurrentStock
-                                </span>
-                            </div>
+                                        <div class="p-2 rounded my-2" style="background:var(--bg-card);border:1px solid var(--border);font-size:12px">
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <span class="text-muted"><i class="bi bi-telephone me-1"></i>Phone:</span>
+                                                <span class="fw-semibold">@(string.IsNullOrEmpty(sup.Phone) ? "-" : sup.Phone)</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <span class="text-muted"><i class="bi bi-envelope me-1"></i>Email:</span>
+                                                <span class="fw-semibold text-truncate" style="max-width:140px">@(string.IsNullOrEmpty(sup.Email) ? "-" : sup.Email)</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between">
+                                                <span class="text-muted"><i class="bi bi-geo-alt me-1"></i>City:</span>
+                                                <span class="fw-semibold">@sup.City</span>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                            @if (currentSupplier != null)
-                            {
-                                <div class="mb-2">
-                                    <span class="badge bg-primary-subtle text-primary p-1 px-2" style="font-size:11px;font-weight:600;cursor:pointer" onclick='openDirectSupplierModal(@Html.Raw(supplierJson))' title="Click to view @currentSupplier.CompanyName vendor profile">
-                                        <i class="bi bi-truck me-1"></i>@currentSupplier.CompanyName
-                                    </span>
+                                    <div class="d-flex gap-2 mt-2">
+                                        <button type="button" class="btn-d btn-outline btn-sm-d" onclick='openDirectSupplierModal(@Html.Raw(supJson))' title="View full supplier vendor profile">
+                                            <i class="bi bi-info-circle"></i>
+                                        </button>
+                                        <a href="@Url.Action("Create", new { selectedSupplierId = sup.Id })" class="btn-d btn-primary btn-sm-d w-100 text-center">
+                                            <span>Select Supplier</span> <i class="bi bi-arrow-right ms-1"></i>
+                                        </a>
+                                    </div>
                                 </div>
-                            }
-
-                            <h6 style="font-weight:700;color:var(--text-primary)" class="mb-1">@p.Name</h6>
-                            <div style="font-size:12px;color:var(--text-muted)" class="mb-2">
-                                @(string.IsNullOrEmpty(p.Variant) ? $"{p.Ram} / {p.Storage}" : p.Variant) · @p.Color
                             </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
 
-                            <!-- Pricing -->
-                            <div class="p-2 rounded mb-3" style="background:var(--bg);border:1px solid var(--border)">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <span style="font-size:11px;color:var(--text-muted)">Supplier Price:</span>
-                                    <span style="font-size:15px;font-weight:800;color:var(--primary)">₹@supplierPrice.ToString("N2")</span>
-                                </div>
-                                <div class="d-flex align-items-center justify-content-between mt-1">
-                                    <span style="font-size:11px;color:var(--text-muted)">Shop Retail Price:</span>
-                                    <span style="font-size:12px;font-weight:700;color:var(--text-primary)">₹@p.SellingPrice.ToString("N2")</span>
-                                </div>
-                            </div>
+        @* ========================================================
+           STEP 2: BRAND SELECTION & CARDS
+           ======================================================== *@
+        @if (hasSupplier && !hasBrand)
+        {
+            <!-- Active Supplier Banner -->
+            <div class="card-d card-p mb-4" style="background:var(--bg-card);border:1px solid var(--border)">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div style="width:48px;height:48px;border-radius:12px;background:var(--primary-dim);display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:22px">
+                            <i class="bi bi-truck"></i>
                         </div>
-
-                        <!-- Card Actions & Qty Input -->
                         <div>
-                            <button type="button" class="btn-d btn-outline btn-sm-d w-100 mb-2" onclick='openProductSpecsModal(@Html.Raw(modalJson), @Html.Raw(supplierJson))'>
-                                <i class="bi bi-info-circle me-1"></i> Inspect Specs & Supplier
-                            </button>
-
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text style-ig-text" style="font-size:11px;background:var(--bg);color:var(--text-muted);border-color:var(--border)">Order Qty:</span>
-                                <input type="hidden" name="items[@i].ProductId" value="@p.Id" />
-                                <input type="hidden" name="items[@i].UnitPrice" value="@supplierPrice" />
-                                <input type="number" min="0" max="@(p.CurrentStock > 0 ? p.CurrentStock : 999)" name="items[@i].Quantity" value="0" data-stock="@p.CurrentStock" data-supplier-id="@p.SupplierId" class="form-control po-qty-input fg-control text-center" oninput="updateBasketCount()" onchange="updateBasketCount()" style="border-radius:0 8px 8px 0" />
+                            <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;font-weight:700">Selected Supplier Vendor</div>
+                            <h4 class="mb-0" style="font-weight:800;color:var(--text-primary)">@selectedSupplier?.CompanyName</h4>
+                            <div style="font-size:12px;color:var(--text-muted)">
+                                Contact: <strong class="text-secondary">@selectedSupplier?.ContactPerson</strong> · 
+                                Phone: <strong class="text-secondary">@selectedSupplier?.Phone</strong> · 
+                                Email: <strong class="text-secondary">@selectedSupplier?.Email</strong>
                             </div>
                         </div>
                     </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn-d btn-outline btn-sm-d" onclick='openDirectSupplierModal(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(selectedSupplier)))'>
+                            <i class="bi bi-card-text me-1"></i> Vendor Profile
+                        </button>
+                        <a href="@Url.Action("Create")" class="btn-d btn-outline btn-sm-d">
+                            <i class="bi bi-arrow-left-right me-1"></i> Change Supplier
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Brand Selection Title -->
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <div>
+                    <h5 class="mb-1" style="font-weight:800;color:var(--text-primary)"><i class="bi bi-grid me-2 text-primary"></i>Select Brand</h5>
+                    <p class="text-muted mb-0" style="font-size:13px">Choose from the brand dropdown above or click on any brand card below.</p>
+                </div>
+                <span class="badge-d badge-primary" style="font-size:12px">@availableBrands.Count Brands Available</span>
+            </div>
+
+            @if (!availableBrands.Any())
+            {
+                <div class="card-d card-p p-5 text-center text-muted">
+                    <i class="bi bi-box-seam text-warning d-block mb-3" style="font-size:42px"></i>
+                    <h5 style="color:var(--text-primary)">No Products Available for this Supplier</h5>
+                    <p>There are no products currently associated with @selectedSupplier?.CompanyName.</p>
+                    <a href="@Url.Action("Create")" class="btn-d btn-primary"><i class="bi bi-arrow-left me-1"></i> Choose Another Supplier</a>
                 </div>
             }
+            else
+            {
+                <div class="row g-3 mb-4" id="brandGrid">
+                    @foreach (var b in availableBrands)
+                    {
+                        var brandName = b.Brand;
+                        var isApple = brandName.Equals("Apple", StringComparison.OrdinalIgnoreCase);
+
+                        <div class="col-xl-4 col-md-6 brand-item-card" data-brand="@brandName.ToLower()">
+                            <a href="@Url.Action("Create", new { selectedSupplierId = selectedSupplierId, brand = brandName })" class="brand-card">
+                                <div>
+                                    <div class="d-flex align-items-start justify-content-between">
+                                        <div class="brand-icon-wrap">
+                                            @if (isApple)
+                                            {
+                                                <i class="bi bi-apple"></i>
+                                            }
+                                            else
+                                            {
+                                                <span>@brandName.Substring(0, Math.Min(2, brandName.Length)).ToUpper()</span>
+                                            }
+                                        </div>
+                                        <span class="badge-d badge-success" style="font-size:11px">
+                                            @b.ProductCount @(b.ProductCount == 1 ? "Product" : "Products")
+                                        </span>
+                                    </div>
+
+                                    <h4 class="mb-1" style="font-weight:800;color:var(--text-primary)">@brandName</h4>
+                                    
+                                    @if (b.SampleModels.Any())
+                                    {
+                                        <div class="d-flex flex-wrap gap-1 mt-2">
+                                            @foreach (var sample in b.SampleModels)
+                                            {
+                                                <span class="badge-d badge-gray" style="font-size:10px">@sample</span>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="mt-4 pt-3 border-top d-flex align-items-center justify-content-between" style="border-color:var(--border)!important">
+                                    <span style="font-size:12px;font-weight:700;color:var(--primary)">Browse @brandName Products</span>
+                                    <i class="bi bi-arrow-right text-primary"></i>
+                                </div>
+                            </a>
+                        </div>
+                    }
+                </div>
+            }
+        }
+
+        @* ========================================================
+           STEP 3: BRAND PRODUCTS CATALOG (Supplier & Brand selected)
+           ======================================================== *@
+        @if (hasSupplier && hasBrand)
+        {
+            <!-- Brand & Supplier Context Header -->
+            <div class="card-d card-p mb-3" style="background:var(--bg-card);border:1px solid var(--border)">
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <a href="@Url.Action("Create", new { selectedSupplierId = selectedSupplierId })" class="btn-d btn-outline btn-sm-d" title="Return to Brand Selection">
+                            <i class="bi bi-arrow-left me-1"></i> Back to Brands
+                        </a>
+                        <div>
+                            <div style="font-size:11px;color:var(--text-muted)">
+                                Supplier: <strong class="text-secondary">@selectedSupplier?.CompanyName</strong>
+                            </div>
+                            <h4 class="mb-0" style="font-weight:800;color:var(--text-primary)">
+                                @selectedBrand Products
+                                <span class="badge-d badge-info ms-2" style="font-size:12px;vertical-align:middle">@Model.Count() Devices</span>
+                            </h4>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn-d btn-outline btn-sm-d" onclick='openDirectSupplierModal(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(selectedSupplier)))'>
+                            <i class="bi bi-truck me-1"></i> Supplier Profile
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- In-Brand Advanced Filter Bar (Price Range & Model Name) -->
+            <div class="card-d card-p mb-4" style="background:var(--bg);border:1px solid var(--border)">
+                <form method="get" class="row g-2 align-items-end" id="productFilterForm">
+                    <input type="hidden" name="selectedSupplierId" value="@selectedSupplierId" />
+                    <input type="hidden" name="brand" value="@selectedBrand" />
+                    <input type="hidden" name="productName" value="@selectedProductName" />
+                    <input type="hidden" name="sortBy" value="@sortBy" />
+
+                    <!-- Search Input -->
+                    <div class="col-md-3">
+                        <label class="fg-label"><i class="bi bi-search me-1 text-primary"></i>Keyword Search</label>
+                        <input type="text" name="search" value="@search" class="fg-control" placeholder="Search SKU, RAM, Color..." />
+                    </div>
+
+                    <!-- Model Name Filter Dropdown -->
+                    <div class="col-md-3">
+                        <label class="fg-label"><i class="bi bi-phone me-1 text-info"></i>Model Name</label>
+                        <select name="modelName" class="fg-control" onchange="this.form.submit()">
+                            <option value="">All @selectedBrand Models</option>
+                            @foreach (var m in availableModels)
+                            {
+                                <option value="@m" selected="@(string.Equals(selectedModelName, m, StringComparison.OrdinalIgnoreCase))">@m</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Min Price -->
+                    <div class="col-md-2">
+                        <label class="fg-label"><i class="bi bi-currency-rupee me-1 text-success"></i>Min Price (₹)</label>
+                        <input type="number" name="minPrice" value="@minPrice" class="fg-control" placeholder="Min ₹" min="0" step="500" />
+                    </div>
+
+                    <!-- Max Price -->
+                    <div class="col-md-2">
+                        <label class="fg-label"><i class="bi bi-currency-rupee me-1 text-success"></i>Max Price (₹)</label>
+                        <input type="number" name="maxPrice" value="@maxPrice" class="fg-control" placeholder="Max ₹" min="0" step="500" />
+                    </div>
+
+                    <!-- Apply & Reset Buttons -->
+                    <div class="col-md-2 d-flex gap-2">
+                        <button type="submit" class="btn-d btn-primary w-100"><i class="bi bi-funnel me-1"></i>Filter</button>
+                        <a href="@Url.Action("Create", new { selectedSupplierId = selectedSupplierId, brand = selectedBrand })" class="btn-d btn-outline" title="Clear Filters">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Product Grid -->
+            @if (!Model.Any())
+            {
+                <div class="card-d card-p p-5 text-center text-muted">
+                    <i class="bi bi-search text-muted d-block mb-3" style="font-size:42px"></i>
+                    <h5 style="color:var(--text-primary)">No @selectedBrand Products Match Your Filter Criteria</h5>
+                    <p class="mb-3">Try adjusting your price range, model filter, or product name dropdown above.</p>
+                    <a href="@Url.Action("Create", new { selectedSupplierId = selectedSupplierId, brand = selectedBrand })" class="btn-d btn-primary">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> Clear All Product Filters
+                    </a>
+                </div>
+            }
+            else
+            {
+                <div class="row g-3 mb-4">
+                    @foreach (var p in Model)
+                    {
+                        var supplierPrice = p.SupplierPrice > 0 ? p.SupplierPrice : p.PurchasePrice;
+                        var prodJson = System.Text.Json.JsonSerializer.Serialize(p);
+                        var supJson = selectedSupplier != null ? System.Text.Json.JsonSerializer.Serialize(selectedSupplier) : "null";
+                        var isLowStock = p.CurrentStock <= p.MinimumStock;
+                        var hasImage = !string.IsNullOrWhiteSpace(p.ImageUrl);
+
+                        <div class="col-xl-4 col-md-6">
+                            <div class="po-prod-card">
+                                <div>
+                                    <!-- Image Thumbnail -->
+                                    <div class="po-prod-img-wrap">
+                                        @if (hasImage)
+                                        {
+                                            <img src="@p.ImageUrl" alt="@p.Name" loading="lazy" />
+                                        }
+                                        else
+                                        {
+                                            <div class="text-center text-muted">
+                                                <i class="bi bi-phone" style="font-size:44px;color:var(--text-muted)"></i>
+                                                <div style="font-size:10px;text-transform:uppercase;font-weight:700">@p.Brand</div>
+                                            </div>
+                                        }
+
+                                        <!-- Stock Pill -->
+                                        <div style="position:absolute;top:8px;right:8px">
+                                            <span class="badge-d @(p.CurrentStock <= 0 ? "badge-danger" : (isLowStock ? "badge-warning" : "badge-success"))" style="font-size:10px">
+                                                Stock: @p.CurrentStock
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Basic Info -->
+                                    <div class="d-flex align-items-center justify-content-between mb-1">
+                                        <span class="badge-d badge-gray" style="font-size:10px">@p.Brand</span>
+                                        <span class="text-muted" style="font-size:11px">SKU: @p.Code</span>
+                                    </div>
+
+                                    <h6 class="mb-1 text-truncate" style="font-weight:800;color:var(--text-primary)" title="@p.Name">@p.Name</h6>
+                                    
+                                    <div class="text-muted mb-2" style="font-size:12px">
+                                        @(string.IsNullOrEmpty(p.Variant) ? $"{p.Ram} / {p.Storage}" : p.Variant)
+                                        @if (!string.IsNullOrEmpty(p.Color)) { <span>· @p.Color</span> }
+                                    </div>
+
+                                    <!-- Supplier Price Box -->
+                                    <div class="p-2 rounded mb-3" style="background:var(--bg);border:1px solid var(--border)">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <span style="font-size:11px;color:var(--text-muted)">Supplier Cost:</span>
+                                            <span style="font-size:16px;font-weight:800;color:var(--primary)">₹@supplierPrice.ToString("N2")</span>
+                                        </div>
+                                        @if (p.SellingPrice > 0)
+                                        {
+                                            <div class="d-flex align-items-center justify-content-between mt-1">
+                                                <span style="font-size:10px;color:var(--text-muted)">Shop Retail Price:</span>
+                                                <span style="font-size:11px;font-weight:600;color:var(--text-secondary)">₹@p.SellingPrice.ToString("N2")</span>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+
+                                <!-- Actions -->
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn-d btn-outline btn-sm-d w-50" onclick='openProductSpecsModal(@Html.Raw(prodJson), @Html.Raw(supJson))'>
+                                        <i class="bi bi-info-circle me-1"></i> Specs
+                                    </button>
+                                    <button type="button" class="btn-d btn-primary btn-sm-d w-50" onclick='openQtyStepperModal(@Html.Raw(prodJson), @supplierPrice)'>
+                                        <i class="bi bi-cart-plus me-1"></i> Add
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        }
+
+    </div>
+
+    <!-- Right-Hand Live Purchase Cart Sidebar -->
+    @if (hasSupplier)
+    {
+        <div class="col-xl-4 col-lg-4">
+            <div class="po-cart-sidebar">
+                <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2" style="border-color:var(--border)!important">
+                    <div>
+                        <h5 class="mb-0" style="font-weight:800;color:var(--text-primary)">
+                            <i class="bi bi-cart-check me-2 text-primary"></i>Order Basket
+                        </h5>
+                        <div style="font-size:11px;color:var(--text-muted)">Vendor: <strong class="text-secondary">@selectedSupplier?.CompanyName</strong></div>
+                    </div>
+                    <button type="button" class="btn btn-link btn-sm text-danger p-0" onclick="clearCart()" title="Clear entire order basket" style="font-size:12px;text-decoration:none">
+                        <i class="bi bi-trash3 me-1"></i>Clear
+                    </button>
+                </div>
+
+                <div id="cartEmptyState" class="py-4 text-center text-muted" style="display:none">
+                    <i class="bi bi-cart-x text-muted d-block mb-2" style="font-size:32px"></i>
+                    <div style="font-size:13px;font-weight:600">Your basket is empty</div>
+                    <div style="font-size:11px">Select a brand and add mobile products to build your purchase order.</div>
+                </div>
+
+                <div id="cartItemsList" style="max-height:380px;overflow-y:auto;padding-right:4px">
+                    <!-- Populated dynamically via JS -->
+                </div>
+
+                <!-- Basket Summary & Totals -->
+                <div id="cartSummaryBox" class="mt-3 pt-3 border-top" style="border-color:var(--border)!important">
+                    <div class="d-flex justify-content-between mb-1" style="font-size:13px">
+                        <span class="text-muted">Total Devices:</span>
+                        <span class="fw-bold" id="cartTotalQty">0 Units</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3">
+                        <span style="font-size:14px;font-weight:700;color:var(--text-primary)">Estimated Subtotal:</span>
+                        <span style="font-size:18px;font-weight:800;color:var(--success)" id="cartSubtotal">₹0.00</span>
+                    </div>
+
+                    <!-- Submission Form to Review -->
+                    <form asp-action="Review" method="post" id="poSubmitReviewForm">
+                        <input type="hidden" name="supplierId" value="@selectedSupplierId" />
+                        <div id="cartHiddenInputs"></div>
+
+                        <button type="submit" class="btn-d btn-primary w-100 btn-lg-d" id="btnProceedReview">
+                            <i class="bi bi-clipboard-check me-1"></i> Review Purchase Order
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
     }
-</form>
+</div>
 
-<!-- Modal: Inspect Complete Product Specs -->
+@* ========================================================
+   MODAL 1: COMPLETE PRODUCT HARDWARE SPECS (Product.Specs)
+   ======================================================== *@
 <div class="modal fade" id="productSpecsModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content" style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;color:var(--text-primary)">
             <div class="modal-header border-bottom" style="border-color:var(--border)!important">
                 <div class="d-flex align-items-center gap-2">
-                    <div style="width:36px;height:36px;border-radius:10px;background:var(--primary-dim);display:flex;align-items:center;justify-content:center;color:var(--primary)">
-                        <i class="bi bi-phone" style="font-size:18px"></i>
+                    <div style="width:38px;height:38px;border-radius:10px;background:var(--primary-dim);display:flex;align-items:center;justify-content:center;color:var(--primary)">
+                        <i class="bi bi-phone" style="font-size:20px"></i>
                     </div>
                     <div>
-                        <h5 class="modal-title mb-0" id="ps_Name" style="font-weight:700">Product Hardware Specs</h5>
+                        <h5 class="modal-title mb-0" id="ps_Name" style="font-weight:800">Product Hardware Specs</h5>
                         <div style="font-size:12px;color:var(--text-muted)" id="ps_Code">SKU Details</div>
                     </div>
                 </div>
@@ -174,10 +847,31 @@
                 <div class="row g-4">
                     <!-- Left: Gallery Image Slider -->
                     <div class="col-lg-4">
-                        <div class="p-3 rounded text-center mb-3 style-modal-img-wrap" style="background:var(--bg);border:1px solid var(--border);min-height:220px;display:flex;align-items:center;justify-content:center">
+                        <div class="p-3 rounded text-center mb-3" style="background:var(--bg);border:1px solid var(--border);min-height:220px;display:flex;align-items:center;justify-content:center">
                             <img id="ps_MainImg" src="" alt="Product" class="img-fluid rounded" style="max-height:220px;object-fit:contain" />
                         </div>
-                        <div id="ps_ThumbStrip" class="d-flex flex-wrap gap-2 overflow-auto" style="max-height:100px"></div>
+                        <div id="ps_ThumbStrip" class="d-flex flex-wrap gap-2 overflow-auto" style="max-height:80px"></div>
+                        
+                        <!-- Quick Add Stepper inside Details Modal -->
+                        <div class="p-3 rounded mt-3" style="background:var(--bg);border:1px solid var(--border)">
+                            <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase" class="mb-2">Quick Add to Order</div>
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span style="font-size:12px;color:var(--text-muted)">Supplier Price:</span>
+                                <span style="font-size:15px;font-weight:800;color:var(--primary)" id="ps_QuickPrice">₹0.00</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <button type="button" class="cart-qty-btn" onclick="adjustModalQty(-1)">-</button>
+                                <input type="number" id="ps_QuickQty" class="fg-control text-center py-1" value="1" min="1" style="font-weight:700" oninput="updateModalSubtotal()" />
+                                <button type="button" class="cart-qty-btn" onclick="adjustModalQty(1)">+</button>
+                            </div>
+                            <div class="d-flex justify-content-between mb-3" style="font-size:12px">
+                                <span class="text-muted">Line Subtotal:</span>
+                                <span class="fw-bold text-success" id="ps_QuickSubtotal">₹0.00</span>
+                            </div>
+                            <button type="button" class="btn-d btn-primary w-100 btn-sm-d" onclick="addFromDetailsModal()">
+                                <i class="bi bi-cart-plus me-1"></i> Add to Purchase Order
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Right: Detailed Spec Tabs -->
@@ -198,7 +892,7 @@
                                     <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Brand & Model</div><div style="font-weight:700" id="ps_BrandModel">-</div></div>
                                     <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Variant</div><div style="font-weight:700" id="ps_Variant">-</div></div>
                                     <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Color</div><div style="font-weight:700" id="ps_Color">-</div></div>
-                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Supplied By</div><div style="font-weight:700;color:var(--primary);cursor:pointer" id="ps_OverviewSupplier" onclick="document.querySelector('[data-bs-target=\'#mps-supplier\']').click()" title="Click to view full supplier profile">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Supplied By</div><div style="font-weight:700;color:var(--primary)" id="ps_OverviewSupplier">-</div></div>
                                     <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Supplier Price</div><div style="font-weight:700;color:var(--primary)" id="ps_SupplierPrice">-</div></div>
                                     <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Retail Selling Price</div><div style="font-weight:700;color:var(--success)" id="ps_SellingPrice">-</div></div>
                                     <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Current Stock</div><div style="font-weight:700" id="ps_Stock">-</div></div>
@@ -207,7 +901,7 @@
                                 </div>
                             </div>
 
-                            <!-- Tab: Supplier Profile & Vendor Info -->
+                            <!-- Tab 2: Supplier Profile -->
                             <div class="tab-pane fade" id="mps-supplier">
                                 <div class="p-3 rounded mb-3" style="background:var(--bg);border:1px solid var(--border)">
                                     <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 gap-2 border-bottom pb-2" style="border-color:var(--border)!important">
@@ -220,44 +914,19 @@
                                                 <span class="badge bg-success-subtle text-success" id="ps_SupStatus" style="font-size:11px">Active</span>
                                             </div>
                                         </div>
-                                        <a id="ps_SupFilterBtn" href="#" class="btn-d btn-outline btn-sm-d">
-                                            <i class="bi bi-funnel me-1"></i> Filter Products by this Supplier
-                                        </a>
                                     </div>
                                     <div class="row g-3">
-                                        <div class="col-6 col-md-4">
-                                            <div style="font-size:11px;color:var(--text-muted)">Contact Person</div>
-                                            <div style="font-weight:700;color:var(--text-primary)" id="ps_SupContact">-</div>
-                                        </div>
-                                        <div class="col-6 col-md-4">
-                                            <div style="font-size:11px;color:var(--text-muted)">Phone Number</div>
-                                            <div style="font-weight:700"><a id="ps_SupPhoneLink" href="#" style="color:var(--primary);text-decoration:none"><i class="bi bi-telephone me-1"></i><span id="ps_SupPhone">-</span></a></div>
-                                        </div>
-                                        <div class="col-6 col-md-4">
-                                            <div style="font-size:11px;color:var(--text-muted)">Email Address</div>
-                                            <div style="font-weight:700"><a id="ps_SupEmailLink" href="#" style="color:var(--primary);text-decoration:none"><i class="bi bi-envelope me-1"></i><span id="ps_SupEmail">-</span></a></div>
-                                        </div>
-                                        <div class="col-6 col-md-4">
-                                            <div style="font-size:11px;color:var(--text-muted)">Vendor GSTIN</div>
-                                            <div style="font-weight:700;font-family:monospace" id="ps_SupGstin">-</div>
-                                        </div>
-                                        <div class="col-6 col-md-4">
-                                            <div style="font-size:11px;color:var(--text-muted)">Payment Terms</div>
-                                            <div style="font-weight:700;color:var(--text-primary)" id="ps_SupTerms">-</div>
-                                        </div>
-                                        <div class="col-6 col-md-4">
-                                            <div style="font-size:11px;color:var(--text-muted)">Outstanding Balance</div>
-                                            <div style="font-weight:700;color:var(--warning)" id="ps_SupPayable">-</div>
-                                        </div>
-                                        <div class="col-12">
-                                            <div style="font-size:11px;color:var(--text-muted)">Warehouse / Office Address</div>
-                                            <div style="font-weight:600;color:var(--text-primary)" id="ps_SupAddress">-</div>
-                                        </div>
+                                        <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Contact Person</div><div style="font-weight:700" id="ps_SupContact">-</div></div>
+                                        <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Phone</div><div style="font-weight:700" id="ps_SupPhone">-</div></div>
+                                        <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Email</div><div style="font-weight:700" id="ps_SupEmail">-</div></div>
+                                        <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">GSTIN</div><div style="font-weight:700;font-family:monospace" id="ps_SupGstin">-</div></div>
+                                        <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Payment Terms</div><div style="font-weight:700" id="ps_SupTerms">-</div></div>
+                                        <div class="col-12"><div style="font-size:11px;color:var(--text-muted)">Warehouse Address</div><div style="font-weight:600" id="ps_SupAddress">-</div></div>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Tab 2: Performance -->
+                            <!-- Tab 3: Performance -->
                             <div class="tab-pane fade" id="mps-perf">
                                 <div class="row g-3">
                                     <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Processor</div><div style="font-weight:700" id="ps_Proc">-</div></div>
@@ -269,49 +938,95 @@
                                 </div>
                             </div>
 
-                            <!-- Tab 3: Display & Camera -->
+                            <!-- Tab 4: Display & Camera -->
                             <div class="tab-pane fade" id="mps-display">
                                 <div class="row g-3">
                                     <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Display Size</div><div style="font-weight:700" id="ps_DispSize">-</div></div>
                                     <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Resolution</div><div style="font-weight:700" id="ps_DispRes">-</div></div>
                                     <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Refresh Rate</div><div style="font-weight:700" id="ps_Refresh">-</div></div>
                                     <div class="col-6 col-md-6"><div style="font-size:11px;color:var(--text-muted)">Rear Main Camera</div><div style="font-weight:700" id="ps_RearCam">-</div></div>
-                                    <div class="col-6 col-md-6"><div style="font-size:11px;color:var(--text-muted)">Front Selfie Camera</div><div style="font-weight:700" id="ps_FrontCam">-</div></div>
+                                    <div class="col-6 col-md-6"><div style="font-size:11px;color:var(--text-muted)">Front Camera</div><div style="font-weight:700" id="ps_FrontCam">-</div></div>
                                 </div>
                             </div>
 
-                            <!-- Tab 4: Battery & Network -->
+                            <!-- Tab 5: Battery & Network -->
                             <div class="tab-pane fade" id="mps-battery">
                                 <div class="row g-3">
                                     <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Battery Capacity</div><div style="font-weight:700" id="ps_Battery">-</div></div>
-                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Charging Speed</div><div style="font-weight:700" id="ps_Charging">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Fast Charging</div><div style="font-weight:700" id="ps_Charging">-</div></div>
                                     <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">5G Support</div><div style="font-weight:700" id="ps_5G">-</div></div>
-                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">SIM Type</div><div style="font-weight:700" id="ps_Sim">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">SIM Support</div><div style="font-weight:700" id="ps_Sim">-</div></div>
                                 </div>
                             </div>
 
-                            <!-- Tab 5: OS & Security -->
+                            <!-- Tab 6: OS & Security -->
                             <div class="tab-pane fade" id="mps-os">
                                 <div class="row g-3">
                                     <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Operating System</div><div style="font-weight:700" id="ps_OS">-</div></div>
-                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Custom UI</div><div style="font-weight:700" id="ps_UI">-</div></div>
-                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Biometrics</div><div style="font-weight:700" id="ps_Biometrics">-</div></div>
-                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">IP Protection</div><div style="font-weight:700" id="ps_IP">-</div></div>
-                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">NFC</div><div style="font-weight:700" id="ps_NFC">-</div></div>
-                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Headphone Jack</div><div style="font-weight:700" id="ps_Jack">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Fingerprint Sensor</div><div style="font-weight:700" id="ps_Biometrics">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Water Resistance</div><div style="font-weight:700" id="ps_IP">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">NFC Support</div><div style="font-weight:700" id="ps_NFC">-</div></div>
                                 </div>
                             </div>
                         </div>
 
                         <hr class="s-divider my-3" />
                         <div class="fg mb-0">
-                            <label class="fg-label text-muted">Description & Notes</label>
+                            <label class="fg-label text-muted">Description & Overview</label>
                             <div class="p-3 rounded" style="background:var(--bg);border:1px solid var(--border);font-size:13px;color:var(--text-primary)" id="ps_Description">-</div>
                         </div>
                     </div>
                 </div>
             </div>
-<!-- Modal: Direct Supplier Details View -->
+            <div class="modal-footer border-top d-flex justify-content-end" style="border-color:var(--border)!important">
+                <button type="button" class="btn-d btn-outline" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ========================================================
+   MODAL 2: QUICK QUANTITY STEPPER MODAL
+   ======================================================== *@
+<div class="modal fade" id="quickQtyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content" style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;color:var(--text-primary)">
+            <div class="modal-header border-bottom" style="border-color:var(--border)!important">
+                <h6 class="modal-title mb-0 fw-bold"><i class="bi bi-cart-plus me-1 text-primary"></i>Add to Purchase Order</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="text-center mb-3">
+                    <h6 class="mb-1 fw-bold text-truncate" id="qqm_Name" style="color:var(--text-primary)">Product Name</h6>
+                    <div class="text-muted" style="font-size:12px" id="qqm_Variant">8GB / 128GB</div>
+                    <div class="mt-2" style="font-size:18px;font-weight:800;color:var(--primary)" id="qqm_Price">₹0.00</div>
+                </div>
+
+                <div class="fg mb-3">
+                    <label class="fg-label text-center d-block">Order Quantity</label>
+                    <div class="d-flex align-items-center justify-content-center gap-2">
+                        <button type="button" class="cart-qty-btn" style="width:36px;height:36px;font-size:16px" onclick="adjustQuickModalQty(-1)">-</button>
+                        <input type="number" id="qqm_QtyInput" class="fg-control text-center" value="1" min="1" style="max-width:100px;font-size:16px;font-weight:700" oninput="updateQuickModalSubtotal()" />
+                        <button type="button" class="cart-qty-btn" style="width:36px;height:36px;font-size:16px" onclick="adjustQuickModalQty(1)">+</button>
+                    </div>
+                </div>
+
+                <div class="p-2 rounded mb-3 text-center" style="background:var(--bg);border:1px solid var(--border)">
+                    <span style="font-size:11px;color:var(--text-muted)">Subtotal:</span>
+                    <div style="font-size:16px;font-weight:800;color:var(--success)" id="qqm_Subtotal">₹0.00</div>
+                </div>
+
+                <button type="button" class="btn-d btn-primary w-100" onclick="submitQuickModalAdd()">
+                    <i class="bi bi-plus-lg me-1"></i> Add to Basket
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ========================================================
+   MODAL 3: SUPPLIER PROFILE MODAL
+   ======================================================== *@
 <div class="modal fade" id="directSupplierDetailsModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content" style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;color:var(--text-primary)">
@@ -322,7 +1037,7 @@
                     </div>
                     <div>
                         <h5 class="modal-title mb-0" id="ds_CompanyName" style="font-weight:700">Supplier Vendor Details</h5>
-                        <div style="font-size:12px;color:var(--text-muted)" id="ds_Sub">Vendor Profile & Contact Directory</div>
+                        <div style="font-size:12px;color:var(--text-muted)">Vendor Profile & Contact Directory</div>
                     </div>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -369,15 +1084,12 @@
                         <div style="font-size:14px;font-weight:600;color:var(--text-primary)" id="ds_CityState">-</div>
                     </div>
                     <div class="col-12">
-                        <label class="fg-label text-muted mb-1">Office / Warehouse Street Address</label>
+                        <label class="fg-label text-muted mb-1">Office / Warehouse Address</label>
                         <div class="p-3 rounded" style="background:var(--bg);border:1px solid var(--border);font-size:13px;color:var(--text-primary)" id="ds_Address">-</div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer border-top d-flex justify-content-between" style="border-color:var(--border)!important">
-                <a id="ds_FilterBtn" href="#" class="btn-d btn-primary">
-                    <i class="bi bi-funnel me-1"></i> View All Products by this Supplier
-                </a>
+            <div class="modal-footer border-top d-flex justify-content-end" style="border-color:var(--border)!important">
                 <button type="button" class="btn-d btn-outline" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
@@ -386,165 +1098,297 @@
 
 @section Scripts {
     <script>
-        function updateBasketCount() {
-            const inputs = document.querySelectorAll('.po-qty-input');
-            let count = 0;
-            inputs.forEach(i => {
-                const val = parseInt(i.value) || 0;
-                const stock = parseInt(i.getAttribute('data-stock')) || 0;
-                const cardBody = i.closest('.card-d');
-                let warnEl = cardBody ? cardBody.querySelector('.po-stock-warning') : null;
+        const currentSupplierId = '@(selectedSupplierId ?? "")';
 
-                if (val > 0) count += val;
-
-                if (stock > 0 && val > stock) {
-                    if (!warnEl && cardBody) {
-                        warnEl = document.createElement('div');
-                        warnEl.className = 'po-stock-warning mt-2 p-2 rounded';
-                        warnEl.style.cssText = 'background:rgba(234,179,8,0.15);border:1px solid rgba(234,179,8,0.5);color:#f59e0b;font-size:11px;font-weight:700';
-                        cardBody.appendChild(warnEl);
-                    }
-                    if (warnEl) {
-                        warnEl.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i> Requested (${val}) exceeds available stock (${stock})`;
-                        warnEl.style.display = 'block';
-                    }
-                    i.style.borderColor = '#f59e0b';
-                } else {
-                    if (warnEl) warnEl.style.display = 'none';
-                    i.style.borderColor = '';
-                }
-            });
-            document.getElementById('basketCount').innerText = count;
+        function onSupplierDropdownChange(sel) {
+            const supId = sel.value;
+            if (supId) {
+                window.location.href = `/SupplierOrder/Create?selectedSupplierId=${encodeURIComponent(supId)}`;
+            } else {
+                window.location.href = `/SupplierOrder/Create`;
+            }
         }
 
-        document.getElementById('poBasketForm')?.addEventListener('submit', function (e) {
-            const inputs = document.querySelectorAll('.po-qty-input');
-            let count = 0;
-            let autoSupplierId = '';
-            let hasStockExceeded = false;
-            let stockExceededMsg = '';
+        function onBrandDropdownChange(sel) {
+            const brandVal = sel.value;
+            if (brandVal) {
+                window.location.href = `/SupplierOrder/Create?selectedSupplierId=${encodeURIComponent(currentSupplierId)}&brand=${encodeURIComponent(brandVal)}`;
+            } else {
+                window.location.href = `/SupplierOrder/Create?selectedSupplierId=${encodeURIComponent(currentSupplierId)}`;
+            }
+        }
 
-            inputs.forEach(i => {
-                const val = parseInt(i.value) || 0;
-                const stock = parseInt(i.getAttribute('data-stock')) || 0;
-                if (val > 0) {
-                    count += val;
-                    if (!autoSupplierId) {
-                        autoSupplierId = i.getAttribute('data-supplier-id') || '';
-                    }
-                    if (stock > 0 && val > stock) {
-                        hasStockExceeded = true;
-                        const cardBody = i.closest('.card-d');
-                        const pName = cardBody ? (cardBody.querySelector('h6')?.innerText || 'Product') : 'Product';
-                        stockExceededMsg = `Cannot order ${val} units of '${pName}'. Supplier available stock is only ${stock} units.`;
-                    }
+        // Cart items stored in memory and synced with sessionStorage
+        let cartItems = [];
+
+        function getCartStorageKey() {
+            return currentSupplierId ? `sims_po_cart_${currentSupplierId}` : 'sims_po_cart_default';
+        }
+
+        function loadCartFromStorage() {
+            if (!currentSupplierId) return;
+            const data = sessionStorage.getItem(getCartStorageKey());
+            if (data) {
+                try {
+                    cartItems = JSON.parse(data) || [];
+                } catch (e) {
+                    cartItems = [];
                 }
+            }
+            renderCart();
+        }
+
+        function saveCartToStorage() {
+            if (!currentSupplierId) return;
+            sessionStorage.setItem(getCartStorageKey(), JSON.stringify(cartItems));
+            renderCart();
+        }
+
+        function clearCart() {
+            if (!confirm('Are you sure you want to clear all items in your purchase basket?')) return;
+            cartItems = [];
+            saveCartToStorage();
+        }
+
+        function addToCart(productId, productName, brand, variant, color, unitPrice, quantity) {
+            quantity = parseInt(quantity) || 1;
+            unitPrice = parseFloat(unitPrice) || 0;
+
+            const existing = cartItems.find(i => i.productId === productId);
+            if (existing) {
+                existing.quantity += quantity;
+            } else {
+                cartItems.push({
+                    productId: productId,
+                    productName: productName,
+                    brand: brand,
+                    variant: variant,
+                    color: color,
+                    unitPrice: unitPrice,
+                    quantity: quantity
+                });
+            }
+            saveCartToStorage();
+        }
+
+        function updateCartItemQty(productId, delta) {
+            const item = cartItems.find(i => i.productId === productId);
+            if (item) {
+                item.quantity += delta;
+                if (item.quantity <= 0) {
+                    cartItems = cartItems.filter(i => i.productId !== productId);
+                }
+                saveCartToStorage();
+            }
+        }
+
+        function removeCartItem(productId) {
+            cartItems = cartItems.filter(i => i.productId !== productId);
+            saveCartToStorage();
+        }
+
+        function renderCart() {
+            const listEl = document.getElementById('cartItemsList');
+            const emptyEl = document.getElementById('cartEmptyState');
+            const summaryBox = document.getElementById('cartSummaryBox');
+            const totalQtyEl = document.getElementById('cartTotalQty');
+            const subtotalEl = document.getElementById('cartSubtotal');
+            const hiddenInputsEl = document.getElementById('cartHiddenInputs');
+            const btnReview = document.getElementById('btnProceedReview');
+
+            if (!listEl) return;
+
+            listEl.innerHTML = '';
+            hiddenInputsEl.innerHTML = '';
+
+            let totalQty = 0;
+            let subtotal = 0;
+
+            if (cartItems.length === 0) {
+                if (emptyEl) emptyEl.style.display = 'block';
+                if (summaryBox) summaryBox.style.display = 'none';
+                return;
+            }
+
+            if (emptyEl) emptyEl.style.display = 'none';
+            if (summaryBox) summaryBox.style.display = 'block';
+
+            cartItems.forEach((item, index) => {
+                const lineTotal = item.quantity * item.unitPrice;
+                totalQty += item.quantity;
+                subtotal += lineTotal;
+
+                // Hidden form inputs for Review action
+                hiddenInputsEl.innerHTML += `
+                    <input type="hidden" name="items[${index}].ProductId" value="${item.productId}" />
+                    <input type="hidden" name="items[${index}].Quantity" value="${item.quantity}" />
+                    <input type="hidden" name="items[${index}].UnitPrice" value="${item.unitPrice}" />
+                `;
+
+                // Cart item row
+                const row = document.createElement('div');
+                row.className = 'cart-item-row';
+                row.innerHTML = `
+                    <div class="d-flex align-items-start justify-content-between mb-1">
+                        <div class="fw-bold text-truncate" style="max-width:180px;font-size:13px;color:var(--text-primary)">${item.productName}</div>
+                        <button type="button" class="btn btn-link text-danger p-0" onclick="removeCartItem('${item.productId}')" style="font-size:12px;text-decoration:none">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    </div>
+                    <div class="text-muted mb-2" style="font-size:11px">
+                        ${item.brand} · ${item.variant || ''} ${item.color ? '· ' + item.color : ''}
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-1">
+                            <button type="button" class="cart-qty-btn" onclick="updateCartItemQty('${item.productId}', -1)">-</button>
+                            <span class="px-2 fw-bold" style="font-size:13px">${item.quantity}</span>
+                            <button type="button" class="cart-qty-btn" onclick="updateCartItemQty('${item.productId}', 1)">+</button>
+                        </div>
+                        <div class="text-end">
+                            <div style="font-size:10px;color:var(--text-muted)">₹${item.unitPrice.toLocaleString('en-IN', {minimumFractionDigits: 2})} ea</div>
+                            <div style="font-size:13px;font-weight:700;color:var(--success)">₹${lineTotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}</div>
+                        </div>
+                    </div>
+                `;
+                listEl.appendChild(row);
             });
 
-            if (count <= 0) {
-                e.preventDefault();
-                alert('Please enter an order quantity (> 0) for at least one product before reviewing your order.');
-                return false;
-            }
+            if (totalQtyEl) totalQtyEl.innerText = `${totalQty} Units`;
+            if (subtotalEl) subtotalEl.innerText = `₹${subtotal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            if (btnReview) btnReview.innerHTML = `<i class="bi bi-clipboard-check me-1"></i> Review Purchase Order (${totalQty} Items)`;
+        }
 
-            if (hasStockExceeded) {
+        document.getElementById('poSubmitReviewForm')?.addEventListener('submit', function (e) {
+            if (cartItems.length === 0) {
                 e.preventDefault();
-                alert(stockExceededMsg);
+                alert('Please add at least one product to the purchase order basket before proceeding to review.');
                 return false;
-            }
-
-            const supplierIdInput = this.querySelector('input[name="supplierId"]');
-            if (supplierIdInput && !supplierIdInput.value && autoSupplierId) {
-                supplierIdInput.value = autoSupplierId;
             }
         });
 
-        function openDirectSupplierModal(sup) {
-            if (!sup) return;
-            document.getElementById('ds_CompanyName').innerText = sup.CompanyName || 'Supplier Vendor Details';
-            document.getElementById('ds_Status').innerText = sup.Status || 'Active';
-            document.getElementById('ds_ContactPerson').innerText = sup.ContactPerson || '-';
-            document.getElementById('ds_Phone').innerText = sup.Phone || '-';
-            document.getElementById('ds_PhoneLink').href = sup.Phone ? `tel:${sup.Phone}` : '#';
-            document.getElementById('ds_Email').innerText = sup.Email || '-';
-            document.getElementById('ds_EmailLink').href = sup.Email ? `mailto:${sup.Email}` : '#';
-            document.getElementById('ds_Gstin').innerText = sup.Gstin || 'Not Registered';
-            document.getElementById('ds_PaymentTerms').innerText = sup.PaymentTerms || 'Net 30 Days';
-            document.getElementById('ds_OutstandingPayable').innerText = `₹${(sup.OutstandingPayable || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-            
-            const cityState = [sup.City, sup.State, sup.Country].filter(Boolean).join(', ');
-            document.getElementById('ds_CityState').innerText = cityState || '-';
-            
-            const fullAddr = [sup.Address, sup.City, sup.State, sup.Country].filter(Boolean).join(', ');
-            document.getElementById('ds_Address').innerText = fullAddr || 'No physical address provided.';
-            
-            const filterBtn = document.getElementById('ds_FilterBtn');
-            if (filterBtn) {
-                filterBtn.href = `/SupplierOrder/Create?selectedSupplierId=${encodeURIComponent(sup.Id)}`;
-            }
+        // Quick Quantity Modal Logic
+        let activeQuickProduct = null;
+        let activeQuickUnitPrice = 0;
 
-            const modal = new bootstrap.Modal(document.getElementById('directSupplierDetailsModal'));
+        function openQtyStepperModal(product, unitPrice) {
+            activeQuickProduct = product;
+            activeQuickUnitPrice = unitPrice;
+
+            document.getElementById('qqm_Name').innerText = product.Name || 'Product';
+            document.getElementById('qqm_Variant').innerText = (product.Variant || `${product.Ram || ''} / ${product.Storage || ''}`).trim() || '-';
+            document.getElementById('qqm_Price').innerText = `₹${unitPrice.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            document.getElementById('qqm_QtyInput').value = '1';
+            updateQuickModalSubtotal();
+
+            const modal = new bootstrap.Modal(document.getElementById('quickQtyModal'));
             modal.show();
         }
 
+        function adjustQuickModalQty(delta) {
+            const input = document.getElementById('qqm_QtyInput');
+            let val = (parseInt(input.value) || 1) + delta;
+            if (val < 1) val = 1;
+            input.value = val;
+            updateQuickModalSubtotal();
+        }
+
+        function updateQuickModalSubtotal() {
+            const qty = parseInt(document.getElementById('qqm_QtyInput').value) || 1;
+            const sub = qty * activeQuickUnitPrice;
+            document.getElementById('qqm_Subtotal').innerText = `₹${sub.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+        }
+
+        function submitQuickModalAdd() {
+            if (!activeQuickProduct) return;
+            const qty = parseInt(document.getElementById('qqm_QtyInput').value) || 1;
+            addToCart(
+                activeQuickProduct.Id,
+                activeQuickProduct.Name,
+                activeQuickProduct.Brand,
+                activeQuickProduct.Variant || `${activeQuickProduct.Ram || ''} / ${activeQuickProduct.Storage || ''}`,
+                activeQuickProduct.Color,
+                activeQuickUnitPrice,
+                qty
+            );
+            bootstrap.Modal.getInstance(document.getElementById('quickQtyModal'))?.hide();
+        }
+
+        // Details Modal Quick Add
+        let activeModalProduct = null;
+        let activeModalPrice = 0;
+
+        function adjustModalQty(delta) {
+            const input = document.getElementById('ps_QuickQty');
+            let val = (parseInt(input.value) || 1) + delta;
+            if (val < 1) val = 1;
+            input.value = val;
+            updateModalSubtotal();
+        }
+
+        function updateModalSubtotal() {
+            const qty = parseInt(document.getElementById('ps_QuickQty').value) || 1;
+            const sub = qty * activeModalPrice;
+            document.getElementById('ps_QuickSubtotal').innerText = `₹${sub.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+        }
+
+        function addFromDetailsModal() {
+            if (!activeModalProduct) return;
+            const qty = parseInt(document.getElementById('ps_QuickQty').value) || 1;
+            addToCart(
+                activeModalProduct.Id,
+                activeModalProduct.Name,
+                activeModalProduct.Brand,
+                activeModalProduct.Variant || `${activeModalProduct.Ram || ''} / ${activeModalProduct.Storage || ''}`,
+                activeModalProduct.Color,
+                activeModalPrice,
+                qty
+            );
+            bootstrap.Modal.getInstance(document.getElementById('productSpecsModal'))?.hide();
+        }
+
+        // Specs Modal Inspection
         function openProductSpecsModal(p, sup) {
+            activeModalProduct = p;
+            activeModalPrice = p.SupplierPrice > 0 ? p.SupplierPrice : p.PurchasePrice;
+
+            document.getElementById('ps_QuickPrice').innerText = `₹${activeModalPrice.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            document.getElementById('ps_QuickQty').value = '1';
+            updateModalSubtotal();
+
             const s = p.Specs || {};
-            document.getElementById('ps_Name').innerText = p.Name || 'Product Hardware Specs';
+            document.getElementById('ps_Name').innerText = p.Name || 'Product Specs';
             document.getElementById('ps_Code').innerText = `SKU: ${p.Code || '-'}`;
             document.getElementById('ps_BrandModel').innerText = `${p.Brand || ''} ${p.ModelName || ''}`.trim() || '-';
             document.getElementById('ps_Variant').innerText = p.Variant || `${p.Ram || ''} / ${p.Storage || ''}`.trim() || '-';
             document.getElementById('ps_Color').innerText = p.Color || '-';
-            document.getElementById('ps_SupplierPrice').innerText = `₹${(p.SupplierPrice || p.PurchasePrice || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            document.getElementById('ps_SupplierPrice').innerText = `₹${activeModalPrice.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
             document.getElementById('ps_SellingPrice').innerText = `₹${(p.SellingPrice || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
             document.getElementById('ps_Stock').innerText = `${p.CurrentStock || 0} Units`;
             document.getElementById('ps_Barcode').innerText = p.Barcode || '-';
             document.getElementById('ps_Warranty').innerText = `${p.WarrantyDurationMonths || 12} Months`;
-            document.getElementById('ps_Description').innerText = p.Description || 'No detailed prose description recorded.';
+            document.getElementById('ps_Description').innerText = p.Description || 'No description provided.';
 
-            // Populate Supplier Profile in Specs Modal
+            // Supplier Profile
             if (sup) {
                 document.getElementById('ps_OverviewSupplier').innerText = sup.CompanyName || '-';
                 document.getElementById('ps_SupCompany').innerText = sup.CompanyName || 'Vendor';
                 document.getElementById('ps_SupStatus').innerText = sup.Status || 'Active';
                 document.getElementById('ps_SupContact').innerText = sup.ContactPerson || '-';
                 document.getElementById('ps_SupPhone').innerText = sup.Phone || '-';
-                document.getElementById('ps_SupPhoneLink').href = sup.Phone ? `tel:${sup.Phone}` : '#';
                 document.getElementById('ps_SupEmail').innerText = sup.Email || '-';
-                document.getElementById('ps_SupEmailLink').href = sup.Email ? `mailto:${sup.Email}` : '#';
                 document.getElementById('ps_SupGstin').innerText = sup.Gstin || 'Not Registered';
                 document.getElementById('ps_SupTerms').innerText = sup.PaymentTerms || 'Net 30 Days';
-                document.getElementById('ps_SupPayable').innerText = `₹${(sup.OutstandingPayable || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-
                 const fullAddr = [sup.Address, sup.City, sup.State, sup.Country].filter(Boolean).join(', ');
                 document.getElementById('ps_SupAddress').innerText = fullAddr || 'No physical address provided.';
-
-                const filterBtn = document.getElementById('ps_SupFilterBtn');
-                if (filterBtn) {
-                    filterBtn.href = `/SupplierOrder/Create?selectedSupplierId=${encodeURIComponent(sup.Id)}`;
-                    filterBtn.style.display = 'inline-block';
-                }
-            } else {
-                document.getElementById('ps_OverviewSupplier').innerText = '-';
-                document.getElementById('ps_SupCompany').innerText = 'Unspecified Supplier';
-                document.getElementById('ps_SupStatus').innerText = 'Unknown';
-                document.getElementById('ps_SupContact').innerText = '-';
-                document.getElementById('ps_SupPhone').innerText = '-';
-                document.getElementById('ps_SupEmail').innerText = '-';
-                document.getElementById('ps_SupGstin').innerText = '-';
-                document.getElementById('ps_SupTerms').innerText = '-';
-                document.getElementById('ps_SupPayable').innerText = '-';
-                document.getElementById('ps_SupAddress').innerText = '-';
-                const filterBtn = document.getElementById('ps_SupFilterBtn');
-                if (filterBtn) filterBtn.style.display = 'none';
             }
 
-            // Specs mapping
+            // Specs
             document.getElementById('ps_Proc').innerText = s.ProcessorName || s.ProcessorBrand || p.Processor || '-';
             document.getElementById('ps_Cores').innerText = s.CpuCores || '-';
             document.getElementById('ps_Gpu').innerText = s.Gpu || '-';
             document.getElementById('ps_Ram').innerText = s.RamType || p.Ram || '-';
             document.getElementById('ps_Storage').innerText = s.StorageType || p.Storage || '-';
-            document.getElementById('ps_Expandable').innerText = s.ExpandableStorage ? 'Yes Supported' : 'No Expandable Slot';
+            document.getElementById('ps_Expandable').innerText = s.ExpandableStorage ? 'Supported' : 'No';
 
             document.getElementById('ps_DispSize').innerText = s.DisplaySize || p.DisplaySize || '-';
             document.getElementById('ps_DispRes').innerText = s.Resolution || '-';
@@ -554,17 +1398,15 @@
 
             document.getElementById('ps_Battery').innerText = (s.BatteryCapacityMah && s.BatteryCapacityMah > 0) ? `${s.BatteryCapacityMah} mAh` : (p.BatteryCapacity || '-');
             document.getElementById('ps_Charging').innerText = s.FastChargingWattage || '-';
-            document.getElementById('ps_5G').innerText = s.Network5G ? '5G Supported' : '4G / LTE';
+            document.getElementById('ps_5G').innerText = s.Network5G ? '5G Supported' : '4G LTE';
             document.getElementById('ps_Sim').innerText = s.SimType || p.SimType || '-';
 
             document.getElementById('ps_OS').innerText = s.OperatingSystem || s.OsVersion || p.OperatingSystem || '-';
-            document.getElementById('ps_UI').innerText = s.Chipset || '-';
             document.getElementById('ps_Biometrics').innerText = s.FingerprintSensor || '-';
             document.getElementById('ps_IP').innerText = s.WaterResistance || '-';
-            document.getElementById('ps_NFC').innerText = s.Nfc ? 'NFC Available' : 'No NFC';
-            document.getElementById('ps_Jack').innerText = s.AudioFeatures || '-';
+            document.getElementById('ps_NFC').innerText = s.Nfc ? 'Available' : 'No';
 
-            // Gallery Images
+            // Images
             const images = [];
             if (p.ImageUrl) images.push(p.ImageUrl);
             if (p.ImageUrls && Array.isArray(p.ImageUrls)) {
@@ -577,14 +1419,12 @@
 
             if (images.length > 0) {
                 mainImg.src = images[0];
-                mainImg.style.display = 'block';
-
                 if (images.length > 1) {
                     images.forEach((imgUrl, i) => {
                         const thumb = document.createElement('img');
                         thumb.src = imgUrl;
                         thumb.className = `rounded thumb-img ${i === 0 ? 'active-thumb' : ''}`;
-                        thumb.style.cssText = 'width:48px;height:48px;object-fit:cover;cursor:pointer;border:2px solid var(--border)';
+                        thumb.style.cssText = 'width:42px;height:42px;object-fit:cover;cursor:pointer;border:2px solid var(--border)';
                         thumb.onclick = function() {
                             mainImg.src = imgUrl;
                             thumbStrip.querySelectorAll('img').forEach(t => t.style.borderColor = 'var(--border)');
@@ -597,7 +1437,6 @@
                 mainImg.src = 'https://placehold.co/400x300?text=No+Photo';
             }
 
-            // Always activate overview tab by default
             const overviewTabBtn = document.querySelector('[data-bs-target="#mps-overview"]');
             if (overviewTabBtn) {
                 const tab = new bootstrap.Tab(overviewTabBtn);
@@ -607,5 +1446,43 @@
             const modal = new bootstrap.Modal(document.getElementById('productSpecsModal'));
             modal.show();
         }
+
+        // Supplier Modal Inspection
+        function openDirectSupplierModal(sup) {
+            if (!sup) return;
+            document.getElementById('ds_CompanyName').innerText = sup.CompanyName || 'Supplier Details';
+            document.getElementById('ds_Status').innerText = sup.Status || 'Active';
+            document.getElementById('ds_ContactPerson').innerText = sup.ContactPerson || '-';
+            document.getElementById('ds_Phone').innerText = sup.Phone || '-';
+            document.getElementById('ds_PhoneLink').href = sup.Phone ? `tel:${sup.Phone}` : '#';
+            document.getElementById('ds_Email').innerText = sup.Email || '-';
+            document.getElementById('ds_EmailLink').href = sup.Email ? `mailto:${sup.Email}` : '#';
+            document.getElementById('ds_Gstin').innerText = sup.Gstin || 'Not Registered';
+            document.getElementById('ds_PaymentTerms').innerText = sup.PaymentTerms || 'Net 30 Days';
+            document.getElementById('ds_OutstandingPayable').innerText = `₹${(sup.OutstandingPayable || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+
+            const cityState = [sup.City, sup.State, sup.Country].filter(Boolean).join(', ');
+            document.getElementById('ds_CityState').innerText = cityState || '-';
+            const fullAddr = [sup.Address, sup.City, sup.State, sup.Country].filter(Boolean).join(', ');
+            document.getElementById('ds_Address').innerText = fullAddr || 'No physical address provided.';
+
+            const modal = new bootstrap.Modal(document.getElementById('directSupplierDetailsModal'));
+            modal.show();
+        }
+
+        // Live Filter suppliers search on Step 1
+        function filterSupplierCards() {
+            const query = (document.getElementById('supplierSearchInput')?.value || '').toLowerCase().trim();
+            const cards = document.querySelectorAll('.supplier-item-card');
+            cards.forEach(card => {
+                const kw = card.getAttribute('data-keywords') || '';
+                card.style.display = kw.includes(query) ? '' : 'none';
+            });
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', function () {
+            loadCartFromStorage();
+        });
     </script>
 }

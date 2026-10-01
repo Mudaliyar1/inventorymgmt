@@ -205,25 +205,32 @@ namespace InventoryManagementSystem.Services
             {
                 if (item.Quantity <= 0) item.Quantity = 1;
                 var product = await _productRepository.GetByIdAsync(item.ProductId);
-                if (product != null)
+                if (product == null)
                 {
-                    if (product.CurrentStock > 0 && item.Quantity > product.CurrentStock)
-                    {
-                        return (false, $"Cannot order {item.Quantity} units of '{product.Name}'. Supplier available stock is only {product.CurrentStock} units.", null);
-                    }
+                    return (false, $"Product with ID '{item.ProductId}' was not found in catalog.", null);
+                }
 
-                    item.ProductName = product.Name;
-                    item.Brand = product.Brand;
-                    item.Model = product.ModelName;
-                    item.Variant = product.Variant;
-                    item.Color = product.Color;
-                    item.Ram = product.Ram;
-                    item.Storage = product.Storage;
-                    item.ImageUrl = product.ImageUrl;
-                    if (item.UnitPrice <= 0)
-                    {
-                        item.UnitPrice = product.SupplierPrice > 0 ? product.SupplierPrice : product.PurchasePrice;
-                    }
+                if (product.SupplierId != order.SupplierId)
+                {
+                    return (false, $"Product '{product.Name}' does not belong to supplier '{supplier.CompanyName}'.", null);
+                }
+
+                if (product.CurrentStock > 0 && item.Quantity > product.CurrentStock)
+                {
+                    return (false, $"Cannot order {item.Quantity} units of '{product.Name}'. Supplier available stock is only {product.CurrentStock} units.", null);
+                }
+
+                item.ProductName = product.Name;
+                item.Brand = product.Brand;
+                item.Model = product.ModelName;
+                item.Variant = product.Variant;
+                item.Color = product.Color;
+                item.Ram = product.Ram;
+                item.Storage = product.Storage;
+                item.ImageUrl = product.ImageUrl;
+                if (item.UnitPrice <= 0)
+                {
+                    item.UnitPrice = product.SupplierPrice > 0 ? product.SupplierPrice : product.PurchasePrice;
                 }
 
                 item.Subtotal = item.Quantity * item.UnitPrice;

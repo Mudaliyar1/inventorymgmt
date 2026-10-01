@@ -53,57 +53,213 @@ namespace InventoryManagementSystem.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Create(string? selectedSupplierId, string? categoryId, string? brand, string? search)
+        public async Task<IActionResult> Create(
+            string? selectedSupplierId, 
+            string? categoryId, 
+            string? brand, 
+            string? productName,
+            string? search,
+            string? modelName,
+            decimal? minPrice,
+            decimal? maxPrice,
+            string? sortBy,
+            string? supplierSort,
+            string? brandSort)
         {
             await _supplierService.CleanupOrphanedSupplierDataAsync();
 
             var suppliers = (await _supplierService.GetAllSuppliersAsync()).ToList();
             var activeSupplierIds = suppliers.Select(s => s.Id).ToHashSet();
-            var categories = (await _categoryRepository.GetAllAsync())
-                .Where(c => activeSupplierIds.Contains(c.SupplierId ?? "") || string.IsNullOrWhiteSpace(c.SupplierId))
-                .ToList();
-            var allProducts = await _productRepository.GetAllAsync();
+            var allProducts = (await _productRepository.GetAllAsync()).ToList();
 
-            var filteredProducts = allProducts.AsEnumerable();
+            // Product counts per supplier
+            var supplierProductCounts = allProducts
+                .Where(p => !string.IsNullOrWhiteSpace(p.SupplierId) && activeSupplierIds.Contains(p.SupplierId))
+                .GroupBy(p => p.SupplierId!)
+                .ToDictionary(g => g.Key, g => g.Count());
+
+            // Supplier Sorting
+            switch (supplierSort?.ToLower())
+            {
+                case "products_desc":
+                    suppliers = suppliers.OrderByDescending(s => supplierProductCounts.GetValueOrDefault(s.Id, 0)).ThenBy(s => s.CompanyName).ToList();
+                    break;
+                case "payable_desc":
+                    suppliers = suppliers.OrderByDescending(s => s.OutstandingPayable).ThenBy(s => s.CompanyName).ToList();
+                    break;
+                case "name_desc":
+                    suppliers = suppliers.OrderByDescending(s => s.CompanyName).ToList();
+                    break;
+                case "name_asc":
+                default:
+                    suppliers = suppliers.OrderBy(s => s.CompanyName).ToList();
+                    break;
+            }
+
+            Supplier? selectedSupplier = null;
+            var availableBrands = new List<BrandSummaryViewModel>();
+            var availableCategories = new List<Category>();
+            var availableModels = new List<string>();
+            var availableProductNames = new List<string>();
+            var displayProducts = new List<Product>();
 
             if (!string.IsNullOrWhiteSpace(selectedSupplierId))
             {
-                filteredProducts = filteredProducts.Where(p => p.SupplierId == selectedSupplierId);
-            }
-            else
-            {
-                // Only show products linked to an active, existing supplier vendor account
-                filteredProducts = filteredProducts.Where(p => !string.IsNullOrWhiteSpace(p.SupplierId) && activeSupplierIds.Contains(p.SupplierId));
-            }
+                selectedSupplier = suppliers.FirstOrDefault(s => s.Id == selectedSupplierId);
+                if (selectedSupplier != null)
+                {
+                    // Strictly isolate products belonging to this selected supplier
+                    var supplierProducts = allProducts.Where(p => p.SupplierId == selectedSupplierId).ToList();
 
-            if (!string.IsNullOrWhiteSpace(categoryId))
-            {
-                filteredProducts = filteredProducts.Where(p => p.CategoryId == categoryId);
-            }
+                    // Calculate brands dynamically for this selected supplier only
+                    var brandsQuery = supplierProducts
+                        .Where(p => !string.IsNullOrWhiteSpace(p.Brand))
+                        .GroupBy(p => p.Brand.Trim(), StringComparer.OrdinalIgnoreCase)
+                        .Select(g => new BrandSummaryViewModel
+                        {
+                            Brand = g.First().Brand.Trim(),
+                            ProductCount = g.Count(),
+                            SampleModels = g.Select(p => p.ModelName).Where(m => !string.IsNullOrWhiteSpace(m)).Distinct().Take(3).ToList()
+                        });
 
-            if (!string.IsNullOrWhiteSpace(brand))
-            {
-                filteredProducts = filteredProducts.Where(p => p.Brand.Equals(brand, StringComparison.OrdinalIgnoreCase));
-            }
+                    switch (brandSort?.ToLower())
+                    {
+                        case "count_desc":
+                            availableBrands = brandsQuery.OrderByDescending(b => b.ProductCount).ThenBy(b => b.Brand).ToList();
+                            break;
+                        case "name_desc":
+                            availableBrands = brandsQuery.OrderByDescending(b => b.Brand).ToList();
+                            break;
+                        case "name_asc":
+                        default:
+                            availableBrands = brandsQuery.OrderBy(b => b.Brand).ToList();
+                            break;
+                    }
 
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                var s = search.Trim();
-                filteredProducts = filteredProducts.Where(p =>
-                    p.Name.Contains(s, StringComparison.OrdinalIgnoreCase) ||
-                    p.Brand.Contains(s, StringComparison.OrdinalIgnoreCase) ||
-                    p.ModelName.Contains(s, StringComparison.OrdinalIgnoreCase) ||
-                    p.Code.Contains(s, StringComparison.OrdinalIgnoreCase));
+                    // Available categories for this supplier's products
+                    var categoryIds = supplierProducts
+                        .Where(p => !string.IsNullOrWhiteSpace(p.CategoryId))
+                        .Select(p => p.CategoryId!)
+                        .Distinct()
+                        .ToHashSet();
+
+                    var allCats = await _categoryRepository.GetAllAsync();
+                    availableCategories = allCats.Where(c => categoryIds.Contains(c.Id)).OrderBy(c => c.Name).ToList();
+
+                    // If brand is chosen, narrow down products
+                    if (!string.IsNullOrWhiteSpace(brand))
+                    {
+                        var brandProducts = supplierProducts.Where(p => p.Brand.Equals(brand.Trim(), StringComparison.OrdinalIgnoreCase)).ToList();
+
+                        availableModels = brandProducts
+                            .Select(p => p.ModelName)
+                            .Where(m => !string.IsNullOrWhiteSpace(m))
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .OrderBy(m => m)
+                            .ToList();
+
+                        availableProductNames = brandProducts
+                            .Select(p => p.Name)
+                            .Where(n => !string.IsNullOrWhiteSpace(n))
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .OrderBy(n => n)
+                            .ToList();
+
+                        var query = brandProducts.AsEnumerable();
+
+                        if (!string.IsNullOrWhiteSpace(categoryId))
+                        {
+                            query = query.Where(p => p.CategoryId == categoryId);
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(modelName))
+                        {
+                            query = query.Where(p => p.ModelName.Equals(modelName.Trim(), StringComparison.OrdinalIgnoreCase));
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(productName))
+                        {
+                            query = query.Where(p => p.Name.Equals(productName.Trim(), StringComparison.OrdinalIgnoreCase));
+                        }
+
+                        if (minPrice.HasValue && minPrice.Value > 0)
+                        {
+                            query = query.Where(p => (p.SupplierPrice > 0 ? p.SupplierPrice : p.PurchasePrice) >= minPrice.Value);
+                        }
+
+                        if (maxPrice.HasValue && maxPrice.Value > 0)
+                        {
+                            query = query.Where(p => (p.SupplierPrice > 0 ? p.SupplierPrice : p.PurchasePrice) <= maxPrice.Value);
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(search))
+                        {
+                            var s = search.Trim();
+                            query = query.Where(p =>
+                                (p.Name != null && p.Name.Contains(s, StringComparison.OrdinalIgnoreCase)) ||
+                                (p.ModelName != null && p.ModelName.Contains(s, StringComparison.OrdinalIgnoreCase)) ||
+                                (p.Variant != null && p.Variant.Contains(s, StringComparison.OrdinalIgnoreCase)) ||
+                                (p.Ram != null && p.Ram.Contains(s, StringComparison.OrdinalIgnoreCase)) ||
+                                (p.Storage != null && p.Storage.Contains(s, StringComparison.OrdinalIgnoreCase)) ||
+                                (p.Color != null && p.Color.Contains(s, StringComparison.OrdinalIgnoreCase)) ||
+                                (p.Code != null && p.Code.Contains(s, StringComparison.OrdinalIgnoreCase)));
+                        }
+
+                        // Product sorting: price low to high, price high to low, model name, stock, newest
+                        switch (sortBy?.ToLower())
+                        {
+                            case "price_asc":
+                                query = query.OrderBy(p => (p.SupplierPrice > 0 ? p.SupplierPrice : p.PurchasePrice));
+                                break;
+                            case "price_desc":
+                                query = query.OrderByDescending(p => (p.SupplierPrice > 0 ? p.SupplierPrice : p.PurchasePrice));
+                                break;
+                            case "model_asc":
+                                query = query.OrderBy(p => p.ModelName).ThenBy(p => p.Name);
+                                break;
+                            case "model_desc":
+                                query = query.OrderByDescending(p => p.ModelName).ThenByDescending(p => p.Name);
+                                break;
+                            case "stock_desc":
+                                query = query.OrderByDescending(p => p.CurrentStock);
+                                break;
+                            case "newest":
+                            default:
+                                query = query.OrderByDescending(p => p.CreatedDate);
+                                break;
+                        }
+
+                        displayProducts = query.ToList();
+                    }
+                }
+                else
+                {
+                    // Selected supplier was invalid/not found
+                    selectedSupplierId = null;
+                }
             }
 
             ViewBag.Suppliers = suppliers;
-            ViewBag.Categories = categories;
+            ViewBag.SupplierProductCounts = supplierProductCounts;
+            ViewBag.SupplierSort = supplierSort;
             ViewBag.SelectedSupplierId = selectedSupplierId;
+            ViewBag.SelectedSupplier = selectedSupplier;
+            ViewBag.AvailableBrands = availableBrands;
+            ViewBag.BrandSort = brandSort;
+            ViewBag.SelectedBrand = brand?.Trim();
+            ViewBag.Categories = availableCategories;
             ViewBag.CategoryId = categoryId;
-            ViewBag.Brand = brand;
+            ViewBag.AvailableModels = availableModels;
+            ViewBag.ModelName = modelName?.Trim();
+            ViewBag.AvailableProductNames = availableProductNames;
+            ViewBag.ProductName = productName?.Trim();
+            ViewBag.MinPrice = minPrice;
+            ViewBag.MaxPrice = maxPrice;
+            ViewBag.SortBy = sortBy;
             ViewBag.Search = search;
+            ViewBag.SupplierDict = suppliers.ToDictionary(s => s.Id);
 
-            return View(filteredProducts.OrderByDescending(p => p.CreatedDate).ToList());
+            return View(displayProducts);
         }
 
         [HttpPost]
@@ -116,16 +272,6 @@ namespace InventoryManagementSystem.Controllers
                 TempData["ToastMessage"] = "Please enter an order quantity (> 0) for at least one product item.";
                 TempData["ToastType"] = "warning";
                 return RedirectToAction(nameof(Create), new { selectedSupplierId = supplierId });
-            }
-
-            // Auto-detect supplier ID if top filter dropdown was not selected
-            if (string.IsNullOrWhiteSpace(supplierId))
-            {
-                var firstProd = await _productRepository.GetByIdAsync(validInputs.First().ProductId);
-                if (firstProd != null && !string.IsNullOrWhiteSpace(firstProd.SupplierId))
-                {
-                    supplierId = firstProd.SupplierId;
-                }
             }
 
             if (string.IsNullOrWhiteSpace(supplierId))
@@ -152,33 +298,45 @@ namespace InventoryManagementSystem.Controllers
             foreach (var input in validInputs)
             {
                 var p = await _productRepository.GetByIdAsync(input.ProductId);
-                if (p != null)
+                if (p == null)
                 {
-                    if (p.CurrentStock > 0 && input.Quantity > p.CurrentStock)
-                    {
-                        TempData["ToastMessage"] = $"Cannot order {input.Quantity} units of '{p.Name}'. Available supplier stock is only {p.CurrentStock} units.";
-                        TempData["ToastType"] = "danger";
-                        return RedirectToAction(nameof(Create), new { selectedSupplierId = supplierId });
-                    }
-
-                    var item = new SupplierOrderItem
-                    {
-                        ProductId = p.Id,
-                        ProductName = p.Name,
-                        Brand = p.Brand,
-                        Model = p.ModelName,
-                        Variant = p.Variant,
-                        Color = p.Color,
-                        Ram = p.Ram,
-                        Storage = p.Storage,
-                        ImageUrl = p.ImageUrl,
-                        Quantity = input.Quantity,
-                        AvailableStock = p.CurrentStock,
-                        UnitPrice = input.UnitPrice > 0 ? input.UnitPrice : (p.SupplierPrice > 0 ? p.SupplierPrice : p.PurchasePrice),
-                    };
-                    item.Subtotal = item.Quantity * item.UnitPrice;
-                    order.Items.Add(item);
+                    TempData["ToastMessage"] = $"Product with ID '{input.ProductId}' does not exist.";
+                    TempData["ToastType"] = "danger";
+                    return RedirectToAction(nameof(Create), new { selectedSupplierId = supplierId });
                 }
+
+                // Strict Supplier Security Verification
+                if (p.SupplierId != supplierId)
+                {
+                    TempData["ToastMessage"] = $"Security Violation: Product '{p.Name}' does not belong to supplier '{supplier.CompanyName}'.";
+                    TempData["ToastType"] = "danger";
+                    return RedirectToAction(nameof(Create), new { selectedSupplierId = supplierId });
+                }
+
+                if (p.CurrentStock > 0 && input.Quantity > p.CurrentStock)
+                {
+                    TempData["ToastMessage"] = $"Cannot order {input.Quantity} units of '{p.Name}'. Available supplier stock is only {p.CurrentStock} units.";
+                    TempData["ToastType"] = "danger";
+                    return RedirectToAction(nameof(Create), new { selectedSupplierId = supplierId });
+                }
+
+                var item = new SupplierOrderItem
+                {
+                    ProductId = p.Id,
+                    ProductName = p.Name,
+                    Brand = p.Brand,
+                    Model = p.ModelName,
+                    Variant = p.Variant,
+                    Color = p.Color,
+                    Ram = p.Ram,
+                    Storage = p.Storage,
+                    ImageUrl = p.ImageUrl,
+                    Quantity = input.Quantity,
+                    AvailableStock = p.CurrentStock,
+                    UnitPrice = input.UnitPrice > 0 ? input.UnitPrice : (p.SupplierPrice > 0 ? p.SupplierPrice : p.PurchasePrice),
+                };
+                item.Subtotal = item.Quantity * item.UnitPrice;
+                order.Items.Add(item);
             }
 
             if (!order.Items.Any())
@@ -205,6 +363,26 @@ namespace InventoryManagementSystem.Controllers
                 TempData["ToastMessage"] = "Order submission failed. Empty purchase order.";
                 TempData["ToastType"] = "danger";
                 return RedirectToAction(nameof(Create));
+            }
+
+            var supplier = await _supplierService.GetSupplierByIdAsync(order.SupplierId);
+            if (supplier == null)
+            {
+                TempData["ToastMessage"] = "Order submission failed: Selected supplier does not exist.";
+                TempData["ToastType"] = "danger";
+                return RedirectToAction(nameof(Create));
+            }
+
+            // Strict Server-Side Supplier Verification for each product item
+            foreach (var item in order.Items)
+            {
+                var p = await _productRepository.GetByIdAsync(item.ProductId);
+                if (p == null || p.SupplierId != order.SupplierId)
+                {
+                    TempData["ToastMessage"] = $"Order submission failed: Product '{item.ProductName ?? item.ProductId}' does not belong to supplier '{supplier.CompanyName}'.";
+                    TempData["ToastType"] = "danger";
+                    return RedirectToAction(nameof(Create), new { selectedSupplierId = order.SupplierId });
+                }
             }
 
             var executedBy = User.Identity?.Name ?? "Admin";
@@ -266,6 +444,13 @@ namespace InventoryManagementSystem.Controllers
             TempData["ToastType"] = success ? "success" : "danger";
             return RedirectToAction(nameof(Index));
         }
+    }
+
+    public class BrandSummaryViewModel
+    {
+        public string Brand { get; set; } = string.Empty;
+        public int ProductCount { get; set; }
+        public List<string> SampleModels { get; set; } = new List<string>();
     }
 
     public class OrderItemFormInput
