@@ -99,7 +99,8 @@
     <div class="col-lg-4">
         <div class="card-d card-p-lg mb-4">
             <div class="s-title"><i class="bi bi-truck me-2" style="color:var(--primary)"></i>Vendor Information</div>
-            <div class="mb-2"><strong>Company:</strong> @Model.SupplierName</div>
+            <div class="mb-2"><strong>Vendor / Brand:</strong> <span class="fw-bold text-primary">@Model.DisplaySupplierVendorName</span></div>
+            <div class="mb-2"><strong>Company / Legal Name:</strong> <span class="text-secondary">@Model.DisplaySupplierCompanyName</span></div>
             <div class="mb-2"><strong>Email:</strong> @Model.SupplierEmail</div>
             <div class="mb-2"><strong>Phone:</strong> @(string.IsNullOrEmpty(Model.SupplierPhone) ? "-" : Model.SupplierPhone)</div>
             <div>

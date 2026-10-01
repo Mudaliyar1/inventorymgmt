@@ -389,7 +389,7 @@ namespace InventoryManagementSystem.Services
                     PrimaryText = r.ReturnNumber,
                     ReferenceInfo = r.PurchaseOrderNumber ?? "-",
                     DateString = r.CreatedAt.ToIstString("yyyy-MM-dd HH:mm IST"),
-                    CustomerInfo = r.SupplierName,
+                    CustomerInfo = !string.IsNullOrWhiteSpace(r.SupplierCompanyName) && r.SupplierCompanyName != r.DisplaySupplierVendorName ? $"{r.DisplaySupplierVendorName} ({r.SupplierCompanyName})" : r.DisplaySupplierVendorName,
                     Reason = r.Reason,
                     CategoryName = r.ResolutionType,
                     StockQty = r.TotalQuantity,
@@ -538,7 +538,7 @@ namespace InventoryManagementSystem.Services
         private async Task BuildSupplierReportAsync(ReportFilterRequest req, ReportResultData res, ReportSummaryStats stats)
         {
             res.ReportTitle = "Supplier Directory & Procurement Report";
-            res.Headers = new List<string> { "#", "Company Name", "Contact Person", "Phone", "Email", "GSTIN", "Payables", "Created Date" };
+            res.Headers = new List<string> { "#", "Vendor / Brand Name", "Company / Legal Name", "Date Added", "Phone / Contact", "Payables", "GSTIN" };
 
             var suppliers = await _supplierRepository.GetAllAsync();
             var supList = suppliers.ToList();
@@ -547,9 +547,12 @@ namespace InventoryManagementSystem.Services
             {
                 var s = req.SearchTerm.Trim().ToLower();
                 supList = supList.Where(sup =>
-                    (sup.CompanyName != null && sup.CompanyName.ToLower().Contains(s)) ||
-                    (sup.ContactPerson != null && sup.ContactPerson.ToLower().Contains(s)) ||
-                    (sup.Phone != null && sup.Phone.ToLower().Contains(s))
+                    (!string.IsNullOrEmpty(sup.VendorName) && sup.VendorName.ToLower().Contains(s)) ||
+                    (!string.IsNullOrEmpty(sup.CompanyName) && sup.CompanyName.ToLower().Contains(s)) ||
+                    (!string.IsNullOrEmpty(sup.ContactPerson) && sup.ContactPerson.ToLower().Contains(s)) ||
+                    (!string.IsNullOrEmpty(sup.Phone) && sup.Phone.ToLower().Contains(s)) ||
+                    (!string.IsNullOrEmpty(sup.Email) && sup.Email.ToLower().Contains(s)) ||
+                    (!string.IsNullOrEmpty(sup.Gstin) && sup.Gstin.ToLower().Contains(s))
                 ).ToList();
             }
 
@@ -565,12 +568,12 @@ namespace InventoryManagementSystem.Services
                 res.Rows.Add(new ReportRowItem
                 {
                     Id = sup.Id,
-                    PrimaryText = sup.CompanyName,
-                    SecondaryText = sup.ContactPerson,
-                    CustomerInfo = sup.Phone,
+                    PrimaryText = sup.DisplayVendorName,
+                    SecondaryText = sup.DisplayCompanyName,
+                    DateString = sup.CreatedDate.ToIstString("yyyy-MM-dd"),
+                    CustomerInfo = !string.IsNullOrEmpty(sup.Phone) ? $"{sup.Phone} ({sup.ContactPerson})" : sup.ContactPerson,
                     BadgeText = sup.Gstin ?? "-",
-                    GrandTotal = sup.OutstandingPayable,
-                    DateString = sup.CreatedDate.ToIstString("yyyy-MM-dd")
+                    GrandTotal = sup.OutstandingPayable
                 });
             }
         }

@@ -23,9 +23,24 @@
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <div class="fg">
-                            <label class="fg-label">Company / Vendor Name <span class="req">*</span></label>
-                            <input asp-for="CompanyName" class="fg-control" required />
+                            <label class="fg-label">Vendor / Brand Name <span class="req">*</span></label>
+                            <input asp-for="VendorName" class="fg-control" required placeholder="e.g. ABC Mobiles" />
+                            <span asp-validation-for="VendorName" class="fg-error"></span>
+                            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Commercial, trading, or storefront brand name.</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label">Company / Legal Name <span class="req">*</span></label>
+                            <input asp-for="CompanyName" class="fg-control" required placeholder="e.g. ABC Mobile Distribution Pvt. Ltd." />
                             <span asp-validation-for="CompanyName" class="fg-error"></span>
+                            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Registered company or corporate legal identity.</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="fg">
+                            <label class="fg-label">Contact Person Name</label>
+                            <input asp-for="ContactPerson" class="fg-control" placeholder="e.g. Account Representative" />
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -103,7 +118,15 @@
     <!-- Right Side Account Details Summary Card -->
     <div class="col-lg-4">
         <div class="card-d card-p-lg">
-            <div class="s-title"><i class="bi bi-shield-check me-2" style="color:var(--success)"></i>Portal Credentials</div>
+            <div class="s-title"><i class="bi bi-shield-check me-2" style="color:var(--success)"></i>Portal Credentials & Identity</div>
+            <div class="mb-3">
+                <div style="font-size:12px;color:var(--text-muted)">Vendor / Brand Name:</div>
+                <div style="font-size:14px;font-weight:700;color:var(--text-primary)">@Model.DisplayVendorName</div>
+            </div>
+            <div class="mb-3">
+                <div style="font-size:12px;color:var(--text-muted)">Company / Legal Name:</div>
+                <div style="font-size:13px;color:var(--text-secondary)">@Model.DisplayCompanyName</div>
+            </div>
             <div class="mb-3">
                 <div style="font-size:12px;color:var(--text-muted)">Login Identifier:</div>
                 <div style="font-size:14px;font-weight:700;color:var(--text-primary)">@Model.Email</div>

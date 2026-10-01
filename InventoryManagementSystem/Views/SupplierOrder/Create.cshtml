@@ -257,7 +257,7 @@
     }
     else
     {
-        <a href="@Url.Action("Create")">@selectedSupplier?.CompanyName</a>
+        <a href="@Url.Action("Create")">@(selectedSupplier?.DisplayVendorName ?? selectedSupplier?.CompanyName)</a>
         <i class="bi bi-chevron-right" style="font-size:10px"></i>
         @if (!hasBrand)
         {
@@ -285,11 +285,11 @@
             }
             else if (!hasBrand)
             {
-                <span>Step 2: Select a mobile phone brand supplied by <strong style="color:var(--primary)">@selectedSupplier?.CompanyName</strong></span>
+                <span>Step 2: Select a mobile phone brand supplied by <strong style="color:var(--primary)">@selectedSupplier?.DisplayVendorName</strong> (@selectedSupplier?.DisplayCompanyName)</span>
             }
             else
             {
-                <span>Step 3: Browse and select <strong style="color:var(--primary)">@selectedBrand</strong> devices supplied by <strong>@selectedSupplier?.CompanyName</strong></span>
+                <span>Step 3: Browse and select <strong style="color:var(--primary)">@selectedBrand</strong> devices supplied by <strong>@selectedSupplier?.DisplayVendorName</strong> (@selectedSupplier?.DisplayCompanyName)</span>
             }
         </p>
     </div>
@@ -306,7 +306,7 @@
         <div class="po-step-circle">
             @if (stepNumber > 1) { <i class="bi bi-check-lg"></i> } else { <span>1</span> }
         </div>
-        <span>1. Supplier @(hasSupplier ? $"({selectedSupplier?.CompanyName})" : "")</span>
+        <span>1. Supplier @(hasSupplier ? $"({selectedSupplier?.DisplayVendorName})" : "")</span>
     </a>
     
     <div class="po-step-divider @(stepNumber > 1 ? "completed" : "")"></div>
@@ -351,7 +351,7 @@
                 {
                     int pCount = supplierProductCounts.TryGetValue(sup.Id, out var count) ? count : 0;
                     <option value="@sup.Id" selected="@(selectedSupplierId == sup.Id)">
-                        @sup.CompanyName (@pCount Products)
+                        @sup.DisplayVendorName — @sup.DisplayCompanyName (@pCount Products)
                     </option>
                 }
             </select>
@@ -447,17 +447,21 @@
                         {
                             int pCount = supplierProductCounts.TryGetValue(sup.Id, out var count) ? count : 0;
                             var supJson = System.Text.Json.JsonSerializer.Serialize(sup);
-                            <div class="col-md-6 col-xl-4 supplier-item-card" data-keywords="@sup.CompanyName.ToLower() @sup.ContactPerson.ToLower() @sup.Phone.ToLower() @sup.City.ToLower()">
+                            <div class="col-md-6 col-xl-4 supplier-item-card" data-keywords="@((sup.DisplayVendorName ?? "").ToLower()) @((sup.DisplayCompanyName ?? "").ToLower()) @((sup.DisplayContactPerson ?? "").ToLower()) @((sup.Phone ?? "").ToLower()) @((sup.City ?? "").ToLower())">
                                 <div class="card-d card-p h-100 d-flex flex-column justify-content-between" style="background:var(--bg);border:1px solid var(--border)">
                                     <div>
                                         <div class="d-flex align-items-start justify-content-between mb-2">
                                             <div class="d-flex align-items-center gap-2">
                                                 <div style="width:38px;height:38px;border-radius:10px;background:var(--primary-dim);display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:18px">
-                                                    <i class="bi bi-building"></i>
+                                                    <i class="bi bi-shop"></i>
                                                 </div>
                                                 <div>
-                                                    <h6 class="mb-0 fw-bold" style="color:var(--text-primary)">@sup.CompanyName</h6>
-                                                    <span class="text-muted" style="font-size:11px">@sup.ContactPerson</span>
+                                                    <h6 class="mb-0 fw-bold" style="color:var(--text-primary)">@sup.DisplayVendorName</h6>
+                                                    <div style="font-size:12px;color:var(--text-muted);font-weight:500" class="mt-0.5">@sup.DisplayCompanyName</div>
+                                                    @if (!string.IsNullOrWhiteSpace(sup.DisplayContactPerson) && sup.DisplayContactPerson != sup.DisplayCompanyName && sup.DisplayContactPerson != sup.DisplayVendorName)
+                                                    {
+                                                        <span class="text-muted" style="font-size:11px"><i class="bi bi-person me-1"></i>@sup.DisplayContactPerson</span>
+                                                    }
                                                 </div>
                                             </div>
                                             <span class="badge-d @(pCount > 0 ? "badge-info" : "badge-gray")" style="font-size:11px">
@@ -482,7 +486,7 @@
                                     </div>
 
                                     <div class="d-flex gap-2 mt-2">
-                                        <button type="button" class="btn-d btn-outline btn-sm-d" onclick='openDirectSupplierModal(@Html.Raw(supJson))' title="View full supplier vendor profile">
+                                        <button type="button" class="btn-d btn-outline btn-sm-d" onclick="openDirectSupplierModal('@sup.Id')" title="View full supplier vendor profile">
                                             <i class="bi bi-info-circle"></i>
                                         </button>
                                         <a href="@Url.Action("Create", new { selectedSupplierId = sup.Id })" class="btn-d btn-primary btn-sm-d w-100 text-center">
@@ -511,7 +515,8 @@
                         </div>
                         <div>
                             <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;font-weight:700">Selected Supplier Vendor</div>
-                            <h4 class="mb-0" style="font-weight:800;color:var(--text-primary)">@selectedSupplier?.CompanyName</h4>
+                            <h4 class="mb-0" style="font-weight:800;color:var(--text-primary)">@selectedSupplier?.DisplayVendorName</h4>
+                            <div style="font-size:13px;color:var(--text-secondary);font-weight:600">@selectedSupplier?.DisplayCompanyName</div>
                             <div style="font-size:12px;color:var(--text-muted)">
                                 Contact: <strong class="text-secondary">@selectedSupplier?.ContactPerson</strong> · 
                                 Phone: <strong class="text-secondary">@selectedSupplier?.Phone</strong> · 
@@ -520,7 +525,7 @@
                         </div>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        <button type="button" class="btn-d btn-outline btn-sm-d" onclick='openDirectSupplierModal(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(selectedSupplier)))'>
+                        <button type="button" class="btn-d btn-outline btn-sm-d" onclick="openDirectSupplierModal('@selectedSupplier?.Id')">
                             <i class="bi bi-card-text me-1"></i> Vendor Profile
                         </button>
                         <a href="@Url.Action("Create")" class="btn-d btn-outline btn-sm-d">
@@ -613,7 +618,8 @@
                         </a>
                         <div>
                             <div style="font-size:11px;color:var(--text-muted)">
-                                Supplier: <strong class="text-secondary">@selectedSupplier?.CompanyName</strong>
+                                Supplier: <strong class="text-primary">@selectedSupplier?.DisplayVendorName</strong>
+                                <span class="text-muted">(@selectedSupplier?.DisplayCompanyName)</span>
                             </div>
                             <h4 class="mb-0" style="font-weight:800;color:var(--text-primary)">
                                 @selectedBrand Products
@@ -622,7 +628,7 @@
                         </div>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        <button type="button" class="btn-d btn-outline btn-sm-d" onclick='openDirectSupplierModal(@Html.Raw(System.Text.Json.JsonSerializer.Serialize(selectedSupplier)))'>
+                        <button type="button" class="btn-d btn-outline btn-sm-d" onclick="openDirectSupplierModal('@selectedSupplier?.Id')">
                             <i class="bi bi-truck me-1"></i> Supplier Profile
                         </button>
                     </div>
@@ -782,7 +788,7 @@
                         <h5 class="mb-0" style="font-weight:800;color:var(--text-primary)">
                             <i class="bi bi-cart-check me-2 text-primary"></i>Order Basket
                         </h5>
-                        <div style="font-size:11px;color:var(--text-muted)">Vendor: <strong class="text-secondary">@selectedSupplier?.CompanyName</strong></div>
+                        <div style="font-size:11px;color:var(--text-muted)">Vendor: <strong class="text-primary">@selectedSupplier?.DisplayVendorName</strong> <span class="text-muted">(@selectedSupplier?.DisplayCompanyName)</span></div>
                     </div>
                     <button type="button" class="btn btn-link btn-sm text-danger p-0" onclick="clearCart()" title="Clear entire order basket" style="font-size:12px;text-decoration:none">
                         <i class="bi bi-trash3 me-1"></i>Clear
@@ -1036,8 +1042,8 @@
                         <i class="bi bi-truck" style="font-size:20px"></i>
                     </div>
                     <div>
-                        <h5 class="modal-title mb-0" id="ds_CompanyName" style="font-weight:700">Supplier Vendor Details</h5>
-                        <div style="font-size:12px;color:var(--text-muted)">Vendor Profile & Contact Directory</div>
+                        <h5 class="modal-title mb-0" id="ds_VendorHeaderTitle" style="font-weight:700">Supplier Vendor Details</h5>
+                        <div style="font-size:12px;color:var(--text-muted)" id="ds_CompanyHeaderSub">Vendor Profile & Contact Directory</div>
                     </div>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -1055,6 +1061,17 @@
                             <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;font-weight:700">Outstanding Payable</div>
                             <div style="font-size:22px;font-weight:800;color:var(--warning)" class="mt-1" id="ds_OutstandingPayable">₹0.00</div>
                         </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-3 p-3 rounded" style="background:var(--bg);border:1px solid var(--border);margin:0">
+                    <div class="col-md-6">
+                        <label class="fg-label text-muted mb-1">Vendor / Brand / Trading Name</label>
+                        <div style="font-size:15px;font-weight:800;color:var(--primary)" id="ds_VendorName">-</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="fg-label text-muted mb-1">Company / Legal Name</label>
+                        <div style="font-size:14px;font-weight:700;color:var(--text-primary)" id="ds_LegalName">-</div>
                     </div>
                 </div>
 
@@ -1097,7 +1114,68 @@
 </div>
 
 @section Scripts {
+@{
+    var clientSuppliers = new List<object>();
+    foreach (var s in suppliers)
+    {
+        clientSuppliers.Add(new {
+            id = s.Id,
+            vendorName = s.DisplayVendorName,
+            companyName = s.DisplayCompanyName,
+            contactPerson = s.DisplayContactPerson,
+            phone = s.Phone ?? "",
+            email = s.Email ?? "",
+            gstin = s.Gstin ?? "",
+            paymentTerms = s.PaymentTerms ?? "Net 30 Days",
+            outstandingPayable = s.OutstandingPayable,
+            address = s.Address ?? "",
+            city = s.City ?? "",
+            state = s.State ?? "",
+            country = s.Country ?? "",
+            status = s.Status.ToString()
+        });
+    }
+    if (selectedSupplier != null && !suppliers.Any(s => s.Id == selectedSupplier.Id))
+    {
+        clientSuppliers.Add(new {
+            id = selectedSupplier.Id,
+            vendorName = selectedSupplier.DisplayVendorName,
+            companyName = selectedSupplier.DisplayCompanyName,
+            contactPerson = selectedSupplier.DisplayContactPerson,
+            phone = selectedSupplier.Phone ?? "",
+            email = selectedSupplier.Email ?? "",
+            gstin = selectedSupplier.Gstin ?? "",
+            paymentTerms = selectedSupplier.PaymentTerms ?? "Net 30 Days",
+            outstandingPayable = selectedSupplier.OutstandingPayable,
+            address = selectedSupplier.Address ?? "",
+            city = selectedSupplier.City ?? "",
+            state = selectedSupplier.State ?? "",
+            country = selectedSupplier.Country ?? "",
+            status = selectedSupplier.Status.ToString()
+        });
+    }
+}
     <script>
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        const rawSuppliersList = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(clientSuppliers));
+        window.supplierLookup = {};
+        if (Array.isArray(rawSuppliersList)) {
+            rawSuppliersList.forEach(s => {
+                if (s && s.id) {
+                    window.supplierLookup[s.id] = s;
+                }
+            });
+        }
+
         const currentSupplierId = '@(selectedSupplierId ?? "")';
 
         function onSupplierDropdownChange(sel) {
@@ -1448,26 +1526,100 @@
         }
 
         // Supplier Modal Inspection
-        function openDirectSupplierModal(sup) {
-            if (!sup) return;
-            document.getElementById('ds_CompanyName').innerText = sup.CompanyName || 'Supplier Details';
-            document.getElementById('ds_Status').innerText = sup.Status || 'Active';
-            document.getElementById('ds_ContactPerson').innerText = sup.ContactPerson || '-';
-            document.getElementById('ds_Phone').innerText = sup.Phone || '-';
-            document.getElementById('ds_PhoneLink').href = sup.Phone ? `tel:${sup.Phone}` : '#';
-            document.getElementById('ds_Email').innerText = sup.Email || '-';
-            document.getElementById('ds_EmailLink').href = sup.Email ? `mailto:${sup.Email}` : '#';
-            document.getElementById('ds_Gstin').innerText = sup.Gstin || 'Not Registered';
-            document.getElementById('ds_PaymentTerms').innerText = sup.PaymentTerms || 'Net 30 Days';
-            document.getElementById('ds_OutstandingPayable').innerText = `₹${(sup.OutstandingPayable || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+        function openDirectSupplierModal(supOrId) {
+            if (!supOrId) return;
+            let sup = null;
+            if (typeof supOrId === 'string') {
+                sup = window.supplierLookup ? window.supplierLookup[supOrId] : null;
+            } else if (typeof supOrId === 'object') {
+                sup = supOrId;
+            }
 
-            const cityState = [sup.City, sup.State, sup.Country].filter(Boolean).join(', ');
-            document.getElementById('ds_CityState').innerText = cityState || '-';
-            const fullAddr = [sup.Address, sup.City, sup.State, sup.Country].filter(Boolean).join(', ');
-            document.getElementById('ds_Address').innerText = fullAddr || 'No physical address provided.';
+            if (!sup) {
+                console.warn('Supplier not found for identifier:', supOrId);
+                return;
+            }
 
-            const modal = new bootstrap.Modal(document.getElementById('directSupplierDetailsModal'));
-            modal.show();
+            const vName = sup.vendorName || sup.VendorName || sup.companyName || sup.CompanyName || 'Supplier Vendor';
+            const cName = sup.companyName || sup.CompanyName || sup.vendorName || sup.VendorName || '-';
+
+            const dsVendorHeader = document.getElementById('ds_VendorHeaderTitle');
+            if (dsVendorHeader) dsVendorHeader.innerText = vName;
+
+            const dsCompanyHeader = document.getElementById('ds_CompanyHeaderSub');
+            if (dsCompanyHeader) {
+                dsCompanyHeader.innerText = (cName && cName !== vName && cName !== '-') 
+                    ? `${cName} · Vendor Profile & Contact Directory` 
+                    : 'Vendor Profile & Contact Directory';
+            }
+
+            const dsTitle = document.getElementById('ds_CompanyName');
+            if (dsTitle) dsTitle.innerText = vName;
+
+            const dsVendorName = document.getElementById('ds_VendorName');
+            if (dsVendorName) dsVendorName.innerText = vName;
+
+            const dsLegalName = document.getElementById('ds_LegalName');
+            if (dsLegalName) dsLegalName.innerText = cName;
+
+            const dsStatus = document.getElementById('ds_Status');
+            if (dsStatus) {
+                const statusStr = sup.status || sup.Status || 'Active';
+                dsStatus.innerText = statusStr;
+                dsStatus.className = (statusStr.toLowerCase() === 'active') 
+                    ? 'badge bg-success-subtle text-success fs-6' 
+                    : 'badge bg-danger-subtle text-danger fs-6';
+            }
+
+            const contactVal = (sup.contactPerson && sup.contactPerson.trim() && sup.contactPerson.trim() !== '-') 
+                ? sup.contactPerson.trim() 
+                : ((sup.companyName && sup.companyName.trim()) ? sup.companyName.trim() : (sup.vendorName || '-'));
+
+            const dsContactPerson = document.getElementById('ds_ContactPerson');
+            if (dsContactPerson) dsContactPerson.innerText = contactVal;
+
+            const phone = sup.phone || sup.Phone || '';
+            const dsPhone = document.getElementById('ds_Phone');
+            const dsPhoneLink = document.getElementById('ds_PhoneLink');
+            if (dsPhone) dsPhone.innerText = phone || '-';
+            if (dsPhoneLink) dsPhoneLink.href = phone ? `tel:${phone}` : '#';
+
+            const email = sup.email || sup.Email || '';
+            const dsEmail = document.getElementById('ds_Email');
+            const dsEmailLink = document.getElementById('ds_EmailLink');
+            if (dsEmail) dsEmail.innerText = email || '-';
+            if (dsEmailLink) dsEmailLink.href = email ? `mailto:${email}` : '#';
+
+            const dsGstin = document.getElementById('ds_Gstin');
+            if (dsGstin) dsGstin.innerText = sup.gstin || sup.Gstin || 'Not Registered';
+
+            const dsPaymentTerms = sup.paymentTerms || sup.PaymentTerms || 'Net 30 Days';
+            const dsPaymentTermsEl = document.getElementById('ds_PaymentTerms');
+            if (dsPaymentTermsEl) dsPaymentTermsEl.innerText = dsPaymentTerms;
+
+            const payable = Number(sup.outstandingPayable ?? sup.OutstandingPayable ?? 0);
+            const dsOutstandingPayable = document.getElementById('ds_OutstandingPayable');
+            if (dsOutstandingPayable) {
+                dsOutstandingPayable.innerText = `₹${payable.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            }
+
+            const city = sup.city || sup.City;
+            const state = sup.state || sup.State;
+            const country = sup.country || sup.Country;
+            const cityState = [city, state, country].filter(Boolean).join(', ');
+            const dsCityState = document.getElementById('ds_CityState');
+            if (dsCityState) dsCityState.innerText = cityState || '-';
+
+            const address = sup.address || sup.Address;
+            const fullAddr = [address, city, state, country].filter(Boolean).join(', ');
+            const dsAddress = document.getElementById('ds_Address');
+            if (dsAddress) dsAddress.innerText = fullAddr || 'No physical address provided.';
+
+            const modalEl = document.getElementById('directSupplierDetailsModal');
+            if (modalEl) {
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+            }
         }
 
         // Live Filter suppliers search on Step 1

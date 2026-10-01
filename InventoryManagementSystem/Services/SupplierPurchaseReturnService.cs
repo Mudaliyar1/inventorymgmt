@@ -139,7 +139,9 @@ namespace InventoryManagementSystem.Services
             }
 
             // Populate Supplier & Order snapshots
-            returnRecord.SupplierName = supplier.CompanyName;
+            returnRecord.SupplierName = supplier.DisplayVendorName;
+            returnRecord.SupplierVendorName = supplier.DisplayVendorName;
+            returnRecord.SupplierCompanyName = supplier.DisplayCompanyName;
             returnRecord.SupplierEmail = supplier.Email;
             returnRecord.SupplierPhone = supplier.Phone;
             returnRecord.SupplierAddress = $"{supplier.Address}, {supplier.City}, {supplier.State}";
@@ -553,10 +555,12 @@ namespace InventoryManagementSystem.Services
                 sb.AppendLine("<!DOCTYPE html><html><body style='font-family:sans-serif;background:#f4f6f8;padding:20px;'>");
                 sb.AppendLine("<div style='max-width:600px;margin:auto;background:#fff;padding:25px;border-radius:10px;border:1px solid #e2e8f0;'>");
                 sb.AppendLine($"<h2 style='color:#1e293b;margin-top:0;'>Purchase Return Request #{returnRecord.ReturnNumber}</h2>");
-                sb.AppendLine($"<p>Dear <strong>{supplier.ContactPerson ?? supplier.CompanyName}</strong>,</p>");
+                sb.AppendLine($"<p>Dear <strong>{supplier.DisplayVendorName}</strong> ({supplier.DisplayCompanyName}),</p>");
                 sb.AppendLine($"<p>A new supplier purchase return request has been initiated for PO <strong>#{returnRecord.PurchaseOrderNumber}</strong>.</p>");
                 sb.AppendLine("<div style='background:#f8fafc;padding:15px;border-radius:8px;margin:15px 0;border-left:4px solid #ef4444;'>");
                 sb.AppendLine($"<p style='margin:4px 0;'><strong>Return Number:</strong> {returnRecord.ReturnNumber}</p>");
+                sb.AppendLine($"<p style='margin:4px 0;'><strong>Vendor / Brand:</strong> {supplier.DisplayVendorName}</p>");
+                sb.AppendLine($"<p style='margin:4px 0;'><strong>Company / Legal Name:</strong> {supplier.DisplayCompanyName}</p>");
                 sb.AppendLine($"<p style='margin:4px 0;'><strong>Return Reason:</strong> {returnRecord.Reason}</p>");
                 sb.AppendLine($"<p style='margin:4px 0;'><strong>Total Quantity:</strong> {returnRecord.TotalQuantity} Items ({returnRecord.TotalDeviceCount} Mobile Devices)</p>");
                 sb.AppendLine($"<p style='margin:4px 0;'><strong>Total Value:</strong> ₹{returnRecord.TotalReturnValue:N2}</p>");

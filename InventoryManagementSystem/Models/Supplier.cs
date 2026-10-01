@@ -4,6 +4,7 @@ using System;
 
 namespace InventoryManagementSystem.Models
 {
+    [BsonIgnoreExtraElements]
     public class Supplier
     {
         [BsonId]
@@ -13,8 +14,22 @@ namespace InventoryManagementSystem.Models
         [BsonElement("CompanyName")]
         public string CompanyName { get; set; } = string.Empty;
 
+        [BsonElement("VendorName")]
+        public string VendorName { get; set; } = string.Empty;
+
+        [BsonIgnore]
+        public string DisplayVendorName => !string.IsNullOrWhiteSpace(VendorName) ? VendorName : CompanyName;
+
+        [BsonIgnore]
+        public string DisplayCompanyName => !string.IsNullOrWhiteSpace(CompanyName) ? CompanyName : VendorName;
+
         [BsonElement("ContactPerson")]
         public string ContactPerson { get; set; } = string.Empty;
+
+        [BsonIgnore]
+        public string DisplayContactPerson => !string.IsNullOrWhiteSpace(ContactPerson) 
+            ? ContactPerson 
+            : (!string.IsNullOrWhiteSpace(CompanyName) && CompanyName != VendorName ? CompanyName : (!string.IsNullOrWhiteSpace(VendorName) ? VendorName : "-"));
 
         [BsonElement("Phone")]
         public string Phone { get; set; } = string.Empty;

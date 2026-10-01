@@ -125,7 +125,23 @@
                         <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Color</div><div style="font-weight:700">@(string.IsNullOrEmpty(Model.Color) ? "-" : Model.Color)</div></div>
                         <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Barcode</div><div style="font-weight:700">@(string.IsNullOrEmpty(Model.Barcode) ? "-" : Model.Barcode)</div></div>
                         <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Supplier Price</div><div style="font-weight:700;color:var(--primary)">₹@Model.SupplierPrice.ToString("N2")</div></div>
-                        <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Supplier Name</div><div style="font-weight:700">@(string.IsNullOrEmpty(Model.SupplierName) ? "In-House Shop Product" : Model.SupplierName)</div></div>
+                        <div class="col-6 col-md-4">
+                            <div style="font-size:11px;color:var(--text-muted)">Supplier Vendor & Company</div>
+                            <div style="font-weight:700">
+                                @if (string.IsNullOrEmpty(Model.SupplierName) && string.IsNullOrEmpty(Model.SupplierVendorName))
+                                {
+                                    <span>In-House Shop Product</span>
+                                }
+                                else
+                                {
+                                    <span>@Model.DisplaySupplierVendorName</span>
+                                    @if (!string.IsNullOrWhiteSpace(Model.DisplaySupplierCompanyName) && Model.DisplaySupplierCompanyName != Model.DisplaySupplierVendorName)
+                                    {
+                                        <span class="text-muted fw-normal" style="font-size:12px"> (@Model.DisplaySupplierCompanyName)</span>
+                                    }
+                                }
+                            </div>
+                        </div>
                         <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Warranty Period</div><div style="font-weight:700">@Model.WarrantyDurationMonths Months</div></div>
                     </div>
                 </div>

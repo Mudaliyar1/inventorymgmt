@@ -59,7 +59,11 @@ namespace InventoryManagementSystem.Services
         public async Task<(bool Success, string Message, Supplier? Supplier)> SaveSupplierAsync(Supplier supplier, string executedBy)
         {
             if (supplier == null) return (false, "Supplier data is missing.", null);
-            if (string.IsNullOrWhiteSpace(supplier.CompanyName)) return (false, "Company Name is required.", null);
+            if (string.IsNullOrWhiteSpace(supplier.CompanyName)) return (false, "Company / Legal Name is required.", null);
+            if (string.IsNullOrWhiteSpace(supplier.VendorName)) return (false, "Vendor / Brand Name is required.", null);
+
+            supplier.CompanyName = supplier.CompanyName.Trim();
+            supplier.VendorName = supplier.VendorName.Trim();
 
             // Contact Phone & Email Validation
             if (!string.IsNullOrWhiteSpace(supplier.Phone) && !ValidationHelper.IsValidPhone(supplier.Phone))
@@ -81,12 +85,14 @@ namespace InventoryManagementSystem.Services
                 }
             }
 
-            // Company Name Uniqueness Check among Suppliers
-            var existing = await _supplierRepository.GetByNameAsync(supplier.CompanyName);
+            // Uniqueness Check among Suppliers
+            var existingByCompany = await _supplierRepository.GetByNameAsync(supplier.CompanyName);
+            var existingByVendor = await _supplierRepository.GetByNameAsync(supplier.VendorName);
 
             if (string.IsNullOrEmpty(supplier.Id))
             {
-                if (existing != null) return (false, $"Supplier '{supplier.CompanyName}' already exists.", existing);
+                if (existingByCompany != null) return (false, $"Supplier with Company / Legal Name '{supplier.CompanyName}' already exists.", existingByCompany);
+                if (existingByVendor != null) return (false, $"Supplier with Vendor / Brand Name '{supplier.VendorName}' already exists.", existingByVendor);
 
                 if (string.IsNullOrWhiteSpace(supplier.Status)) supplier.Status = "Active";
 
@@ -102,22 +108,26 @@ namespace InventoryManagementSystem.Services
                 await _auditLogService.LogActivityAsync(
                     "SUPPLIER_CREATED",
                     executedBy,
-                    supplier.CompanyName,
-                    $"Added new supplier '{supplier.CompanyName}' ({supplier.Email})");
+                    $"{supplier.DisplayVendorName} ({supplier.DisplayCompanyName})",
+                    $"Added new supplier '{supplier.DisplayVendorName}' ({supplier.DisplayCompanyName}) [{supplier.Email}]");
 
                 return (true, "Supplier account added successfully.", supplier);
             }
             else
             {
-                if (existing != null && existing.Id != supplier.Id)
+                if (existingByCompany != null && existingByCompany.Id != supplier.Id)
                 {
-                    return (false, $"Another supplier with name '{supplier.CompanyName}' already exists.", null);
+                    return (false, $"Another supplier with Company / Legal Name '{supplier.CompanyName}' already exists.", null);
+                }
+                if (existingByVendor != null && existingByVendor.Id != supplier.Id)
+                {
+                    return (false, $"Another supplier with Vendor / Brand Name '{supplier.VendorName}' already exists.", null);
                 }
 
                 var currentRecord = await _supplierRepository.GetByIdAsync(supplier.Id);
                 if (currentRecord != null)
                 {
-                    // Handle password update logic
+                    // Handle password update logic: leave blank on edit to keep existing password
                     if (!string.IsNullOrWhiteSpace(supplier.PasswordHash) && !supplier.PasswordHash.StartsWith("$2"))
                     {
                         supplier.PasswordHash = BCrypt.Net.BCrypt.HashPassword(supplier.PasswordHash);
@@ -136,8 +146,8 @@ namespace InventoryManagementSystem.Services
                 await _auditLogService.LogActivityAsync(
                     "SUPPLIER_UPDATED",
                     executedBy,
-                    supplier.CompanyName,
-                    $"Updated supplier account '{supplier.CompanyName}'");
+                    $"{supplier.DisplayVendorName} ({supplier.DisplayCompanyName})",
+                    $"Updated supplier account '{supplier.DisplayVendorName}' ({supplier.DisplayCompanyName})");
 
                 return (true, "Supplier profile updated successfully.", supplier);
             }
@@ -173,10 +183,10 @@ namespace InventoryManagementSystem.Services
             await _auditLogService.LogActivityAsync(
                 "Supplier Deleted",
                 executedBy,
-                supplier.CompanyName,
-                $"Deleted supplier '{supplier.CompanyName}' along with {supplierProducts.Count} product(s) and {supplierCategories.Count} category/categories.");
+                $"{supplier.DisplayVendorName} ({supplier.DisplayCompanyName})",
+                $"Deleted supplier '{supplier.DisplayVendorName}' ({supplier.DisplayCompanyName}) along with {supplierProducts.Count} product(s) and {supplierCategories.Count} category/categories.");
 
-            return (true, $"Supplier '{supplier.CompanyName}' and associated catalog products deleted successfully.");
+            return (true, $"Supplier '{supplier.DisplayVendorName}' and associated catalog products deleted successfully.");
         }
 
         public async Task CleanupOrphanedSupplierDataAsync()
@@ -221,6 +231,7 @@ namespace InventoryManagementSystem.Services
             var all = await _supplierRepository.GetAllAsync();
             var supplier = all.FirstOrDefault(s =>
                 (!string.IsNullOrEmpty(s.Email) && string.Equals(s.Email.Trim(), input, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrEmpty(s.VendorName) && string.Equals(s.VendorName.Trim(), input, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(s.CompanyName) && string.Equals(s.CompanyName.Trim(), input, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(s.Phone) && string.Equals(s.Phone.Trim(), input, StringComparison.OrdinalIgnoreCase)) ||
                 (!string.IsNullOrEmpty(s.ContactPerson) && string.Equals(s.ContactPerson.Trim(), input, StringComparison.OrdinalIgnoreCase)));

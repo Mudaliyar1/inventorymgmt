@@ -581,7 +581,12 @@ namespace InventoryManagementSystem.Controllers
 
             if (string.IsNullOrWhiteSpace(model.CompanyName))
             {
-                ModelState.AddModelError(nameof(model.CompanyName), "Company Name is required.");
+                ModelState.AddModelError(nameof(model.CompanyName), "Company / Legal Name is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(model.VendorName))
+            {
+                ModelState.AddModelError(nameof(model.VendorName), "Vendor / Brand Name is required.");
             }
 
             if (!string.IsNullOrWhiteSpace(model.Email))
@@ -598,6 +603,7 @@ namespace InventoryManagementSystem.Controllers
                 return View(existing);
             }
 
+            existing.VendorName = model.VendorName;
             existing.CompanyName = model.CompanyName;
             existing.ContactPerson = model.ContactPerson;
             existing.Phone = model.Phone;
@@ -613,7 +619,13 @@ namespace InventoryManagementSystem.Controllers
                 existing.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
             }
 
-            await _supplierService.SaveSupplierAsync(existing, User.Identity?.Name ?? existing.CompanyName);
+            var (saveSuccess, saveMsg, _) = await _supplierService.SaveSupplierAsync(existing, User.Identity?.Name ?? existing.DisplayVendorName);
+            if (!saveSuccess)
+            {
+                ModelState.AddModelError(string.Empty, saveMsg);
+                return View(existing);
+            }
+
             TempData["ToastMessage"] = "Your supplier portal profile was updated successfully!";
             TempData["ToastType"] = "success";
 

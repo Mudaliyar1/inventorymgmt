@@ -186,7 +186,9 @@ namespace InventoryManagementSystem.Services
             var supplier = await _supplierRepository.GetByIdAsync(order.SupplierId);
             if (supplier == null) return (false, "Selected supplier vendor record was not found.", null);
 
-            order.SupplierName = supplier.CompanyName;
+            order.SupplierName = supplier.DisplayVendorName;
+            order.SupplierVendorName = supplier.DisplayVendorName;
+            order.SupplierCompanyName = supplier.DisplayCompanyName;
             order.SupplierEmail = supplier.Email;
             order.SupplierPhone = supplier.Phone;
             order.CreatedBy = executedBy;
@@ -250,7 +252,7 @@ namespace InventoryManagementSystem.Services
                 "SUPPLIER_ORDER_CREATED",
                 executedBy,
                 order.OrderNumber,
-                $"Created Purchase Order #{order.OrderNumber} for supplier '{supplier.CompanyName}' with {totalQty} items totaling ₹{order.GrandTotal:N2}.");
+                $"Created Purchase Order #{order.OrderNumber} for supplier '{supplier.DisplayVendorName}' ({supplier.DisplayCompanyName}) with {totalQty} items totaling ₹{order.GrandTotal:N2}.");
 
             // Brevo Email Notification
             if (!string.IsNullOrWhiteSpace(supplier.Email))
@@ -261,10 +263,12 @@ namespace InventoryManagementSystem.Services
                     var htmlBuilder = new StringBuilder();
                     htmlBuilder.Append($"<div style='font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0F172A;color:#F8FAFC;padding:24px;border-radius:12px;'>");
                     htmlBuilder.Append($"<h2 style='color:#38BDF8;margin-top:0;'>New Purchase Order Received</h2>");
-                    htmlBuilder.Append($"<p>Dear <strong>{supplier.ContactPerson}</strong> ({supplier.CompanyName}),</p>");
+                    htmlBuilder.Append($"<p>Dear <strong>{supplier.DisplayVendorName}</strong> ({supplier.DisplayCompanyName}),</p>");
                     htmlBuilder.Append($"<p>A new purchase order <strong>#{order.OrderNumber}</strong> has been issued by SIMS Mobile Shop.</p>");
                     htmlBuilder.Append($"<div style='background:#1E293B;padding:16px;border-radius:8px;margin:16px 0;'>");
                     htmlBuilder.Append($"<p style='margin:4px 0;'><strong>Order Number:</strong> {order.OrderNumber}</p>");
+                    htmlBuilder.Append($"<p style='margin:4px 0;'><strong>Vendor / Brand:</strong> {supplier.DisplayVendorName}</p>");
+                    htmlBuilder.Append($"<p style='margin:4px 0;'><strong>Company / Legal Name:</strong> {supplier.DisplayCompanyName}</p>");
                     htmlBuilder.Append($"<p style='margin:4px 0;'><strong>Date:</strong> {order.CreatedAt:dd-MMM-yyyy HH:mm} IST</p>");
                     htmlBuilder.Append($"<p style='margin:4px 0;'><strong>Total Items:</strong> {order.TotalQuantity} units</p>");
                     htmlBuilder.Append($"<p style='margin:4px 0;'><strong>Grand Total:</strong> ₹{order.GrandTotal:N2}</p>");

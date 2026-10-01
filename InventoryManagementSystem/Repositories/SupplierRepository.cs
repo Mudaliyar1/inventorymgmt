@@ -14,10 +14,14 @@ namespace InventoryManagementSystem.Repositories
         {
         }
 
-        public async Task<Supplier?> GetByNameAsync(string companyName)
+        public async Task<Supplier?> GetByNameAsync(string name)
         {
-            if (string.IsNullOrWhiteSpace(companyName)) return null;
-            var filter = Builders<Supplier>.Filter.Eq(s => s.CompanyName, companyName.Trim());
+            if (string.IsNullOrWhiteSpace(name)) return null;
+            var clean = name.Trim();
+            var filter = Builders<Supplier>.Filter.Or(
+                Builders<Supplier>.Filter.Eq(s => s.CompanyName, clean),
+                Builders<Supplier>.Filter.Eq(s => s.VendorName, clean)
+            );
             return await _collection.Find(filter).FirstOrDefaultAsync();
         }
 
@@ -54,6 +58,7 @@ namespace InventoryManagementSystem.Repositories
             {
                 var s = search.Trim();
                 var searchFilter = builder.Or(
+                    builder.Regex(sup => sup.VendorName, new BsonRegularExpression(s, "i")),
                     builder.Regex(sup => sup.CompanyName, new BsonRegularExpression(s, "i")),
                     builder.Regex(sup => sup.ContactPerson, new BsonRegularExpression(s, "i")),
                     builder.Regex(sup => sup.Phone, new BsonRegularExpression(s, "i")),

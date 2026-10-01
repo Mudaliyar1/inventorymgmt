@@ -87,6 +87,8 @@ namespace InventoryManagementSystem.Repositories
                     builder.Regex(r => r.ReturnNumber, new BsonRegularExpression(s, "i")),
                     builder.Regex(r => r.PurchaseOrderNumber, new BsonRegularExpression(s, "i")),
                     builder.Regex(r => r.SupplierName, new BsonRegularExpression(s, "i")),
+                    builder.Regex(r => r.SupplierVendorName, new BsonRegularExpression(s, "i")),
+                    builder.Regex(r => r.SupplierCompanyName, new BsonRegularExpression(s, "i")),
                     builder.Regex(r => r.CreatedBy, new BsonRegularExpression(s, "i")),
                     builder.ElemMatch(r => r.Items, item => item.ProductName.Contains(s) || item.Brand.Contains(s) || item.ModelName.Contains(s)),
                     builder.ElemMatch(r => r.DeviceDetails, d => d.IMEI1.Contains(s) || d.SerialNumber.Contains(s))

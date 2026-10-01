@@ -32,7 +32,7 @@
             <label class="fg-label"><i class="bi bi-search me-1 text-primary"></i>Search Keywords</label>
             <div class="search-pill">
                 <i class="bi bi-search search-pill-icon"></i>
-                <input type="text" name="search" value="@search" class="search-pill-input" placeholder="Company, Contact Person, Phone, Email, GSTIN, Address..." />
+                <input type="text" name="search" value="@search" class="search-pill-input" placeholder="Vendor / Brand, Company, Phone, Email, GSTIN, Address..." />
             </div>
         </div>
         <div class="col-lg-3 col-md-3">
@@ -82,7 +82,7 @@
         <table class="tbl mb-0" id="suppliers-table">
             <thead>
                 <tr>
-                    <th class="ps-4">Company Name</th>
+                    <th class="ps-4">Vendor / Brand & Legal Company</th>
                     <th>Phone & Email</th>
                     <th>GSTIN</th>
                     <th>Payment Terms</th>
@@ -107,11 +107,15 @@
                         var modalJson = System.Text.Json.JsonSerializer.Serialize(s);
                         <tr>
                             <td class="ps-4">
-                                <div style="font-weight:700;color:var(--text-primary)" class="d-flex align-items-center gap-2">
-                                    <i class="bi bi-building text-primary" style="font-size:14px"></i>
-                                    @s.CompanyName
+                                <div style="font-weight:700;color:var(--text-primary);font-size:14px" class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-shop text-primary" style="font-size:15px"></i>
+                                    @s.DisplayVendorName
                                 </div>
-                                <div style="font-size:11px;color:var(--text-muted)">
+                                <div style="font-size:12px;color:var(--text-muted);font-weight:500" class="d-flex align-items-center gap-1 mt-1">
+                                    <i class="bi bi-building" style="font-size:12px"></i>
+                                    @s.DisplayCompanyName
+                                </div>
+                                <div style="font-size:11px;color:var(--text-muted);opacity:0.8" class="mt-1">
                                     Added: @s.CreatedDate.ToString("yyyy-MM-dd")
                                 </div>
                             </td>
@@ -165,7 +169,7 @@
                                     </button>
 
                                     <!-- Delete Supplier Button -->
-                                    <form method="post" asp-action="Delete" asp-route-id="@s.Id" class="d-inline" onsubmit="return confirm('Are you sure you want to delete supplier \'@s.CompanyName\'?');">
+                                    <form method="post" asp-action="Delete" asp-route-id="@s.Id" class="d-inline" onsubmit="return confirm('Are you sure you want to delete supplier \'@s.DisplayVendorName\'?');">
                                         @Html.AntiForgeryToken()
                                         <button type="submit" class="btn-d btn-ghost btn-icon-d text-danger" title="Delete Supplier">
                                             <i class="bi bi-trash"></i>
@@ -215,13 +219,31 @@
                         <i class="bi bi-truck" style="font-size:18px"></i>
                     </div>
                     <div>
-                        <h5 class="modal-title mb-0" id="v_CompanyName" style="font-weight:700">Supplier Details</h5>
-                        <div style="font-size:12px;color:var(--text-muted)" id="v_CreatedDate">Added to Directory</div>
+                        <h5 class="modal-title mb-0" id="v_VendorName" style="font-weight:700">Vendor / Brand Name</h5>
+                        <div style="font-size:13px;color:var(--text-secondary);font-weight:600" id="v_CompanyName">Company / Legal Name</div>
+                        <div style="font-size:11px;color:var(--text-muted)" id="v_CreatedDate">Added to Directory</div>
                     </div>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
+                <!-- Business Identity Details Card -->
+                <div class="card-d card-p p-3 mb-4" style="background:var(--bg);border:1px solid var(--border)">
+                    <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;font-weight:700" class="mb-2">
+                        <i class="bi bi-patch-check-fill text-primary me-1"></i>Business Identity Verification
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <span class="text-muted small">Vendor / Brand / Trading Name:</span>
+                            <div class="fw-bold" style="font-size:15px;color:var(--text-primary)" id="v_IdVendorName">-</div>
+                        </div>
+                        <div class="col-md-6">
+                            <span class="text-muted small">Company / Legal Registered Name:</span>
+                            <div class="fw-bold" style="font-size:15px;color:var(--text-primary)" id="v_IdCompanyName">-</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row g-4 mb-4">
                     <!-- Key Metric Card -->
                     <div class="col-12">
@@ -233,6 +255,12 @@
                 </div>
 
                 <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="fg mb-2">
+                            <label class="fg-label text-muted">Contact Person</label>
+                            <div style="font-size:14px;font-weight:600;color:var(--text-primary)" id="v_ContactPerson">-</div>
+                        </div>
+                    </div>
                     <div class="col-md-6">
                         <div class="fg mb-2">
                             <label class="fg-label text-muted">Phone Contact</label>
@@ -281,7 +309,7 @@
         <div class="modal-content" style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;color:var(--text-primary)">
             <div class="modal-header border-bottom" style="border-color:var(--border)!important">
                 <h5 class="modal-title" id="saveSupplierModalTitle" style="font-weight:700">
-                    <i class="bi bi-truck me-2" style="color:var(--primary)"></i>Add Supplier Vendor
+                    <i class="bi bi-truck me-2" style="color:var(--primary)"></i>Add Supplier Vendor Account
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -291,8 +319,19 @@
 
                 <div class="modal-body p-4">
                     <div class="fg mb-3">
-                        <label class="fg-label">Company / Vendor Name <span class="req">*</span></label>
-                        <input type="text" name="CompanyName" id="supplier_CompanyName" required class="fg-control" placeholder="e.g. Samsung India Distributors" />
+                        <label class="fg-label">Vendor / Brand Name <span class="req">*</span></label>
+                        <input type="text" name="VendorName" id="supplier_VendorName" required class="fg-control" placeholder="e.g. ABC Mobiles" />
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Commonly known trading, brand, distributor, or store display name.</div>
+                    </div>
+                    <div class="fg mb-3">
+                        <label class="fg-label">Company / Legal Name <span class="req">*</span></label>
+                        <input type="text" name="CompanyName" id="supplier_CompanyName" required class="fg-control" placeholder="e.g. ABC Mobile Distribution Pvt. Ltd." />
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Officially registered corporate / business legal identity.</div>
+                    </div>
+                    <div class="fg mb-3">
+                        <label class="fg-label">Contact Person Name</label>
+                        <input type="text" name="ContactPerson" id="supplier_ContactPerson" class="fg-control" placeholder="e.g. John Doe / Account Manager" />
+                        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Primary person handling orders or inquiries.</div>
                     </div>
                     <div class="row g-3 mb-3">
                         <div class="col-6">
@@ -373,7 +412,9 @@
         function openCreateSupplierModal() {
             document.getElementById('saveSupplierModalTitle').innerHTML = '<i class="bi bi-truck me-2" style="color:var(--primary)"></i>Add Supplier Vendor Account';
             document.getElementById('supplier_Id').value = '';
+            document.getElementById('supplier_VendorName').value = '';
             document.getElementById('supplier_CompanyName').value = '';
+            document.getElementById('supplier_ContactPerson').value = '';
             document.getElementById('supplier_Phone').value = '';
             document.getElementById('supplier_Email').value = '';
             document.getElementById('supplier_Gstin').value = '';
@@ -394,7 +435,9 @@
         function openEditSupplierModal(s) {
             document.getElementById('saveSupplierModalTitle').innerHTML = '<i class="bi bi-pencil-square me-2" style="color:var(--primary)"></i>Edit Supplier Profile';
             document.getElementById('supplier_Id').value = s.Id || '';
+            document.getElementById('supplier_VendorName').value = s.VendorName || s.CompanyName || '';
             document.getElementById('supplier_CompanyName').value = s.CompanyName || '';
+            document.getElementById('supplier_ContactPerson').value = s.ContactPerson || s.contactPerson || '';
             document.getElementById('supplier_Phone').value = s.Phone || '';
             document.getElementById('supplier_Email').value = s.Email || '';
             document.getElementById('supplier_Gstin').value = s.Gstin || '';
@@ -418,8 +461,16 @@
         }
 
         function openViewSupplierModal(s) {
-            document.getElementById('v_CompanyName').innerText = s.CompanyName || 'Supplier Details';
+            const vendorName = s.VendorName || s.CompanyName || 'Supplier Details';
+            const companyName = s.CompanyName || s.VendorName || '-';
+
+            document.getElementById('v_VendorName').innerText = vendorName;
+            document.getElementById('v_CompanyName').innerText = companyName;
+            document.getElementById('v_IdVendorName').innerText = vendorName;
+            document.getElementById('v_IdCompanyName').innerText = companyName;
+
             document.getElementById('v_Phone').innerText = s.Phone || '-';
+            document.getElementById('v_ContactPerson').innerText = s.ContactPerson || s.contactPerson || s.DisplayContactPerson || '-';
             document.getElementById('v_Email').innerText = s.Email || '-';
             document.getElementById('v_Gstin').innerHTML = s.Gstin ? `<span class="code-pill">${s.Gstin}</span>` : '<span style="color:var(--text-muted)">-</span>';
             document.getElementById('v_PaymentTerms').innerText = s.PaymentTerms || 'Net 30';

@@ -144,7 +144,11 @@
                                     </a>
                                 </td>
                                 <td>
-                                    <div style="font-weight:700;color:var(--text-primary)">@o.SupplierName</div>
+                                    <div style="font-weight:700;color:var(--text-primary)">@o.DisplaySupplierVendorName</div>
+                                    @if (!string.IsNullOrWhiteSpace(o.SupplierCompanyName) && o.SupplierCompanyName != o.DisplaySupplierVendorName)
+                                    {
+                                        <div style="font-size:11px;color:var(--text-secondary)">@o.SupplierCompanyName</div>
+                                    }
                                     <div style="font-size:11px;color:var(--text-muted)">@o.SupplierEmail</div>
                                 </td>
                                 <td style="font-size:12px;color:var(--text-primary)">@o.CreatedAt.ToString("dd-MMM-yyyy HH:mm") IST</td>

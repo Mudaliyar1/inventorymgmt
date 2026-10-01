@@ -11,7 +11,8 @@
 <div class="ph">
     <div>
         <h1 class="ph-title"><i class="bi bi-speedometer2 me-2" style="color:var(--primary)"></i>Supplier Portal Dashboard</h1>
-        <p class="ph-sub">Welcome back, <strong>@(supplier?.ContactPerson ?? supplier?.CompanyName)</strong> · @(supplier?.CompanyName)</p>
+        <p class="ph-sub mb-0">Welcome, <strong style="color:var(--text-primary)">@(supplier?.DisplayVendorName)</strong></p>
+        <div style="font-size:12px;color:var(--text-muted);font-weight:500">@(supplier?.DisplayCompanyName)</div>
     </div>
     <div class="ph-actions">
         <a href="@Url.Action("StockIn")" class="btn-d btn-outline" style="border-color:var(--success);color:var(--success)">

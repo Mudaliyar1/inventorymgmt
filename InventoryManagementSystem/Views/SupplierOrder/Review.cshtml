@@ -21,6 +21,8 @@
     @Html.AntiForgeryToken()
     <input type="hidden" asp-for="SupplierId" />
     <input type="hidden" asp-for="SupplierName" />
+    <input type="hidden" asp-for="SupplierVendorName" />
+    <input type="hidden" asp-for="SupplierCompanyName" />
     <input type="hidden" asp-for="SupplierEmail" />
     <input type="hidden" asp-for="SupplierPhone" />
 
@@ -104,8 +106,12 @@
                 <div class="s-title"><i class="bi bi-truck me-2" style="color:var(--primary)"></i>Vendor Information</div>
 
                 <div class="mb-3">
-                    <div style="font-size:12px;color:var(--text-muted)">Company Name:</div>
-                    <div style="font-size:15px;font-weight:700;color:var(--text-primary)">@Model.SupplierName</div>
+                    <div style="font-size:12px;color:var(--text-muted)">Vendor / Brand:</div>
+                    <div style="font-size:15px;font-weight:700;color:var(--text-primary)">@Model.DisplaySupplierVendorName</div>
+                </div>
+                <div class="mb-3">
+                    <div style="font-size:12px;color:var(--text-muted)">Company / Legal Name:</div>
+                    <div style="font-size:14px;color:var(--text-secondary);font-weight:600">@Model.DisplaySupplierCompanyName</div>
                 </div>
                 <div class="mb-3">
                     <div style="font-size:12px;color:var(--text-muted)">Supplier Email:</div>

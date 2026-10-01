@@ -631,6 +631,18 @@
                                 <td><span class="fw-bold text-primary">${fmtCurr(row.profitValue)}</span></td>
                                 ${actionBtn}
                             </tr>`;
+                    } else if (rType === 'supplier') {
+                        return `
+                            <tr>
+                                <td>${rowNum}</td>
+                                <td><span class="fw-bold text-primary">${escapeHtml(row.primaryText)}</span></td>
+                                <td><span class="text-light">${escapeHtml(row.secondaryText)}</span></td>
+                                <td>${escapeHtml(row.dateString)}</td>
+                                <td>${escapeHtml(row.customerInfo)}</td>
+                                <td><span class="fw-bold ${row.grandTotal > 0 ? 'text-warning' : 'text-success'}">${fmtCurr(row.grandTotal)}</span></td>
+                                <td><span class="font-monospace text-muted">${escapeHtml(row.badgeText)}</span></td>
+                                ${actionBtn}
+                            </tr>`;
                     } else {
                         return `
                             <tr>

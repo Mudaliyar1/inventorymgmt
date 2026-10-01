@@ -287,7 +287,9 @@ namespace InventoryManagementSystem.Controllers
             var order = new SupplierOrder
             {
                 SupplierId = supplierId,
-                SupplierName = supplier.CompanyName,
+                SupplierName = supplier.DisplayVendorName,
+                SupplierVendorName = supplier.DisplayVendorName,
+                SupplierCompanyName = supplier.DisplayCompanyName,
                 SupplierEmail = supplier.Email,
                 SupplierPhone = supplier.Phone,
                 Notes = notes ?? string.Empty,

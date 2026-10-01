@@ -113,6 +113,18 @@ namespace InventoryManagementSystem.Models
         [BsonElement("SupplierName")]
         public string SupplierName { get; set; } = string.Empty;
 
+        [BsonElement("SupplierVendorName")]
+        public string SupplierVendorName { get; set; } = string.Empty;
+
+        [BsonElement("SupplierCompanyName")]
+        public string SupplierCompanyName { get; set; } = string.Empty;
+
+        [BsonIgnore]
+        public string DisplaySupplierVendorName => !string.IsNullOrWhiteSpace(SupplierVendorName) ? SupplierVendorName : SupplierName;
+
+        [BsonIgnore]
+        public string DisplaySupplierCompanyName => !string.IsNullOrWhiteSpace(SupplierCompanyName) ? SupplierCompanyName : (!string.IsNullOrWhiteSpace(SupplierVendorName) ? SupplierVendorName : SupplierName);
+
         [BsonElement("SupplierPrice")]
         public decimal SupplierPrice { get; set; }
 

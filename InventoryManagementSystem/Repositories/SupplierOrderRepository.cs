@@ -112,6 +112,8 @@ namespace InventoryManagementSystem.Repositories
                 var searchFilter = builder.Or(
                     builder.Regex(so => so.OrderNumber, new BsonRegularExpression(s, "i")),
                     builder.Regex(so => so.SupplierName, new BsonRegularExpression(s, "i")),
+                    builder.Regex(so => so.SupplierVendorName, new BsonRegularExpression(s, "i")),
+                    builder.Regex(so => so.SupplierCompanyName, new BsonRegularExpression(s, "i")),
                     builder.Regex(so => so.SupplierEmail, new BsonRegularExpression(s, "i")),
                     builder.Regex(so => so.CreatedBy, new BsonRegularExpression(s, "i")),
                     builder.Regex(so => so.Notes, new BsonRegularExpression(s, "i")),
