@@ -17,6 +17,7 @@ namespace InventoryManagementSystem.Services
         private readonly ICategoryRepository _categoryRepository;
         private readonly IDeviceRepository _deviceRepository;
         private readonly IImageService _imageService;
+        private readonly IPasswordPolicyService _passwordPolicyService;
 
         public SupplierService(
             ISupplierRepository supplierRepository,
@@ -25,7 +26,8 @@ namespace InventoryManagementSystem.Services
             IProductRepository productRepository,
             ICategoryRepository categoryRepository,
             IDeviceRepository deviceRepository,
-            IImageService imageService)
+            IImageService imageService,
+            IPasswordPolicyService passwordPolicyService)
         {
             _supplierRepository = supplierRepository;
             _auditLogService = auditLogService;
@@ -34,6 +36,7 @@ namespace InventoryManagementSystem.Services
             _categoryRepository = categoryRepository;
             _deviceRepository = deviceRepository;
             _imageService = imageService;
+            _passwordPolicyService = passwordPolicyService;
         }
 
         public async Task<IEnumerable<Supplier>> GetAllSuppliersAsync()
@@ -96,9 +99,19 @@ namespace InventoryManagementSystem.Services
 
                 if (string.IsNullOrWhiteSpace(supplier.Status)) supplier.Status = "Active";
 
-                if (!string.IsNullOrWhiteSpace(supplier.PasswordHash) && !supplier.PasswordHash.StartsWith("$2"))
+                if (string.IsNullOrWhiteSpace(supplier.PasswordHash))
                 {
-                    supplier.PasswordHash = BCrypt.Net.BCrypt.HashPassword(supplier.PasswordHash);
+                    return (false, "Portal account password is required.", null);
+                }
+
+                if (!supplier.PasswordHash.StartsWith("$2"))
+                {
+                    var policyResult = _passwordPolicyService.Validate(supplier.PasswordHash);
+                    if (!policyResult.IsValid)
+                    {
+                        return (false, policyResult.GetCombinedErrorMessage(), null);
+                    }
+                    supplier.PasswordHash = BCrypt.Net.BCrypt.HashPassword(supplier.PasswordHash.Trim());
                 }
 
                 supplier.CreatedDate = DateTime.UtcNow;
@@ -125,12 +138,19 @@ namespace InventoryManagementSystem.Services
                 }
 
                 var currentRecord = await _supplierRepository.GetByIdAsync(supplier.Id);
+                bool passwordChanged = false;
                 if (currentRecord != null)
                 {
                     // Handle password update logic: leave blank on edit to keep existing password
                     if (!string.IsNullOrWhiteSpace(supplier.PasswordHash) && !supplier.PasswordHash.StartsWith("$2"))
                     {
-                        supplier.PasswordHash = BCrypt.Net.BCrypt.HashPassword(supplier.PasswordHash);
+                        var policyResult = _passwordPolicyService.Validate(supplier.PasswordHash, currentPasswordHash: currentRecord.PasswordHash);
+                        if (!policyResult.IsValid)
+                        {
+                            return (false, policyResult.GetCombinedErrorMessage(), null);
+                        }
+                        supplier.PasswordHash = BCrypt.Net.BCrypt.HashPassword(supplier.PasswordHash.Trim());
+                        passwordChanged = true;
                     }
                     else
                     {
@@ -142,6 +162,17 @@ namespace InventoryManagementSystem.Services
 
                 supplier.UpdatedDate = DateTime.UtcNow;
                 await _supplierRepository.UpdateAsync(supplier.Id, supplier);
+
+                if (passwordChanged)
+                {
+                    await _auditLogService.LogExAsync(
+                        "SUPPLIER_PASSWORD_CHANGED",
+                        "Supplier Management",
+                        supplier.DisplayVendorName,
+                        $"Password updated for supplier '{supplier.DisplayVendorName}' ({supplier.DisplayCompanyName}).",
+                        "Success",
+                        "Information");
+                }
 
                 await _auditLogService.LogActivityAsync(
                     "SUPPLIER_UPDATED",

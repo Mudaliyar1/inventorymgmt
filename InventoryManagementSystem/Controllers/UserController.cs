@@ -18,6 +18,8 @@ namespace InventoryManagementSystem.Controllers
         private readonly IPermissionDiscoveryService _permissionDiscovery;
         private readonly IPermissionService _permissionService;
         private readonly IAccountValidationService _accountValidationService;
+        private readonly IPasswordPolicyService _passwordPolicyService;
+        private readonly IPasswordResetService _passwordResetService;
 
         public UserController(
             IUserRepository userRepository,
@@ -25,7 +27,9 @@ namespace InventoryManagementSystem.Controllers
             IAuditLogService auditLogService,
             IPermissionDiscoveryService permissionDiscovery,
             IPermissionService permissionService,
-            IAccountValidationService accountValidationService)
+            IAccountValidationService accountValidationService,
+            IPasswordPolicyService passwordPolicyService,
+            IPasswordResetService passwordResetService)
         {
             _userRepository = userRepository;
             _authService = authService;
@@ -33,6 +37,8 @@ namespace InventoryManagementSystem.Controllers
             _permissionDiscovery = permissionDiscovery;
             _permissionService = permissionService;
             _accountValidationService = accountValidationService;
+            _passwordPolicyService = passwordPolicyService;
+            _passwordResetService = passwordResetService;
         }
 
         [HttpGet]
@@ -53,7 +59,7 @@ namespace InventoryManagementSystem.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(User model, string rawPassword, List<string> selectedPermissions)
+        public async Task<IActionResult> Create(User model, string rawPassword, string confirmPassword, List<string> selectedPermissions)
         {
             ViewBag.GroupedPermissions = _permissionDiscovery.GetGroupedPermissions();
 
@@ -67,9 +73,13 @@ namespace InventoryManagementSystem.Controllers
                 ModelState.AddModelError(nameof(model.Username), "This username or identifier is already taken by another account.");
             }
 
-            if (string.IsNullOrWhiteSpace(rawPassword) || rawPassword.Length < 6)
+            var policyResult = _passwordPolicyService.Validate(rawPassword, confirmPassword, isConfirmRequired: true);
+            if (!policyResult.IsValid)
             {
-                ModelState.AddModelError(nameof(rawPassword), "Password must be at least 6 characters.");
+                foreach (var err in policyResult.Errors)
+                {
+                    ModelState.AddModelError(nameof(rawPassword), err);
+                }
             }
 
             if (!ModelState.IsValid)
@@ -235,36 +245,35 @@ namespace InventoryManagementSystem.Controllers
             var user = await _userRepository.GetByIdAsync(id);
             if (user == null) return NotFound();
 
-            if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
-            {
-                ModelState.AddModelError(string.Empty, "Password must be at least 6 characters.");
-            }
+            var (success, message) = await _passwordResetService.DirectChangeEmployeePasswordAsync(
+                id, newPassword, confirmPassword, User.Identity?.Name ?? "Admin");
 
-            if (newPassword != confirmPassword)
+            if (!success)
             {
-                ModelState.AddModelError(string.Empty, "Passwords do not match.");
-            }
-
-            if (!ModelState.IsValid)
-            {
+                ModelState.AddModelError(string.Empty, message);
                 return View(user);
             }
 
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
-            user.PermissionVersion++;
-            user.LastPermissionUpdated = DateTime.UtcNow;
-            user.UpdatedDate = DateTime.UtcNow;
-
-            await _userRepository.UpdateAsync(user.Id, user);
-            _permissionService.InvalidateUserCache(user.Id);
-
-            await _auditLogService.LogEmployeeActivityAsync(
-                "Employee Password Reset", "Employee Management", $"Employee: {user.Username}",
-                $"Administrator reset password for employee {user.FullName} ({user.EmployeeId})."
-            );
-
-            TempData["ToastMessage"] = $"Password for employee {user.FullName} updated successfully.";
+            TempData["ToastMessage"] = message;
             TempData["ToastType"] = "success";
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SendResetEmail(string id)
+        {
+            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+            var (success, message) = await _passwordResetService.SendPasswordResetEmailForAccountAsync(
+                id, "Employee", User.Identity?.Name ?? "Admin", baseUrl);
+
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest" || Request.Headers["Accept"].ToString().Contains("application/json"))
+            {
+                return Json(new { success, message });
+            }
+
+            TempData["ToastMessage"] = message;
+            TempData["ToastType"] = success ? "success" : "danger";
             return RedirectToAction(nameof(Index));
         }
 

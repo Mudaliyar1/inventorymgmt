@@ -10,10 +10,14 @@ namespace InventoryManagementSystem.Controllers
     public class SupplierController : Controller
     {
         private readonly ISupplierService _supplierService;
+        private readonly IPasswordResetService _passwordResetService;
 
-        public SupplierController(ISupplierService supplierService)
+        public SupplierController(
+            ISupplierService supplierService,
+            IPasswordResetService passwordResetService)
         {
             _supplierService = supplierService;
+            _passwordResetService = passwordResetService;
         }
 
         [HttpGet]
@@ -44,8 +48,49 @@ namespace InventoryManagementSystem.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Save([FromForm] Supplier supplier)
+        public async Task<IActionResult> Save([FromForm] Supplier supplier, [FromForm] string? confirmPassword)
         {
+            var isCreating = string.IsNullOrEmpty(supplier.Id);
+            var isPasswordProvided = !string.IsNullOrWhiteSpace(supplier.PasswordHash) && !supplier.PasswordHash.StartsWith("$2");
+
+            if (isCreating)
+            {
+                if (string.IsNullOrWhiteSpace(supplier.PasswordHash))
+                {
+                    var msg = "Portal account password is required.";
+                    if (Request.Headers["X-Requested-With"] == "XMLHttpRequest" || Request.Headers["Accept"].ToString().Contains("application/json"))
+                        return Json(new { success = false, message = msg });
+
+                    TempData["ToastMessage"] = msg;
+                    TempData["ToastType"] = "danger";
+                    return RedirectToAction("Index");
+                }
+
+                if (supplier.PasswordHash != confirmPassword)
+                {
+                    var msg = "Passwords do not match.";
+                    if (Request.Headers["X-Requested-With"] == "XMLHttpRequest" || Request.Headers["Accept"].ToString().Contains("application/json"))
+                        return Json(new { success = false, message = msg });
+
+                    TempData["ToastMessage"] = msg;
+                    TempData["ToastType"] = "danger";
+                    return RedirectToAction("Index");
+                }
+            }
+            else if (isPasswordProvided)
+            {
+                if (supplier.PasswordHash != confirmPassword)
+                {
+                    var msg = "Passwords do not match.";
+                    if (Request.Headers["X-Requested-With"] == "XMLHttpRequest" || Request.Headers["Accept"].ToString().Contains("application/json"))
+                        return Json(new { success = false, message = msg });
+
+                    TempData["ToastMessage"] = msg;
+                    TempData["ToastType"] = "danger";
+                    return RedirectToAction("Index");
+                }
+            }
+
             var executedBy = User.Identity?.Name ?? "Admin";
             var (success, message, result) = await _supplierService.SaveSupplierAsync(supplier, executedBy);
 
@@ -74,6 +119,43 @@ namespace InventoryManagementSystem.Controllers
         {
             var executedBy = User.Identity?.Name ?? "Admin";
             var (success, message) = await _supplierService.DeleteSupplierAsync(id, executedBy);
+            TempData["ToastMessage"] = message;
+            TempData["ToastType"] = success ? "success" : "danger";
+            return RedirectToAction("Index");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = Role.Admin)]
+        public async Task<IActionResult> ChangePassword(string id, string newPassword, string confirmPassword)
+        {
+            var executedBy = User.Identity?.Name ?? "Admin";
+            var (success, message) = await _passwordResetService.DirectChangeSupplierPasswordAsync(id, newPassword, confirmPassword, executedBy);
+
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest" || Request.Headers["Accept"].ToString().Contains("application/json"))
+            {
+                return Json(new { success, message });
+            }
+
+            TempData["ToastMessage"] = message;
+            TempData["ToastType"] = success ? "success" : "danger";
+            return RedirectToAction("Index");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = Role.Admin)]
+        public async Task<IActionResult> SendResetEmail(string id)
+        {
+            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+            var executedBy = User.Identity?.Name ?? "Admin";
+            var (success, message) = await _passwordResetService.SendPasswordResetEmailForAccountAsync(id, "Supplier", executedBy, baseUrl);
+
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest" || Request.Headers["Accept"].ToString().Contains("application/json"))
+            {
+                return Json(new { success, message });
+            }
+
             TempData["ToastMessage"] = message;
             TempData["ToastType"] = success ? "success" : "danger";
             return RedirectToAction("Index");

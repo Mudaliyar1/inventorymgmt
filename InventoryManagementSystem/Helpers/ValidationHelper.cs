@@ -42,5 +42,27 @@ namespace InventoryManagementSystem.Helpers
             if (string.IsNullOrWhiteSpace(imei)) return !required;
             return ImeiRegex.IsMatch(imei.Trim());
         }
+
+        private static readonly Regex PasswordRegex = new Regex(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$", RegexOptions.Compiled);
+
+        /// <summary>
+        /// Validates password against the unified SIMS security policy.
+        /// </summary>
+        public static bool IsValidPassword(string? password, out System.Collections.Generic.List<string> errors, string? confirmPassword = null, string? currentPasswordHash = null)
+        {
+            var policyService = new InventoryManagementSystem.Services.PasswordPolicyService();
+            var result = policyService.Validate(password, confirmPassword, currentPasswordHash, confirmPassword != null);
+            errors = result.Errors;
+            return result.IsValid;
+        }
+
+        /// <summary>
+        /// Quick boolean check for valid password meeting SIMS security policy.
+        /// </summary>
+        public static bool IsValidPassword(string? password)
+        {
+            if (string.IsNullOrWhiteSpace(password)) return false;
+            return PasswordRegex.IsMatch(password.Trim());
+        }
     }
 }

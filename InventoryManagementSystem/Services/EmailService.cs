@@ -421,13 +421,33 @@ namespace InventoryManagementSystem.Services
 
         public async Task SendForgotPasswordEmailAsync(string toEmail, string resetLink)
         {
+            await SendPasswordResetEmailAsync(toEmail, "User", resetLink, "Account");
+        }
+
+        public async Task SendPasswordResetEmailAsync(string toEmail, string recipientName, string resetLink, string accountType)
+        {
+            if (_env.IsDevelopment())
+            {
+                Console.WriteLine("=================================================");
+                Console.WriteLine($"[SIMS DEV RESET LINK] Password reset link for {toEmail} ({accountType}): {resetLink}");
+                Console.WriteLine("=================================================");
+            }
+
+            var safeName = System.Net.WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(recipientName) ? "User" : recipientName);
+            var safeAccountType = System.Net.WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(accountType) ? "SIMS" : accountType);
+
             var content = $@"
-<p>Hello,</p>
-<p>We received a request to reset your password for the Smart Inventory Management System (SIMS).</p>
-<p>Please click the button below to choose a new password. This link is valid for 1 hour.</p>
-<a href='{resetLink}' class='btn'>Reset Password</a>
-<p style='margin-top: 25px;'>If you did not request a password reset, please ignore this email. Your password will remain unchanged.</p>";
-            await SendEmailAsync(toEmail, "Reset Your Password - SIMS", GetStandardHtmlTemplate("Reset Your Password", content));
+<p>Hello <strong>{safeName}</strong>,</p>
+<p>A password reset has been requested for your <strong>SIMS {safeAccountType}</strong> account.</p>
+<p>Click the button below to create a new secure password:</p>
+<div style='text-align: center; margin: 30px 0;'>
+    <a href='{resetLink}' class='btn' style='display:inline-block;background-color:#0d6efd;color:#ffffff!important;padding:14px 28px;border-radius:6px;text-decoration:none;font-weight:700;font-size:16px;'>Reset Password</a>
+</div>
+<p style='font-size:13px;color:#94a3b8;'>This link is temporary and can only be used for a limited time (<strong>60 minutes</strong>). It is single-use and will be invalidated after resetting.</p>
+<p style='font-size:13px;color:#94a3b8;'>If you did not expect this request, you can safely ignore this email. Your current password remains secure.</p>
+<p style='margin-top: 25px; font-size:13px; color:#64748b;'>Regards,<br /><strong>Smart Inventory Management System (SIMS)</strong></p>";
+
+            await SendEmailAsync(toEmail, "Reset Your SIMS Account Password", GetStandardHtmlTemplate("Reset Your SIMS Account Password", content));
         }
 
         public async Task SendPasswordResetOtpEmailAsync(string toEmail, string otpCode, string recipientName)

@@ -216,9 +216,15 @@
                                         <i class="bi bi-clock-history"></i> Logs
                                     </a>
                                     <a href="@Url.Action("ResetPassword","User",new{id=u.Id})"
-                                       class="btn-d btn-ghost btn-icon-d" title="Reset Password">
+                                       class="btn-d btn-ghost btn-icon-d" title="Change / Override Password">
                                         <i class="bi bi-key"></i>
                                     </a>
+                                    <form method="post" asp-action="SendResetEmail" asp-route-id="@u.Id" style="margin:0" onsubmit="return confirm('Send a secure password reset email to @u.Email?');">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn-d btn-ghost btn-icon-d" style="color:var(--primary)" title="Send Password Reset Email">
+                                            <i class="bi bi-envelope-at"></i>
+                                        </button>
+                                    </form>
                                     <form method="post" asp-action="ToggleLock" asp-route-id="@u.Id" style="margin:0">
                                         @Html.AntiForgeryToken()
                                         <button type="submit" class="btn-d btn-ghost btn-icon-d"

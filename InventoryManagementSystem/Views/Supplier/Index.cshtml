@@ -168,6 +168,20 @@
                                         <i class="bi bi-pencil"></i>
                                     </button>
 
+                                    <!-- Reset Password Button -->
+                                    <button type="button" class="btn-d btn-ghost btn-icon-d text-warning"
+                                            onclick='openDirectSupplierPasswordModal(@Html.Raw(modalJson))'
+                                            title="Change / Reset Password">
+                                        <i class="bi bi-key"></i>
+                                    </button>
+
+                                    <!-- Send Reset Email Button -->
+                                    <button type="button" class="btn-d btn-ghost btn-icon-d text-success"
+                                            onclick='sendSupplierResetEmail("@s.Id", "@s.Email")'
+                                            title="Send Password Reset Email">
+                                        <i class="bi bi-envelope-at"></i>
+                                    </button>
+
                                     <!-- Delete Supplier Button -->
                                     <form method="post" asp-action="Delete" asp-route-id="@s.Id" class="d-inline" onsubmit="return confirm('Are you sure you want to delete supplier \'@s.DisplayVendorName\'?');">
                                         @Html.AntiForgeryToken()
@@ -292,6 +306,29 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Security & Password Management Section -->
+                <hr class="s-divider my-3" />
+                <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;font-weight:700" class="mb-2">
+                    <i class="bi bi-shield-lock-fill text-warning me-1"></i>Security & Credentials
+                </div>
+                <div class="card-d card-p p-3 mb-2" style="background:var(--bg);border:1px solid var(--border)">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div>
+                            <div style="font-size:12px;color:var(--text-muted)">Portal Login Password</div>
+                            <div style="font-family:monospace;letter-spacing:3px;font-size:16px;color:var(--text-muted)">••••••••••••</div>
+                            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Password is securely hashed. Original password cannot be retrieved.</div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" class="btn-d btn-outline btn-sm-d" onclick="openDirectChangePasswordFromDetails()">
+                                <i class="bi bi-key me-1"></i> Reset Password
+                            </button>
+                            <button type="button" class="btn-d btn-outline btn-sm-d text-primary" onclick="sendSupplierResetEmailFromDetails()">
+                                <i class="bi bi-send-fill me-1"></i> Send Password Reset Email
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer border-top" style="border-color:var(--border)!important">
                 <button type="button" class="btn-d btn-outline" data-bs-dismiss="modal">Close</button>
@@ -313,7 +350,7 @@
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form asp-action="Save" method="post">
+            <form asp-action="Save" method="post" id="saveSupplierForm" onsubmit="return validateSaveSupplierForm()">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="Id" id="supplier_Id" />
 
@@ -361,11 +398,51 @@
                     </div>
                     <div class="row g-3 mb-3">
                         <div class="col-6">
-                            <label class="fg-label">Portal Account Password</label>
-                            <input type="password" name="PasswordHash" id="supplier_Password" class="fg-control" placeholder="Set supplier login password" />
-                            <div style="font-size:10px;color:var(--text-muted)">Leave blank on edit to keep existing password.</div>
+                            <label class="fg-label">Portal Account Password <span id="sup_pwd_req_star" class="req">*</span></label>
+                            <div class="position-relative">
+                                <input type="password" name="PasswordHash" id="supplier_Password" class="fg-control" style="padding-right:40px" placeholder="Set portal password" oninput="evaluateSupplierModalPolicy(this.value)" />
+                                <button type="button" class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted p-2" onclick="toggleModalPassword('supplier_Password', this)" style="border:none;background:none;text-decoration:none;">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <div style="font-size:10px;color:var(--text-muted);margin-top:2px" id="sup_pwd_hint">Required for new supplier account.</div>
                         </div>
                         <div class="col-6">
+                            <label class="fg-label">Confirm Password <span id="sup_conf_req_star" class="req">*</span></label>
+                            <div class="position-relative">
+                                <input type="password" name="confirmPassword" id="supplier_ConfirmPassword" class="fg-control" style="padding-right:40px" placeholder="Repeat portal password" oninput="evaluateSupplierModalMatch()" />
+                                <button type="button" class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted p-2" onclick="toggleModalPassword('supplier_ConfirmPassword', this)" style="border:none;background:none;text-decoration:none;">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <div class="text-danger small mt-1" id="sup_pwd_match_err"></div>
+                        </div>
+                    </div>
+
+                    <!-- Password Policy Checklist inside Add Supplier modal -->
+                    <div id="sup_pwd_policy_box" class="p-3 mb-3 rounded" style="background:var(--bg);border:1px solid var(--border);font-size:12px">
+                        <div style="font-weight:700;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;font-size:11px">
+                            <i class="bi bi-shield-lock text-primary me-1"></i>Password must contain:
+                        </div>
+                        <div id="sup-req-len" style="color:var(--text-muted);margin-bottom:2px">
+                            <i class="bi bi-circle me-1" id="sup-icon-len"></i> Minimum 8 characters
+                        </div>
+                        <div id="sup-req-upper" style="color:var(--text-muted);margin-bottom:2px">
+                            <i class="bi bi-circle me-1" id="sup-icon-upper"></i> One uppercase letter (A-Z)
+                        </div>
+                        <div id="sup-req-lower" style="color:var(--text-muted);margin-bottom:2px">
+                            <i class="bi bi-circle me-1" id="sup-icon-lower"></i> One lowercase letter (a-z)
+                        </div>
+                        <div id="sup-req-num" style="color:var(--text-muted);margin-bottom:2px">
+                            <i class="bi bi-circle me-1" id="sup-icon-num"></i> One number (0-9)
+                        </div>
+                        <div id="sup-req-spec" style="color:var(--text-muted);margin-bottom:2px">
+                            <i class="bi bi-circle me-1" id="sup-icon-spec"></i> One special character (!@@#$%^&*...)
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-12">
                             <label class="fg-label">Account Status</label>
                             <select name="Status" id="supplier_Status" class="fg-control">
                                 <option value="Active" selected>Active</option>
@@ -407,8 +484,193 @@
     </div>
 </div>
 
+<!-- Modal: Admin Direct Supplier Password Change -->
+<div class="modal fade" id="supplierChangePasswordModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;color:var(--text-primary)">
+            <div class="modal-header border-bottom" style="border-color:var(--border)!important">
+                <h5 class="modal-title" style="font-weight:700">
+                    <i class="bi bi-key me-2" style="color:var(--warning)"></i>Change Supplier Password
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="ChangePassword" method="post" id="supplierChangePasswordForm" onsubmit="return validateDirectSupForm()">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" id="pwd_SupplierId" />
+                <div class="modal-body p-4">
+                    <p style="font-size:13px;color:var(--text-muted)" class="mb-3">
+                        Setting new login password for supplier: <strong id="pwd_SupplierName" style="color:var(--text-primary)"></strong>
+                    </p>
+
+                    <div class="fg mb-3">
+                        <label class="fg-label">New Password <span class="req">*</span></label>
+                        <div class="position-relative">
+                            <input type="password" name="newPassword" id="directSupNewPwd" required class="fg-control" style="padding-right:40px" placeholder="Enter new password" oninput="evaluateDirectSupPolicy(this.value)" />
+                            <button type="button" class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted p-2" onclick="toggleModalPassword('directSupNewPwd', this)" style="border:none;background:none;text-decoration:none;">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Checklist -->
+                    <div class="p-3 mb-3 rounded" style="background:var(--bg);border:1px solid var(--border);font-size:12px">
+                        <div style="font-weight:700;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;font-size:11px">
+                            <i class="bi bi-shield-lock text-primary me-1"></i>Password must satisfy:
+                        </div>
+                        <div id="dsup-req-len" style="color:var(--text-muted);margin-bottom:2px">
+                            <i class="bi bi-circle me-1" id="dsup-icon-len"></i> Minimum 8 characters
+                        </div>
+                        <div id="dsup-req-upper" style="color:var(--text-muted);margin-bottom:2px">
+                            <i class="bi bi-circle me-1" id="dsup-icon-upper"></i> One uppercase letter (A-Z)
+                        </div>
+                        <div id="dsup-req-lower" style="color:var(--text-muted);margin-bottom:2px">
+                            <i class="bi bi-circle me-1" id="dsup-icon-lower"></i> One lowercase letter (a-z)
+                        </div>
+                        <div id="dsup-req-num" style="color:var(--text-muted);margin-bottom:2px">
+                            <i class="bi bi-circle me-1" id="dsup-icon-num"></i> One number (0-9)
+                        </div>
+                        <div id="dsup-req-spec" style="color:var(--text-muted);margin-bottom:2px">
+                            <i class="bi bi-circle me-1" id="dsup-icon-spec"></i> One special character (!@@#$%^&*...)
+                        </div>
+                    </div>
+
+                    <div class="fg mb-0">
+                        <label class="fg-label">Confirm New Password <span class="req">*</span></label>
+                        <div class="position-relative">
+                            <input type="password" name="confirmPassword" id="directSupConfPwd" required class="fg-control" style="padding-right:40px" placeholder="Repeat new password" oninput="evaluateDirectSupMatch()" />
+                            <button type="button" class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted p-2" onclick="toggleModalPassword('directSupConfPwd', this)" style="border:none;background:none;text-decoration:none;">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        <div class="text-danger small mt-1" id="directSupMatchErr"></div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top" style="border-color:var(--border)!important">
+                    <button type="button" class="btn-d btn-outline" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn-d btn-primary">
+                        <i class="bi bi-check2-circle me-1"></i> Update Password
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Form: Send Supplier Password Reset Email -->
+<form id="sendSupplierResetEmailForm" asp-action="SendResetEmail" method="post" style="display:none;">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" id="emailResetSupplierId" />
+</form>
+
 @section Scripts {
     <script>
+        let currentViewSupplier = null;
+
+        function toggleModalPassword(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const icon = btn.querySelector('i');
+            if (!input || !icon) return;
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'bi bi-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'bi bi-eye';
+            }
+        }
+
+        function setPolicyRule(rowId, iconId, isMet) {
+            const row = document.getElementById(rowId);
+            const icon = document.getElementById(iconId);
+            if (!row || !icon) return;
+            if (isMet) {
+                row.style.color = '#34d399';
+                row.style.fontWeight = '600';
+                icon.className = 'bi bi-check-circle-fill text-success me-1';
+            } else {
+                row.style.color = 'var(--text-muted)';
+                row.style.fontWeight = 'normal';
+                icon.className = 'bi bi-circle me-1';
+            }
+        }
+
+        function evaluateSupplierModalPolicy(val) {
+            val = val || '';
+            setPolicyRule('sup-req-len', 'sup-icon-len', val.length >= 8);
+            setPolicyRule('sup-req-upper', 'sup-icon-upper', /[A-Z]/.test(val));
+            setPolicyRule('sup-req-lower', 'sup-icon-lower', /[a-z]/.test(val));
+            setPolicyRule('sup-req-num', 'sup-icon-num', /[0-9]/.test(val));
+            setPolicyRule('sup-req-spec', 'sup-icon-spec', /[^A-Za-z0-9]/.test(val));
+            evaluateSupplierModalMatch();
+        }
+
+        function evaluateSupplierModalMatch() {
+            const pwd = document.getElementById('supplier_Password')?.value || '';
+            const conf = document.getElementById('supplier_ConfirmPassword')?.value || '';
+            const err = document.getElementById('sup_pwd_match_err');
+            if (conf.length > 0 && pwd !== conf) {
+                if (err) err.innerText = 'Passwords do not match.';
+            } else {
+                if (err) err.innerText = '';
+            }
+        }
+
+        function validateSaveSupplierForm() {
+            const supId = document.getElementById('supplier_Id')?.value;
+            const pwd = document.getElementById('supplier_Password')?.value || '';
+            const conf = document.getElementById('supplier_ConfirmPassword')?.value || '';
+
+            if (!supId) {
+                // Create mode - password is required
+                if (!pwd) {
+                    alert('Portal account password is required.');
+                    return false;
+                }
+                if (pwd !== conf) {
+                    alert('Passwords do not match.');
+                    return false;
+                }
+            } else if (pwd.length > 0) {
+                // Edit mode with new password entered
+                if (pwd !== conf) {
+                    alert('Passwords do not match.');
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function evaluateDirectSupPolicy(val) {
+            val = val || '';
+            setPolicyRule('dsup-req-len', 'dsup-icon-len', val.length >= 8);
+            setPolicyRule('dsup-req-upper', 'dsup-icon-upper', /[A-Z]/.test(val));
+            setPolicyRule('dsup-req-lower', 'dsup-icon-lower', /[a-z]/.test(val));
+            setPolicyRule('dsup-req-num', 'dsup-icon-num', /[0-9]/.test(val));
+            setPolicyRule('dsup-req-spec', 'dsup-icon-spec', /[^A-Za-z0-9]/.test(val));
+            evaluateDirectSupMatch();
+        }
+
+        function evaluateDirectSupMatch() {
+            const pwd = document.getElementById('directSupNewPwd')?.value || '';
+            const conf = document.getElementById('directSupConfPwd')?.value || '';
+            const err = document.getElementById('directSupMatchErr');
+            if (conf.length > 0 && pwd !== conf) {
+                if (err) err.innerText = 'Passwords do not match.';
+            } else {
+                if (err) err.innerText = '';
+            }
+        }
+
+        function validateDirectSupForm() {
+            const pwd = document.getElementById('directSupNewPwd')?.value || '';
+            const conf = document.getElementById('directSupConfPwd')?.value || '';
+            if (pwd !== conf) {
+                alert('Passwords do not match.');
+                return false;
+            }
+            return true;
+        }
+
         function openCreateSupplierModal() {
             document.getElementById('saveSupplierModalTitle').innerHTML = '<i class="bi bi-truck me-2" style="color:var(--primary)"></i>Add Supplier Vendor Account';
             document.getElementById('supplier_Id').value = '';
@@ -419,8 +681,17 @@
             document.getElementById('supplier_Email').value = '';
             document.getElementById('supplier_Gstin').value = '';
             document.getElementById('supplier_PaymentTerms').value = 'Net 30';
+
             document.getElementById('supplier_Password').value = '';
             document.getElementById('supplier_Password').setAttribute('required', 'required');
+            document.getElementById('supplier_ConfirmPassword').value = '';
+            document.getElementById('supplier_ConfirmPassword').setAttribute('required', 'required');
+            document.getElementById('sup_pwd_req_star').style.display = 'inline';
+            document.getElementById('sup_conf_req_star').style.display = 'inline';
+            document.getElementById('sup_pwd_hint').innerText = 'Required for new supplier account.';
+            document.getElementById('sup_pwd_match_err').innerText = '';
+            evaluateSupplierModalPolicy('');
+
             document.getElementById('supplier_Status').value = 'Active';
             document.getElementById('supplier_City').value = '';
             document.getElementById('supplier_State').value = '';
@@ -442,8 +713,17 @@
             document.getElementById('supplier_Email').value = s.Email || '';
             document.getElementById('supplier_Gstin').value = s.Gstin || '';
             document.getElementById('supplier_PaymentTerms').value = s.PaymentTerms || 'Net 30';
+
             document.getElementById('supplier_Password').value = '';
             document.getElementById('supplier_Password').removeAttribute('required');
+            document.getElementById('supplier_ConfirmPassword').value = '';
+            document.getElementById('supplier_ConfirmPassword').removeAttribute('required');
+            document.getElementById('sup_pwd_req_star').style.display = 'none';
+            document.getElementById('sup_conf_req_star').style.display = 'none';
+            document.getElementById('sup_pwd_hint').innerText = 'Leave blank to keep existing password.';
+            document.getElementById('sup_pwd_match_err').innerText = '';
+            evaluateSupplierModalPolicy('');
+
             document.getElementById('supplier_Status').value = s.Status || 'Active';
             document.getElementById('supplier_City').value = s.City || '';
             document.getElementById('supplier_State').value = s.State || '';
@@ -461,6 +741,7 @@
         }
 
         function openViewSupplierModal(s) {
+            currentViewSupplier = s;
             const vendorName = s.VendorName || s.CompanyName || 'Supplier Details';
             const companyName = s.CompanyName || s.VendorName || '-';
 
@@ -491,6 +772,42 @@
 
             const modal = new bootstrap.Modal(document.getElementById('viewSupplierDetailsModal'));
             modal.show();
+        }
+
+        function openDirectSupplierPasswordModal(s) {
+            document.getElementById('pwd_SupplierId').value = s.Id;
+            document.getElementById('pwd_SupplierName').innerText = s.VendorName || s.CompanyName || s.Email;
+            document.getElementById('directSupNewPwd').value = '';
+            document.getElementById('directSupConfPwd').value = '';
+            document.getElementById('directSupMatchErr').innerText = '';
+            evaluateDirectSupPolicy('');
+
+            const modal = new bootstrap.Modal(document.getElementById('supplierChangePasswordModal'));
+            modal.show();
+        }
+
+        function openDirectChangePasswordFromDetails() {
+            if (!currentViewSupplier) return;
+            const viewModalEl = document.getElementById('viewSupplierDetailsModal');
+            const viewModal = bootstrap.Modal.getInstance(viewModalEl);
+            if (viewModal) viewModal.hide();
+            openDirectSupplierPasswordModal(currentViewSupplier);
+        }
+
+        function sendSupplierResetEmail(id, email) {
+            if (!email) {
+                alert('This supplier does not have a registered email address.');
+                return;
+            }
+            if (confirm(`Send a secure password reset email to ${email}?`)) {
+                document.getElementById('emailResetSupplierId').value = id;
+                document.getElementById('sendSupplierResetEmailForm').submit();
+            }
+        }
+
+        function sendSupplierResetEmailFromDetails() {
+            if (!currentViewSupplier) return;
+            sendSupplierResetEmail(currentViewSupplier.Id, currentViewSupplier.Email);
         }
     </script>
 }

@@ -8,21 +8,18 @@ namespace InventoryManagementSystem.ViewModels
         [EmailAddress(ErrorMessage = "Please enter a valid email address.")]
         public string Email { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "6-digit OTP is required.")]
-        [StringLength(6, MinimumLength = 6, ErrorMessage = "OTP must be exactly 6 numeric digits.")]
-        [RegularExpression(@"^\d{6}$", ErrorMessage = "OTP must be a 6-digit number.")]
         [Display(Name = "6-Digit OTP")]
-        public string Otp { get; set; } = string.Empty;
+        public string? Otp { get; set; }
 
-        // Legacy / helper alias so existing references remain valid
-        public string Token
-        {
-            get => Otp;
-            set => Otp = value;
-        }
+        public string? Token { get; set; }
+
+        public bool IsTokenBased => !string.IsNullOrWhiteSpace(Token);
+
+        public bool IsInvalidOrExpired { get; set; }
+
+        public string? ErrorMessage { get; set; }
 
         [Required(ErrorMessage = "New password is required.")]
-        [StringLength(100, ErrorMessage = "The password must be at least {2} characters long.", MinimumLength = 8)]
         [DataType(DataType.Password)]
         [Display(Name = "New Password")]
         public string Password { get; set; } = string.Empty;
@@ -30,7 +27,7 @@ namespace InventoryManagementSystem.ViewModels
         [Required(ErrorMessage = "Please confirm your new password.")]
         [DataType(DataType.Password)]
         [Display(Name = "Confirm Password")]
-        [Compare("Password", ErrorMessage = "The password and confirmation password do not match.")]
+        [Compare("Password", ErrorMessage = "Passwords do not match.")]
         public string ConfirmPassword { get; set; } = string.Empty;
     }
 }

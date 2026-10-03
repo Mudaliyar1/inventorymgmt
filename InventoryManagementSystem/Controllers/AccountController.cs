@@ -21,6 +21,8 @@ namespace InventoryManagementSystem.Controllers
         private readonly IUserRepository _userRepository;
         private readonly IPermissionService _permissionService;
         private readonly ISupplierService _supplierService;
+        private readonly IPasswordPolicyService _passwordPolicyService;
+        private readonly IPasswordResetService _passwordResetService;
 
         public AccountController(
             IAuthService authService,
@@ -29,7 +31,9 @@ namespace InventoryManagementSystem.Controllers
             IEmailService emailService,
             IUserRepository userRepository,
             IPermissionService permissionService,
-            ISupplierService supplierService)
+            ISupplierService supplierService,
+            IPasswordPolicyService passwordPolicyService,
+            IPasswordResetService passwordResetService)
         {
             _authService = authService;
             _imageService = imageService;
@@ -38,6 +42,8 @@ namespace InventoryManagementSystem.Controllers
             _userRepository = userRepository;
             _permissionService = permissionService;
             _supplierService = supplierService;
+            _passwordPolicyService = passwordPolicyService;
+            _passwordResetService = passwordResetService;
         }
 
         [HttpGet]
@@ -177,21 +183,42 @@ namespace InventoryManagementSystem.Controllers
                 return View(model);
             }
 
-            var (success, message) = await _authService.GeneratePasswordResetOtpAsync(model.Email);
-            TempData["ToastMessage"] = message;
-            TempData["ToastType"] = success ? "success" : "danger";
+            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+            await _passwordResetService.RequestPasswordResetByEmailAsync(model.Email, baseUrl);
 
-            return RedirectToAction(nameof(ResetPassword), new { email = model.Email.Trim() });
+            // Anti-enumeration generic response
+            TempData["ToastMessage"] = "If an account exists with that email address, a password reset link has been sent.";
+            TempData["ToastType"] = "info";
+
+            return RedirectToAction(nameof(Login));
         }
 
         [HttpGet]
-        public IActionResult ResetPassword(string? email, string? otp, string? token)
+        public async Task<IActionResult> ResetPassword(string? email, string? otp, string? token)
         {
             var model = new ResetPasswordViewModel
             {
                 Email = email ?? string.Empty,
-                Otp = !string.IsNullOrWhiteSpace(otp) ? otp : (!string.IsNullOrWhiteSpace(token) ? token : string.Empty)
+                Otp = !string.IsNullOrWhiteSpace(otp) ? otp : string.Empty,
+                Token = !string.IsNullOrWhiteSpace(token) ? token : string.Empty
             };
+
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                var (isValid, errorMessage, request) = await _passwordResetService.ValidateResetTokenAsync(token);
+                if (!isValid)
+                {
+                    model.IsInvalidOrExpired = true;
+                    model.ErrorMessage = errorMessage ?? "This password reset link is invalid or has expired.";
+                    return View(model);
+                }
+
+                if (request != null && !string.IsNullOrEmpty(request.Email))
+                {
+                    model.Email = request.Email;
+                }
+            }
+
             return View(model);
         }
 
@@ -199,24 +226,86 @@ namespace InventoryManagementSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ResetPassword(ResetPasswordViewModel model)
         {
-            if (!ModelState.IsValid)
+            if (!string.IsNullOrWhiteSpace(model.Token))
             {
-                return View(model);
-            }
+                ModelState.Remove(nameof(model.Otp));
+                ModelState.Remove(nameof(model.Email));
 
-            var (success, message) = await _authService.ResetPasswordWithOtpAsync(model.Email, model.Otp, model.Password);
-            if (!success)
+                var policyResult = _passwordPolicyService.Validate(model.Password);
+                if (!policyResult.IsValid)
+                {
+                    foreach (var err in policyResult.Errors)
+                    {
+                        ModelState.AddModelError(nameof(model.Password), err);
+                    }
+                    return View(model);
+                }
+
+                if (model.Password != model.ConfirmPassword)
+                {
+                    ModelState.AddModelError(nameof(model.ConfirmPassword), "Passwords do not match.");
+                    return View(model);
+                }
+
+                var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
+                var (success, message) = await _passwordResetService.CompletePasswordResetAsync(model.Token, model.Password, model.ConfirmPassword, ip);
+                if (!success)
+                {
+                    model.IsInvalidOrExpired = true;
+                    model.ErrorMessage = message;
+                    ModelState.AddModelError(string.Empty, message);
+                    return View(model);
+                }
+
+                TempData["ToastMessage"] = "Your password has been reset successfully. You can now log in with your new password.";
+                TempData["ToastType"] = "success";
+
+                return RedirectToAction(nameof(Login));
+            }
+            else
             {
-                ModelState.AddModelError(string.Empty, message);
-                TempData["ToastMessage"] = message;
-                TempData["ToastType"] = "danger";
-                return View(model);
+                if (string.IsNullOrWhiteSpace(model.Email))
+                {
+                    ModelState.AddModelError(nameof(model.Email), "Email is required.");
+                }
+                if (string.IsNullOrWhiteSpace(model.Otp))
+                {
+                    ModelState.AddModelError(nameof(model.Otp), "OTP is required.");
+                }
+
+                var policyResult = _passwordPolicyService.Validate(model.Password);
+                if (!policyResult.IsValid)
+                {
+                    foreach (var err in policyResult.Errors)
+                    {
+                        ModelState.AddModelError(nameof(model.Password), err);
+                    }
+                }
+
+                if (model.Password != model.ConfirmPassword)
+                {
+                    ModelState.AddModelError(nameof(model.ConfirmPassword), "Passwords do not match.");
+                }
+
+                if (!ModelState.IsValid)
+                {
+                    return View(model);
+                }
+
+                var (success, message) = await _authService.ResetPasswordWithOtpAsync(model.Email, model.Otp ?? string.Empty, model.Password);
+                if (!success)
+                {
+                    ModelState.AddModelError(string.Empty, message);
+                    TempData["ToastMessage"] = message;
+                    TempData["ToastType"] = "danger";
+                    return View(model);
+                }
+
+                TempData["ToastMessage"] = "Password reset successfully! You can now log in with your new password.";
+                TempData["ToastType"] = "success";
+
+                return RedirectToAction(nameof(Login));
             }
-
-            TempData["ToastMessage"] = "Password reset successfully! You can now log in with your new password.";
-            TempData["ToastType"] = "success";
-
-            return RedirectToAction(nameof(Login));
         }
 
         [HttpPost]
@@ -277,12 +366,50 @@ namespace InventoryManagementSystem.Controllers
             model.Role = user.Role;
             model.CurrentProfilePictureUrl = string.IsNullOrEmpty(user.ProfilePictureUrl) ? "/images/default-avatar.png" : user.ProfilePictureUrl;
 
-            // Remove password validation check if no password update is attempted
-            if (string.IsNullOrEmpty(model.CurrentPassword) && string.IsNullOrEmpty(model.NewPassword))
+            bool isPasswordChangeAttempted = !string.IsNullOrEmpty(model.CurrentPassword) || !string.IsNullOrEmpty(model.NewPassword);
+
+            if (!isPasswordChangeAttempted)
             {
                 ModelState.Remove(nameof(model.CurrentPassword));
                 ModelState.Remove(nameof(model.NewPassword));
                 ModelState.Remove(nameof(model.ConfirmNewPassword));
+            }
+            else
+            {
+                if (string.IsNullOrEmpty(model.CurrentPassword))
+                {
+                    ModelState.AddModelError(nameof(model.CurrentPassword), "Current password is required.");
+                }
+                if (string.IsNullOrEmpty(model.NewPassword))
+                {
+                    ModelState.AddModelError(nameof(model.NewPassword), "New password is required.");
+                }
+                else
+                {
+                    if (model.CurrentPassword == model.NewPassword)
+                    {
+                        ModelState.AddModelError(nameof(model.NewPassword), "The new password must be different from the current password.");
+                    }
+
+                    if (model.NewPassword != model.ConfirmNewPassword)
+                    {
+                        ModelState.AddModelError(nameof(model.ConfirmNewPassword), "Passwords do not match.");
+                    }
+
+                    var policyResult = _passwordPolicyService.Validate(model.NewPassword, currentPasswordHash: user.PasswordHash);
+                    if (!policyResult.IsValid)
+                    {
+                        foreach (var err in policyResult.Errors)
+                        {
+                            ModelState.AddModelError(nameof(model.NewPassword), err);
+                        }
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(model.CurrentPassword) && !BCrypt.Net.BCrypt.Verify(model.CurrentPassword, user.PasswordHash))
+                {
+                    ModelState.AddModelError(nameof(model.CurrentPassword), "Current password is incorrect.");
+                }
             }
 
             if (!ModelState.IsValid)
@@ -311,15 +438,15 @@ namespace InventoryManagementSystem.Controllers
             }
 
             // Change password if requested
-            if (!string.IsNullOrEmpty(model.CurrentPassword) && !string.IsNullOrEmpty(model.NewPassword))
+            if (isPasswordChangeAttempted && !string.IsNullOrEmpty(model.NewPassword))
             {
-                var pwdChanged = await _authService.ChangePasswordAsync(userId, model.CurrentPassword, model.NewPassword);
-                if (!pwdChanged)
-                {
-                    ModelState.AddModelError(nameof(model.CurrentPassword), "Current password is incorrect.");
-                    return View(model);
-                }
-                await _auditLogService.LogActivityAsync("Password Changed", user.Username, $"User ID: {user.Id}", "User successfully changed their password.");
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.NewPassword);
+                user.PermissionVersion++;
+                user.UpdatedDate = DateTime.UtcNow;
+                await _userRepository.UpdateAsync(user.Id, user);
+                _permissionService.InvalidateUserCache(user.Id);
+
+                await _auditLogService.LogExAsync("EMPLOYEE_PASSWORD_CHANGED", "Account", user.Username, $"User '{user.FullName}' changed their password from user profile.", "Success", "Information", referenceId: user.Id);
                 await _emailService.SendPasswordChangedEmailAsync(user.Email, user.Username);
             }
 

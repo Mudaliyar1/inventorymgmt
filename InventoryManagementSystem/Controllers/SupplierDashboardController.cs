@@ -30,6 +30,8 @@ namespace InventoryManagementSystem.Controllers
         private readonly IStockService _stockService;
         private readonly IDeviceRepository _deviceRepository;
         private readonly IStockTransactionRepository _transactionRepository;
+        private readonly IPasswordPolicyService _passwordPolicyService;
+        private readonly ISupplierRepository _supplierRepository;
 
         public SupplierDashboardController(
             ISupplierService supplierService,
@@ -46,7 +48,9 @@ namespace InventoryManagementSystem.Controllers
             ISupplierPurchaseReturnService purchaseReturnService,
             IStockService stockService,
             IDeviceRepository deviceRepository,
-            IStockTransactionRepository transactionRepository)
+            IStockTransactionRepository transactionRepository,
+            IPasswordPolicyService passwordPolicyService,
+            ISupplierRepository supplierRepository)
         {
             _supplierService = supplierService;
             _supplierOrderService = supplierOrderService;
@@ -63,6 +67,8 @@ namespace InventoryManagementSystem.Controllers
             _stockService = stockService;
             _deviceRepository = deviceRepository;
             _transactionRepository = transactionRepository;
+            _passwordPolicyService = passwordPolicyService;
+            _supplierRepository = supplierRepository;
         }
 
         private string CurrentSupplierId => User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
@@ -573,7 +579,7 @@ namespace InventoryManagementSystem.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Profile(Supplier model, string? newPassword)
+        public async Task<IActionResult> Profile(Supplier model, string? currentPassword, string? newPassword, string? confirmPassword)
         {
             var supplierId = CurrentSupplierId;
             var existing = await _supplierService.GetSupplierByIdAsync(supplierId);
@@ -598,6 +604,46 @@ namespace InventoryManagementSystem.Controllers
                 }
             }
 
+            bool isPasswordChangeAttempted = !string.IsNullOrEmpty(currentPassword) || !string.IsNullOrEmpty(newPassword);
+
+            if (isPasswordChangeAttempted)
+            {
+                if (string.IsNullOrEmpty(currentPassword))
+                {
+                    ModelState.AddModelError("CurrentPassword", "Current password is required.");
+                }
+                else if (!BCrypt.Net.BCrypt.Verify(currentPassword, existing.PasswordHash))
+                {
+                    ModelState.AddModelError("CurrentPassword", "Current password is incorrect.");
+                }
+
+                if (string.IsNullOrEmpty(newPassword))
+                {
+                    ModelState.AddModelError("NewPassword", "New password is required.");
+                }
+                else
+                {
+                    if (currentPassword == newPassword)
+                    {
+                        ModelState.AddModelError("NewPassword", "The new password must be different from the current password.");
+                    }
+
+                    if (newPassword != confirmPassword)
+                    {
+                        ModelState.AddModelError("ConfirmPassword", "Passwords do not match.");
+                    }
+
+                    var policyResult = _passwordPolicyService.Validate(newPassword, currentPasswordHash: existing.PasswordHash);
+                    if (!policyResult.IsValid)
+                    {
+                        foreach (var err in policyResult.Errors)
+                        {
+                            ModelState.AddModelError("NewPassword", err);
+                        }
+                    }
+                }
+            }
+
             if (!ModelState.IsValid)
             {
                 return View(existing);
@@ -614,9 +660,10 @@ namespace InventoryManagementSystem.Controllers
             existing.Country = model.Country;
             existing.Gstin = model.Gstin;
 
-            if (!string.IsNullOrWhiteSpace(newPassword) && newPassword.Length >= 6)
+            if (isPasswordChangeAttempted && !string.IsNullOrEmpty(newPassword))
             {
-                existing.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+                existing.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword.Trim());
+                await _auditLogService.LogExAsync("SUPPLIER_PASSWORD_CHANGED", "Account", existing.DisplayVendorName, $"Supplier '{existing.DisplayVendorName}' changed their portal password from profile.", "Success", "Information", referenceId: existing.Id);
             }
 
             var (saveSuccess, saveMsg, _) = await _supplierService.SaveSupplierAsync(existing, User.Identity?.Name ?? existing.DisplayVendorName);

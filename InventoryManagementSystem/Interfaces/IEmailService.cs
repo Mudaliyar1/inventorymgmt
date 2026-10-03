@@ -10,6 +10,7 @@ namespace InventoryManagementSystem.Interfaces
         Task SendInvoiceEmailAsync(string toEmail, Sale sale, byte[] pdfBytes);
         Task SendWelcomeEmailAsync(string toEmail, string username);
         Task SendForgotPasswordEmailAsync(string toEmail, string resetLink);
+        Task SendPasswordResetEmailAsync(string toEmail, string recipientName, string resetLink, string accountType);
         Task SendPasswordResetOtpEmailAsync(string toEmail, string otpCode, string recipientName);
         Task SendPasswordChangedEmailAsync(string toEmail, string username);
         Task SendLowStockAlertEmailAsync(string toEmail, string productName, int currentStock, int minStock);

@@ -176,6 +176,8 @@ builder.Services.AddHttpClient<IBrevoEmailService, BrevoEmailService>();
 builder.Services.AddScoped<IInventoryAlertService, InventoryAlertService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IImageService, CloudinaryImageService>();
+builder.Services.AddScoped<IPasswordPolicyService, PasswordPolicyService>();
+builder.Services.AddScoped<IPasswordResetService, PasswordResetService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();

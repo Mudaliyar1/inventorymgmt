@@ -46,6 +46,7 @@ namespace InventoryManagementSystem.Data
         public IMongoCollection<RepairTicket> RepairTickets => GetCollection<RepairTicket>("RepairTickets");
         public IMongoCollection<SupplierOrder> SupplierOrders => GetCollection<SupplierOrder>("SupplierOrders");
         public IMongoCollection<SupplierPurchaseReturn> SupplierPurchaseReturns => GetCollection<SupplierPurchaseReturn>("SupplierPurchaseReturns");
+        public IMongoCollection<PasswordResetRequest> PasswordResetRequests => GetCollection<PasswordResetRequest>("PasswordResetRequests");
 
         /// <summary>
         /// Automatically verifies and creates database indexes on startup for fast queries.

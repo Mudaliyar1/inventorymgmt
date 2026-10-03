@@ -57,9 +57,47 @@
 
                 <input type="hidden" asp-for="Role" value="Staff" />
 
-                <div class="fg mb-0">
+                <div class="fg mb-3">
                     <label class="fg-label">Login Password <span class="req">*</span></label>
-                    <input type="password" name="rawPassword" class="fg-control" placeholder="Minimum 6 characters" required />
+                    <div class="position-relative">
+                        <input type="password" id="empPasswordInput" name="rawPassword" class="fg-control" style="padding-right:42px" placeholder="Create login password" required oninput="evaluateEmpPwdPolicy(this.value)" />
+                        <button type="button" class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted p-2" onclick="toggleEmpPassword('empPasswordInput', this)" style="border:none;background:none;text-decoration:none;">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Password Requirements Checklist -->
+                <div class="p-3 mb-3 rounded" style="background:var(--bg);border:1px solid var(--border);font-size:12px">
+                    <div style="font-weight:700;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;font-size:11px">
+                        <i class="bi bi-shield-lock text-primary me-1"></i>Password must contain:
+                    </div>
+                    <div id="emp-req-len" style="color:var(--text-muted);margin-bottom:2px">
+                        <i class="bi bi-circle me-1" id="emp-icon-len"></i> Minimum 8 characters
+                    </div>
+                    <div id="emp-req-upper" style="color:var(--text-muted);margin-bottom:2px">
+                        <i class="bi bi-circle me-1" id="emp-icon-upper"></i> One uppercase letter (A-Z)
+                    </div>
+                    <div id="emp-req-lower" style="color:var(--text-muted);margin-bottom:2px">
+                        <i class="bi bi-circle me-1" id="emp-icon-lower"></i> One lowercase letter (a-z)
+                    </div>
+                    <div id="emp-req-num" style="color:var(--text-muted);margin-bottom:2px">
+                        <i class="bi bi-circle me-1" id="emp-icon-num"></i> One number (0-9)
+                    </div>
+                    <div id="emp-req-spec" style="color:var(--text-muted);margin-bottom:2px">
+                        <i class="bi bi-circle me-1" id="emp-icon-spec"></i> One special character (!@@#$%^&*...)
+                    </div>
+                </div>
+
+                <div class="fg mb-0">
+                    <label class="fg-label">Confirm Password <span class="req">*</span></label>
+                    <div class="position-relative">
+                        <input type="password" id="empConfirmPasswordInput" name="confirmPassword" class="fg-control" style="padding-right:42px" placeholder="Repeat login password" required oninput="evaluateEmpPwdMatch()" />
+                        <button type="button" class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted p-2" onclick="toggleEmpPassword('empConfirmPasswordInput', this)" style="border:none;background:none;text-decoration:none;">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    <div class="text-danger small mt-1" id="empMatchError"></div>
                 </div>
             </div>
         </div>
@@ -144,6 +182,55 @@
             const container = document.getElementById('permissionsContainer');
             if (role === 'Admin') {
                 toggleAllPermissions(true);
+            }
+        }
+
+        function toggleEmpPassword(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const icon = btn.querySelector('i');
+            if (!input || !icon) return;
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'bi bi-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'bi bi-eye';
+            }
+        }
+
+        function setEmpRuleState(rowId, iconId, isMet) {
+            const row = document.getElementById(rowId);
+            const icon = document.getElementById(iconId);
+            if (!row || !icon) return;
+            if (isMet) {
+                row.style.color = '#34d399';
+                row.style.fontWeight = '600';
+                icon.className = 'bi bi-check-circle-fill text-success me-1';
+            } else {
+                row.style.color = 'var(--text-muted)';
+                row.style.fontWeight = 'normal';
+                icon.className = 'bi bi-circle me-1';
+            }
+        }
+
+        function evaluateEmpPwdPolicy(val) {
+            val = val || '';
+            setEmpRuleState('emp-req-len', 'emp-icon-len', val.length >= 8);
+            setEmpRuleState('emp-req-upper', 'emp-icon-upper', /[A-Z]/.test(val));
+            setEmpRuleState('emp-req-lower', 'emp-icon-lower', /[a-z]/.test(val));
+            setEmpRuleState('emp-req-num', 'emp-icon-num', /[0-9]/.test(val));
+            setEmpRuleState('emp-req-spec', 'emp-icon-spec', /[^A-Za-z0-9]/.test(val));
+            evaluateEmpPwdMatch();
+        }
+
+        function evaluateEmpPwdMatch() {
+            const pwd = document.getElementById('empPasswordInput')?.value || '';
+            const conf = document.getElementById('empConfirmPasswordInput')?.value || '';
+            const err = document.getElementById('empMatchError');
+            if (conf.length > 0 && pwd !== conf) {
+                if (err) err.innerText = 'Passwords do not match.';
+            } else {
+                if (err) err.innerText = '';
             }
         }
     </script>

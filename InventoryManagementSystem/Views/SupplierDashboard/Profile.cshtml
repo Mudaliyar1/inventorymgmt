@@ -96,13 +96,66 @@
 
                 <hr class="s-divider" />
                 <div class="s-title"><i class="bi bi-key me-2" style="color:var(--warning)"></i>Change Portal Login Password</div>
-                
-                <div class="row g-3 mb-4">
-                    <div class="col-md-6">
+                <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">
+                    Leave password fields blank if you do not wish to change your password. To set a new password, provide your current password and satisfy the password policy.
+                </p>
+
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label">Current Password</label>
+                            <div class="position-relative">
+                                <input type="password" id="supDashCurrentPwd" name="currentPassword" class="fg-control" style="padding-right:40px" placeholder="Enter current password" />
+                                <button type="button" class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted p-2" onclick="toggleSupDashPwd('supDashCurrentPwd', this)" style="border:none;background:none;text-decoration:none;">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
                         <div class="fg">
                             <label class="fg-label">New Password</label>
-                            <input type="password" name="newPassword" class="fg-control" placeholder="Leave blank to keep existing password" />
+                            <div class="position-relative">
+                                <input type="password" id="supDashNewPwd" name="newPassword" class="fg-control" style="padding-right:40px" placeholder="Create new password" oninput="evaluateSupDashPolicy(this.value)" />
+                                <button type="button" class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted p-2" onclick="toggleSupDashPwd('supDashNewPwd', this)" style="border:none;background:none;text-decoration:none;">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
                         </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="fg">
+                            <label class="fg-label">Confirm New Password</label>
+                            <div class="position-relative">
+                                <input type="password" id="supDashConfPwd" name="confirmPassword" class="fg-control" style="padding-right:40px" placeholder="Repeat new password" oninput="evaluateSupDashMatch()" />
+                                <button type="button" class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted p-2" onclick="toggleSupDashPwd('supDashConfPwd', this)" style="border:none;background:none;text-decoration:none;">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                            <div class="text-danger small mt-1" id="supDashMatchErr"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Password Policy Checklist -->
+                <div class="p-3 mb-4 rounded" style="background:var(--bg);border:1px solid var(--border);font-size:12px">
+                    <div style="font-weight:700;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;font-size:11px">
+                        <i class="bi bi-shield-check text-primary me-1"></i>New password must contain:
+                    </div>
+                    <div id="sd-req-len" style="color:var(--text-muted);margin-bottom:2px">
+                        <i class="bi bi-circle me-1" id="sd-icon-len"></i> Minimum 8 characters
+                    </div>
+                    <div id="sd-req-upper" style="color:var(--text-muted);margin-bottom:2px">
+                        <i class="bi bi-circle me-1" id="sd-icon-upper"></i> One uppercase letter (A-Z)
+                    </div>
+                    <div id="sd-req-lower" style="color:var(--text-muted);margin-bottom:2px">
+                        <i class="bi bi-circle me-1" id="sd-icon-lower"></i> One lowercase letter (a-z)
+                    </div>
+                    <div id="sd-req-num" style="color:var(--text-muted);margin-bottom:2px">
+                        <i class="bi bi-circle me-1" id="sd-icon-num"></i> One number (0-9)
+                    </div>
+                    <div id="sd-req-spec" style="color:var(--text-muted);margin-bottom:2px">
+                        <i class="bi bi-circle me-1" id="sd-icon-spec"></i> One special character (!@@#$%^&*...)
                     </div>
                 </div>
 
@@ -146,3 +199,57 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function toggleSupDashPwd(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const icon = btn.querySelector('i');
+            if (!input || !icon) return;
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'bi bi-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'bi bi-eye';
+            }
+        }
+
+        function setSdRule(rowId, iconId, isMet) {
+            const row = document.getElementById(rowId);
+            const icon = document.getElementById(iconId);
+            if (!row || !icon) return;
+            if (isMet) {
+                row.style.color = '#34d399';
+                row.style.fontWeight = '600';
+                icon.className = 'bi bi-check-circle-fill text-success me-1';
+            } else {
+                row.style.color = 'var(--text-muted)';
+                row.style.fontWeight = 'normal';
+                icon.className = 'bi bi-circle me-1';
+            }
+        }
+
+        function evaluateSupDashPolicy(val) {
+            val = val || '';
+            setSdRule('sd-req-len', 'sd-icon-len', val.length >= 8);
+            setSdRule('sd-req-upper', 'sd-icon-upper', /[A-Z]/.test(val));
+            setSdRule('sd-req-lower', 'sd-icon-lower', /[a-z]/.test(val));
+            setSdRule('sd-req-num', 'sd-icon-num', /[0-9]/.test(val));
+            setSdRule('sd-req-spec', 'sd-icon-spec', /[^A-Za-z0-9]/.test(val));
+            evaluateSupDashMatch();
+        }
+
+        function evaluateSupDashMatch() {
+            const pwd = document.getElementById('supDashNewPwd')?.value || '';
+            const conf = document.getElementById('supDashConfPwd')?.value || '';
+            const err = document.getElementById('supDashMatchErr');
+            if (conf.length > 0 && pwd !== conf) {
+                if (err) err.innerText = 'Passwords do not match.';
+            } else {
+                if (err) err.innerText = '';
+            }
+        }
+    </script>
+}
