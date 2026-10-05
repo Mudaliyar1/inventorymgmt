@@ -5,6 +5,30 @@
     var categoryName = ViewBag.CategoryName as string ?? "Mobile Device";
     var specs = Model.Specs ?? new InventoryManagementSystem.Models.MobileSpecifications();
 
+    // Effective Cost & Selling prices with complete fallback chain
+    var firstVariantCost = Model.Variants?.Select(v => 
+        v.PurchasePrice > 0 ? v.PurchasePrice : 
+        (v.SupplierPrice > 0 ? v.SupplierPrice : 
+        (v.Colors?.FirstOrDefault(c => c.PurchasePrice > 0)?.PurchasePrice ?? 0m))
+    ).FirstOrDefault(p => p > 0) ?? 0m;
+
+    decimal effectiveCostPrice = Model.PurchasePrice > 0 
+        ? Model.PurchasePrice 
+        : (Model.SupplierPrice > 0 
+            ? Model.SupplierPrice 
+            : (firstVariantCost > 0 ? firstVariantCost : 0m));
+
+    var firstVariantSelling = Model.Variants?.Select(v => 
+        v.SellingPrice > 0 ? v.SellingPrice : 
+        (v.Colors?.FirstOrDefault(c => c.SellingPrice > 0)?.SellingPrice ?? 0m)
+    ).FirstOrDefault(p => p > 0) ?? 0m;
+
+    decimal effectiveSellingPrice = Model.SellingPrice > 0 
+        ? Model.SellingPrice 
+        : (firstVariantSelling > 0 
+            ? firstVariantSelling 
+            : (effectiveCostPrice > 0 ? effectiveCostPrice : 0m));
+
     // Prepare Color Options & Strictly Color-Isolated Photos
     var colorOptions = new List<dynamic>();
     var colorNameSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -31,13 +55,28 @@
                             }
                         }
                         var stock = c.CurrentStock > 0 ? c.CurrentStock : (c.InitialStock > 0 ? c.InitialStock : 0);
-                        var price = c.PurchasePrice > 0 ? c.PurchasePrice : (v.PurchasePrice > 0 ? v.PurchasePrice : Model.PurchasePrice);
+                        var cCost = c.PurchasePrice > 0 
+                            ? c.PurchasePrice 
+                            : (v.PurchasePrice > 0 
+                                ? v.PurchasePrice 
+                                : (v.SupplierPrice > 0 
+                                    ? v.SupplierPrice 
+                                    : effectiveCostPrice));
+
+                        var cSelling = c.SellingPrice > 0 
+                            ? c.SellingPrice 
+                            : (v.SellingPrice > 0 
+                                ? v.SellingPrice 
+                                : effectiveSellingPrice);
+
                         colorOptions.Add(new {
                             name = cName,
                             code = string.IsNullOrEmpty(c.Code) ? "#4f46e5" : c.Code,
                             images = cImgs,
                             stock = stock,
-                            price = price
+                            costPrice = cCost,
+                            sellingPrice = cSelling,
+                            price = cCost > 0 ? cCost : cSelling
                         });
                     }
                 }
@@ -62,7 +101,7 @@
             code = "#4f46e5",
             images = pImgs,
             stock = Model.CurrentStock,
-            price = Model.PurchasePrice
+            price = effectiveCostPrice > 0 ? effectiveCostPrice : effectiveSellingPrice
         });
     }
 
@@ -149,21 +188,25 @@
         <div class="row g-3 mb-4">
             <div class="col-sm-4">
                 <div class="card-d card-p text-center" style="background:var(--bg-card);border:1px solid var(--border)">
-                    <div style="font-size:11px;color:var(--text-muted)">Retail Selling Price</div>
-                    <div style="font-size:22px;font-weight:800;color:var(--success)">₹@Model.SellingPrice.ToString("N2")</div>
-                </div>
-            </div>
-            <div class="col-sm-4">
-                <div class="card-d card-p text-center" style="background:var(--bg-card);border:1px solid var(--border)">
-                    <div style="font-size:11px;color:var(--text-muted)">Supplier / Cost Price</div>
-                    <div style="font-size:22px;font-weight:800;color:var(--primary)" id="det_CostPrice">₹@Model.PurchasePrice.ToString("N2")</div>
-                </div>
-            </div>
-            <div class="col-sm-4">
-                <div class="card-d card-p text-center" style="background:var(--bg-card);border:1px solid var(--border)">
                     <div style="font-size:11px;color:var(--text-muted)">Current Available Stock</div>
                     <div style="font-size:22px;font-weight:800;color:@(Model.CurrentStock <= Model.MinimumStock ? "var(--warning)" : "var(--text-primary)")" id="det_StockQty">
                         @Model.CurrentStock Units
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-4">
+                <div class="card-d card-p text-center" style="background:var(--bg-card);border:1px solid var(--border)">
+                    <div style="font-size:11px;color:var(--text-muted)">Hardware Configurations</div>
+                    <div style="font-size:22px;font-weight:800;color:var(--primary)">
+                        @Model.GetEffectiveVariants().Count Variants
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-4">
+                <div class="card-d card-p text-center" style="background:var(--bg-card);border:1px solid var(--border)">
+                    <div style="font-size:11px;color:var(--text-muted)">Color Options Available</div>
+                    <div style="font-size:22px;font-weight:800;color:var(--info)">
+                        @colorOptions.Count Colors
                     </div>
                 </div>
             </div>
@@ -175,28 +218,46 @@
             <div class="row g-3">
                 @foreach (var variant in Model.GetEffectiveVariants())
                 {
+                    var vCost = variant.PurchasePrice > 0 
+                        ? variant.PurchasePrice 
+                        : (variant.SupplierPrice > 0 
+                            ? variant.SupplierPrice 
+                            : (variant.Colors != null && variant.Colors.Any(c => c.PurchasePrice > 0) 
+                                ? variant.Colors.First(c => c.PurchasePrice > 0).PurchasePrice 
+                                : effectiveCostPrice));
+
+                    var vRetail = variant.SellingPrice > 0 
+                        ? variant.SellingPrice 
+                        : (variant.Colors != null && variant.Colors.Any(c => c.SellingPrice > 0) 
+                            ? variant.Colors.First(c => c.SellingPrice > 0).SellingPrice 
+                            : (effectiveSellingPrice > 0 ? effectiveSellingPrice : vCost));
+
                     <div class="col-md-6">
                         <div class="p-3 rounded border bg-dark-subtle h-100" style="background:var(--bg);border:1px solid var(--border)!important">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="fw-bold text-primary"><i class="bi bi-cpu me-1"></i>@variant.DisplayVariantName</span>
                                 <span class="badge bg-secondary" style="font-size:11px">SKU: @(!string.IsNullOrEmpty(variant.Sku) ? variant.Sku : Model.Code)</span>
                             </div>
-                            <div class="small text-muted mb-2">
-                                Cost: <strong class="text-info">₹@((variant.PurchasePrice > 0 ? variant.PurchasePrice : Model.PurchasePrice).ToString("N2"))</strong> | 
-                                Retail: <strong class="text-success">₹@((variant.SellingPrice > 0 ? variant.SellingPrice : Model.SellingPrice).ToString("N2"))</strong>
-                            </div>
-                            <div class="d-flex flex-wrap gap-2 align-items-center mt-2 pt-2 border-top" style="border-color:var(--border)!important">
-                                <span class="small fw-bold me-1 text-muted">Colors:</span>
-                                @foreach (var color in (variant.Colors ?? new List<InventoryManagementSystem.Models.ProductColor>()))
-                                {
-                                    <div class="d-flex align-items-center gap-1 border px-2 py-1 rounded small" style="background:var(--bg-card);border-color:var(--border)!important">
-                                        @if (!string.IsNullOrEmpty(color.Code))
-                                        {
-                                            <span class="d-inline-block rounded-circle border" style="width:12px;height:12px;background-color:@color.Code"></span>
-                                        }
-                                        <span>@color.Name</span>
-                                    </div>
-                                }
+                            <div class="d-flex flex-column gap-1.5 mt-2 pt-2 border-top" style="border-color:var(--border)!important">
+                                <span class="small fw-bold text-muted mb-1">Color Options &amp; Prices:</span>
+                                <div class="d-flex flex-wrap gap-2">
+                                    @foreach (var color in (variant.Colors ?? new List<InventoryManagementSystem.Models.ProductColor>()))
+                                    {
+                                        var cCost = color.PurchasePrice > 0 ? color.PurchasePrice : (variant.PurchasePrice > 0 ? variant.PurchasePrice : (variant.SupplierPrice > 0 ? variant.SupplierPrice : effectiveCostPrice));
+                                        var cRetail = color.SellingPrice > 0 ? color.SellingPrice : (variant.SellingPrice > 0 ? variant.SellingPrice : (effectiveSellingPrice > 0 ? effectiveSellingPrice : cCost));
+
+                                        <div class="d-flex align-items-center gap-1.5 border px-2.5 py-1 rounded small" style="background:var(--bg-card);border-color:var(--border)!important">
+                                            @if (!string.IsNullOrEmpty(color.Code))
+                                            {
+                                                <span class="d-inline-block rounded-circle border flex-shrink-0" style="width:12px;height:12px;background-color:@color.Code"></span>
+                                            }
+                                            <span class="fw-bold">@color.Name</span>
+                                            <span class="text-muted" style="font-size:11px">
+                                                (Cost: <strong class="text-info">₹@cCost.ToString("N2")</strong> | Retail: <strong class="text-success">₹@cRetail.ToString("N2")</strong>)
+                                            </span>
+                                        </div>
+                                    }
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -466,9 +527,15 @@
                 activeColorBadge.style.display = 'inline-block';
             }
 
-            if (c.price > 0) {
+            if (c.costPrice > 0 || c.price > 0) {
                 const costPriceEl = document.getElementById('det_CostPrice');
-                if (costPriceEl) costPriceEl.innerText = `₹${c.price.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+                const pVal = c.costPrice > 0 ? c.costPrice : c.price;
+                if (costPriceEl) costPriceEl.innerText = `₹${pVal.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            }
+
+            if (c.sellingPrice > 0) {
+                const sellingPriceEl = document.getElementById('det_SellingPrice');
+                if (sellingPriceEl) sellingPriceEl.innerText = `₹${c.sellingPrice.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
             }
 
             if (c.stock !== undefined && c.stock !== null) {

@@ -1125,15 +1125,44 @@ function removeVariantCard(vIndex) {
     if (card) card.remove();
 }
 
-function addColorRow(vIndex, colorName = '', colorCode = '', initialStock = '0', purPrice = '', sellPrice = '', colorId = '', imageUrl = '', currentStock = '0') {
+function addColorRow(vIndex, colorName = '', colorCode = '', initialStock = '0', purPrice = '', sellPrice = '', colorId = '', imageUrl = '', currentStock = '0', existingImageUrls = []) {
     const colorContainer = document.getElementById(`colorsContainer_${vIndex}`);
     if (!colorContainer) return;
     const cIndex = colorContainer.children.length;
 
+    let thumbsHtml = '';
+    const imagesToRender = [];
+    if (imageUrl) imagesToRender.push(imageUrl);
+    if (Array.isArray(existingImageUrls)) {
+        existingImageUrls.forEach(u => {
+            if (u && !imagesToRender.includes(u)) imagesToRender.push(u);
+        });
+    }
+
+    if (imagesToRender.length > 0) {
+        thumbsHtml = '<div class="d-flex flex-wrap gap-1 mt-1 color-thumbs-wrap">';
+        imagesToRender.forEach(imgUrl => {
+            thumbsHtml += `
+                <div class="position-relative d-inline-block color-thumb-wrapper me-1 mb-1">
+                    <img src="${imgUrl}" class="rounded border" style="width:34px;height:34px;object-fit:cover" />
+                    <input type="hidden" name="Variants[${vIndex}].Colors[${cIndex}].ExistingImageUrls" value="${imgUrl}" />
+                    <button type="button" class="btn btn-danger btn-sm p-0 position-absolute rounded-circle d-flex align-items-center justify-content-center shadow-sm" 
+                            onclick="removeColorImageThumb(this, ${vIndex}, ${cIndex})" 
+                            style="top:-4px;right:-4px;width:16px;height:16px;font-size:10px;line-height:1;z-index:2" title="Remove photo">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+            `;
+        });
+        thumbsHtml += '</div>';
+    }
+
+    const firstImgUrl = imagesToRender.length > 0 ? imagesToRender[0] : (imageUrl || '');
+
     const colorHtml = `
     <div class="row g-2 align-items-center p-2 rounded border bg-white" id="colorRow_${vIndex}_${cIndex}">
         <input type="hidden" name="Variants[${vIndex}].Colors[${cIndex}].ColorId" value="${colorId}" />
-        <input type="hidden" name="Variants[${vIndex}].Colors[${cIndex}].ImageUrl" value="${imageUrl}" />
+        <input type="hidden" name="Variants[${vIndex}].Colors[${cIndex}].ImageUrl" value="${firstImgUrl}" />
         <input type="hidden" name="Variants[${vIndex}].Colors[${cIndex}].CurrentStock" value="${currentStock}" />
         <div class="col-md-2">
             <input type="text" name="Variants[${vIndex}].Colors[${cIndex}].Name" value="${colorName}" class="fg-control form-control-sm" placeholder="Color Name" required />
@@ -1153,12 +1182,12 @@ function addColorRow(vIndex, colorName = '', colorCode = '', initialStock = '0',
             <input type="number" name="Variants[${vIndex}].Colors[${cIndex}].InitialStock" value="${initialStock}" class="fg-control form-control-sm" placeholder="Initial Stock" min="0" title="Initial Stock for this color" />
         </div>
         <div class="col-md-2">
-            <div class="d-flex align-items-center gap-2">
-                ${imageUrl ? `<img src="${imageUrl}" class="rounded border" style="width:28px;height:28px;object-fit:cover" />` : ''}
+            <div class="d-flex flex-column gap-1">
                 <label class="btn btn-sm btn-outline-secondary mb-0 w-100 text-truncate">
-                    <i class="bi bi-upload me-1"></i> ${imageUrl ? 'Change' : 'Images'}
+                    <i class="bi bi-upload me-1"></i> Add / Change Images
                     <input type="file" name="Variants[${vIndex}].Colors[${cIndex}].ImageFiles" multiple accept="image/*" class="d-none" onchange="updateColorFileBadge(this)" />
                 </label>
+                ${thumbsHtml}
             </div>
             <span class="badge bg-light text-dark border color-file-badge mt-1 d-none">0 files</span>
         </div>
@@ -1170,6 +1199,23 @@ function addColorRow(vIndex, colorName = '', colorCode = '', initialStock = '0',
     </div>`;
 
     colorContainer.insertAdjacentHTML('beforeend', colorHtml);
+}
+
+function removeColorImageThumb(btn, vIndex, cIndex) {
+    const wrapper = btn.closest('.color-thumb-wrapper');
+    if (wrapper) wrapper.remove();
+    const colorRow = document.getElementById(`colorRow_${vIndex}_${cIndex}`);
+    if (colorRow) {
+        const remainingInputs = colorRow.querySelectorAll(`input[name="Variants[${vIndex}].Colors[${cIndex}].ExistingImageUrls"]`);
+        const mainImgInput = colorRow.querySelector(`input[name="Variants[${vIndex}].Colors[${cIndex}].ImageUrl"]`);
+        if (mainImgInput) {
+            if (remainingInputs.length > 0) {
+                mainImgInput.value = remainingInputs[0].value;
+            } else {
+                mainImgInput.value = '';
+            }
+        }
+    }
 }
 
 function updateColorFileBadge(input) {
@@ -1196,8 +1242,18 @@ document.addEventListener('DOMContentLoaded', function() {
         {
             foreach (var c in v.Colors)
             {
+                var imgsList = new List<string>();
+                if (!string.IsNullOrEmpty(c.ImageUrl)) imgsList.Add(c.ImageUrl);
+                if (c.ExistingImageUrls != null)
+                {
+                    foreach (var u in c.ExistingImageUrls)
+                    {
+                        if (!string.IsNullOrEmpty(u) && !imgsList.Contains(u)) imgsList.Add(u);
+                    }
+                }
+                var jsonImgs = System.Text.Json.JsonSerializer.Serialize(imgsList);
                 <text>
-                addColorRow(vIdx_@vCounter, '@c.Name', '@c.Code', '@c.InitialStock', '@c.PurchasePrice', '@c.SellingPrice', '@c.ColorId', '@c.ImageUrl', '@c.CurrentStock');
+                addColorRow(vIdx_@vCounter, '@c.Name', '@c.Code', '@c.InitialStock', '@c.PurchasePrice', '@c.SellingPrice', '@c.ColorId', '@c.ImageUrl', '@c.CurrentStock', @Html.Raw(jsonImgs));
                 </text>
             }
         }

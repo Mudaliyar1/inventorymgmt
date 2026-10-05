@@ -171,7 +171,57 @@
                         var stockLabel = p.CurrentStock == 0 ? "Out of Stock"
                                         : p.CurrentStock <= p.MinimumStock ? "Low Stock"
                                         : "In Stock";
+                        var allCostPrices = new List<decimal>();
+                        if (p.PurchasePrice > 0) allCostPrices.Add(p.PurchasePrice);
+                        if (p.SupplierPrice > 0) allCostPrices.Add(p.SupplierPrice);
+                        if (p.Variants != null)
+                        {
+                            foreach (var v in p.Variants)
+                            {
+                                if (v.PurchasePrice > 0) allCostPrices.Add(v.PurchasePrice);
+                                if (v.SupplierPrice > 0) allCostPrices.Add(v.SupplierPrice);
+                                if (v.Colors != null)
+                                {
+                                    foreach (var c in v.Colors)
+                                    {
+                                        if (c.PurchasePrice > 0) allCostPrices.Add(c.PurchasePrice);
+                                    }
+                                }
+                            }
+                        }
 
+                        var allSellingPrices = new List<decimal>();
+                        if (p.SellingPrice > 0) allSellingPrices.Add(p.SellingPrice);
+                        if (p.Variants != null)
+                        {
+                            foreach (var v in p.Variants)
+                            {
+                                if (v.SellingPrice > 0) allSellingPrices.Add(v.SellingPrice);
+                                if (v.Colors != null)
+                                {
+                                    foreach (var c in v.Colors)
+                                    {
+                                        if (c.SellingPrice > 0) allSellingPrices.Add(c.SellingPrice);
+                                    }
+                                }
+                            }
+                        }
+
+                        string costPriceDisplay = "₹0.00";
+                        if (allCostPrices.Any())
+                        {
+                            var minC = allCostPrices.Min();
+                            var maxC = allCostPrices.Max();
+                            costPriceDisplay = minC == maxC ? $"₹{minC.ToString("N2")}" : $"₹{minC.ToString("N2")} - ₹{maxC.ToString("N2")}";
+                        }
+
+                        string sellingPriceDisplay = "₹0.00";
+                        if (allSellingPrices.Any())
+                        {
+                            var minS = allSellingPrices.Min();
+                            var maxS = allSellingPrices.Max();
+                            sellingPriceDisplay = minS == maxS ? $"₹{minS.ToString("N2")}" : $"₹{minS.ToString("N2")} - ₹{maxS.ToString("N2")}";
+                        }
                         <tr>
                             <td>
                                 <div class="d-flex align-items-center gap-3">
@@ -200,8 +250,8 @@
                                 }
                                 @(cat?.Name ?? "—")
                             </td>
-                            <td style="font-weight:500">₹@p.PurchasePrice.ToString("N2")</td>
-                            <td style="font-weight:600;color:var(--primary-text)">₹@p.SellingPrice.ToString("N2")</td>
+                            <td style="font-weight:500">@costPriceDisplay</td>
+                            <td style="font-weight:600;color:var(--primary-text)">@sellingPriceDisplay</td>
                             <td>
                                 <div style="font-weight:600;font-size:13px;color:var(--text-primary)">@p.CurrentStock</div>
                                 <div style="font-size:11px;color:var(--text-muted)">min: @p.MinimumStock</div>
