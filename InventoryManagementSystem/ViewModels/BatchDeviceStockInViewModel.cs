@@ -13,6 +13,8 @@ namespace InventoryManagementSystem.ViewModels
     {
         public string ProductId { get; set; } = string.Empty;
         public string SupplierName { get; set; } = string.Empty;
+        public string VariantId { get; set; } = string.Empty;
+        public string ColorId { get; set; } = string.Empty;
         public string Variant { get; set; } = string.Empty;
         public string Color { get; set; } = string.Empty;
         public decimal PurchasePrice { get; set; }

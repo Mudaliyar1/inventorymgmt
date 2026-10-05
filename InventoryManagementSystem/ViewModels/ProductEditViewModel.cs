@@ -14,11 +14,9 @@ namespace InventoryManagementSystem.ViewModels
         [Display(Name = "Product Name")]
         public string Name { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Product Code (SKU) is required.")]
         [Display(Name = "Product Code (SKU)")]
         public string Code { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Barcode is required.")]
         public string Barcode { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Category is required.")]
@@ -30,14 +28,12 @@ namespace InventoryManagementSystem.ViewModels
         public string ModelName { get; set; } = string.Empty;
         public string Variant { get; set; } = string.Empty;
         public string Color { get; set; } = string.Empty;
+        public string Ram { get; set; } = string.Empty;
+        public string Storage { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Purchase Price is required.")]
-        [Range(0.01, 10000000.0, ErrorMessage = "Price must be greater than zero.")]
         [Display(Name = "Purchase Price (₹)")]
         public decimal PurchasePrice { get; set; }
 
-        [Required(ErrorMessage = "Selling Price is required.")]
-        [Range(0.01, 10000000.0, ErrorMessage = "Price must be greater than zero.")]
         [Display(Name = "Selling Price (₹)")]
         public decimal SellingPrice { get; set; }
 
@@ -56,6 +52,8 @@ namespace InventoryManagementSystem.ViewModels
 
         [Display(Name = "Product Gallery Images (Up to 50)")]
         public List<IFormFile>? ProductImages { get; set; }
+
+        public List<ProductVariantInputModel> Variants { get; set; } = new List<ProductVariantInputModel>();
 
         public MobileSpecifications Specs { get; set; } = new MobileSpecifications();
 

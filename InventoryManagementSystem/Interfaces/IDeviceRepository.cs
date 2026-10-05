@@ -9,6 +9,7 @@ namespace InventoryManagementSystem.Interfaces
         Task<Device?> GetByImeiAsync(string imei);
         Task<Device?> GetBySerialAsync(string serialNumber);
         Task<IEnumerable<Device>> GetAvailableDevicesForProductAsync(string productId);
+        Task<IEnumerable<Device>> GetAvailableDevicesForVariantAsync(string productId, string? variantId = null, string? color = null);
         Task<IEnumerable<Device>> GetDevicesByStatusAsync(string status);
         Task<IEnumerable<Device>> GetPagedDevicesAsync(string? search, string? productId, string? status, string? brand, int page, int pageSize);
         Task<long> GetFilteredCountAsync(string? search, string? productId, string? status, string? brand);

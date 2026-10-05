@@ -101,38 +101,25 @@
                         </div>
                     </div>
 
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <div class="fg">
                             <label class="fg-label" asp-for="Brand">Brand</label>
                             <input asp-for="Brand" id="Brand" class="fg-control" placeholder="e.g. Samsung, Apple, Vivo">
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <div class="fg">
                             <label class="fg-label" asp-for="ModelName">Model Name</label>
                             <input asp-for="ModelName" id="ModelName" class="fg-control" placeholder="e.g. Galaxy S24 Ultra">
                         </div>
                     </div>
-                    <div class="col-md-4">
-                        <div class="fg">
-                            <label class="fg-label" asp-for="Variant">RAM / Storage Variant</label>
-                            <input asp-for="Variant" id="Variant" class="fg-control" placeholder="e.g. 12GB RAM / 256GB">
-                        </div>
-                    </div>
-
-                    <div class="col-md-4">
-                        <div class="fg">
-                            <label class="fg-label" asp-for="Color">Color</label>
-                            <input asp-for="Color" id="Color" class="fg-control" placeholder="e.g. Titanium Black">
-                        </div>
-                    </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <div class="fg">
                             <label class="fg-label">Warranty (Months)</label>
                             <input type="number" name="WarrantyDurationMonths" value="12" class="fg-control" placeholder="12">
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <div class="fg">
                             <label class="fg-label">Requires IMEI Tracking?</label>
                             <select name="IsImeiRequired" id="isImeiSelect" class="fg-control">
@@ -142,31 +129,7 @@
                         </div>
                     </div>
 
-                    <div class="col-md-6">
-                        <div class="fg">
-                            <label class="fg-label" asp-for="Code">SKU / Product Code <span class="req">*</span></label>
-                            <div class="fg-action-wrap">
-                                <input asp-for="Code" id="Code" class="fg-control" placeholder="e.g. SAM-S24U-256" required>
-                                <button type="button" class="fg-action-btn" onclick="generateSKU()" title="Generate SKU Code">
-                                    <i class="bi bi-magic"></i> Generate
-                                </button>
-                            </div>
-                            <span asp-validation-for="Code" class="fg-error"></span>
-                        </div>
-                    </div>
 
-                    <div class="col-md-6">
-                        <div class="fg">
-                            <label class="fg-label" asp-for="Barcode">Barcode / UPC <span class="req">*</span></label>
-                            <div class="fg-action-wrap">
-                                <input asp-for="Barcode" id="Barcode" class="fg-control" placeholder="e.g. 890123456789" required>
-                                <button type="button" class="fg-action-btn" onclick="generateBarcode()" title="Generate Barcode">
-                                    <i class="bi bi-upc-scan"></i> Generate
-                                </button>
-                            </div>
-                            <span asp-validation-for="Barcode" class="fg-error"></span>
-                        </div>
-                    </div>
 
                     <div class="col-md-6">
                         <div class="fg">
@@ -190,41 +153,26 @@
 
                     <div class="col-md-6">
                         <div class="fg">
-                            <label class="fg-label" asp-for="PurchasePrice">Purchase Price (₹) <span class="req">*</span></label>
-                            <div class="fg-prefix-wrap">
-                                <span class="fg-prefix">₹</span>
-                                <input asp-for="PurchasePrice" class="fg-control" type="number" step="0.01" min="0" placeholder="0.00" required>
-                            </div>
-                            <span asp-validation-for="PurchasePrice" class="fg-error"></span>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="fg">
-                            <label class="fg-label" asp-for="SellingPrice">Selling Price (₹) <span class="req">*</span></label>
-                            <div class="fg-prefix-wrap">
-                                <span class="fg-prefix">₹</span>
-                                <input asp-for="SellingPrice" class="fg-control" type="number" step="0.01" min="0" placeholder="0.00" required>
-                            </div>
-                            <span asp-validation-for="SellingPrice" class="fg-error"></span>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="fg">
-                            <label class="fg-label" asp-for="InitialStock">Initial Stock Level</label>
-                            <input asp-for="InitialStock" class="fg-control" type="number" min="0" placeholder="0">
-                            <span asp-validation-for="InitialStock" class="fg-error"></span>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="fg">
                             <label class="fg-label" asp-for="MinimumStock">Minimum Safety Stock <span class="req">*</span></label>
                             <input asp-for="MinimumStock" class="fg-control" type="number" min="0" placeholder="e.g. 5" required>
                             <span asp-validation-for="MinimumStock" class="fg-error"></span>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Variants & Colors Card -->
+            <div class="card-d card-p-lg mb-4" id="variantsColorsCard">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="s-title mb-0"><i class="bi bi-layers me-2" style="color:var(--primary)"></i>Variants, Colors &amp; Images</div>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="addVariantCard()">
+                        <i class="bi bi-plus-lg me-1"></i> Add Variant
+                    </button>
+                </div>
+                <p class="text-muted small mb-3">Define sellable RAM/Storage combinations and color options with color-specific product gallery images.</p>
+
+                <div id="variantsContainer" class="d-flex flex-column gap-3">
+                    <!-- Dynamic Variant Cards populated dynamically -->
                 </div>
             </div>
 
@@ -293,19 +241,25 @@
                     <!-- Tab 2: Display & Camera -->
                     <div class="tab-pane fade" id="disp-tab-pane">
                         <div class="row g-3">
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <div class="fg">
                                     <label class="fg-label">Display Size (inches)</label>
                                     <input type="text" asp-for="Specs.DisplaySize" class="fg-control" placeholder="e.g. 6.8 inches" />
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <div class="fg">
                                     <label class="fg-label">Display Type</label>
                                     <input type="text" asp-for="Specs.DisplayType" class="fg-control" placeholder="e.g. Dynamic AMOLED 2X" />
                                 </div>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
+                                <div class="fg">
+                                    <label class="fg-label">Display Resolution</label>
+                                    <input type="text" asp-for="Specs.Resolution" class="fg-control" placeholder="e.g. 1440 x 3120 pixels, FHD+" />
+                                </div>
+                            </div>
+                            <div class="col-md-3">
                                 <div class="fg">
                                     <label class="fg-label">Refresh Rate</label>
                                     <input type="text" asp-for="Specs.RefreshRate" class="fg-control" placeholder="e.g. 120Hz" />
@@ -1166,6 +1120,114 @@ function previewGalleryImgs(input) {
         });
     }
 }
+
+let variantCount = 0;
+
+function addVariantCard(ram = '', storage = '', purPrice = '', sellPrice = '', initialStock = '0') {
+    const vIndex = variantCount++;
+    const container = document.getElementById('variantsContainer');
+    if (!container) return;
+    
+    const cardHtml = `
+    <div class="card border rounded p-3 bg-light-subtle shadow-sm" id="variantCard_${vIndex}">
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+            <h6 class="mb-0 fw-bold text-primary"><i class="bi bi-cpu me-2"></i>Variant ${vIndex + 1} Configuration</h6>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeVariantCard(${vIndex})">
+                <i class="bi bi-trash me-1"></i> Remove Variant
+            </button>
+        </div>
+        <div class="row g-3">
+            <div class="col-md-5">
+                <label class="fg-label">RAM Config</label>
+                <input type="text" name="Variants[${vIndex}].Ram" value="${ram}" class="fg-control" placeholder="e.g. 12GB" />
+            </div>
+            <div class="col-md-5">
+                <label class="fg-label">Storage Capacity</label>
+                <input type="text" name="Variants[${vIndex}].Storage" value="${storage}" class="fg-control" placeholder="e.g. 256GB" />
+            </div>
+            <div class="col-md-2">
+                <label class="fg-label">Initial Stock</label>
+                <input type="number" name="Variants[${vIndex}].InitialStock" value="${initialStock}" class="fg-control" placeholder="0" min="0" />
+            </div>
+        </div>
+
+        <div class="mt-4 pt-3 border-top">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-bold small text-secondary"><i class="bi bi-palette me-1"></i>Color Options &amp; Images</span>
+                <button type="button" class="btn btn-sm btn-outline-success" onclick="addColorRow(${vIndex})">
+                    <i class="bi bi-plus-lg me-1"></i> Add Color
+                </button>
+            </div>
+            <div id="colorsContainer_${vIndex}" class="d-flex flex-column gap-2 mt-2">
+                <!-- Color rows populated here -->
+            </div>
+        </div>
+    </div>`;
+
+    container.insertAdjacentHTML('beforeend', cardHtml);
+    addColorRow(vIndex);
+}
+
+function removeVariantCard(vIndex) {
+    const card = document.getElementById(`variantCard_${vIndex}`);
+    if (card) card.remove();
+}
+
+function addColorRow(vIndex, colorName = '', colorCode = '', initialStock = '0', purPrice = '', sellPrice = '') {
+    const colorContainer = document.getElementById(`colorsContainer_${vIndex}`);
+    if (!colorContainer) return;
+    const cIndex = colorContainer.children.length;
+
+    const colorHtml = `
+    <div class="row g-2 align-items-center p-2 rounded border bg-white" id="colorRow_${vIndex}_${cIndex}">
+        <div class="col-md-2">
+            <input type="text" name="Variants[${vIndex}].Colors[${cIndex}].Name" value="${colorName}" class="fg-control form-control-sm" placeholder="Color Name" required />
+        </div>
+        <div class="col-md-1">
+            <div class="d-flex align-items-center gap-1">
+                <input type="color" name="Variants[${vIndex}].Colors[${cIndex}].Code" value="${colorCode || '#000000'}" class="form-control form-control-color form-control-sm" title="Choose color swatch" style="width:34px;height:31px;padding:2px" />
+            </div>
+        </div>
+        <div class="col-md-2">
+            <input type="number" step="0.01" name="Variants[${vIndex}].Colors[${cIndex}].PurchasePrice" value="${purPrice}" class="fg-control form-control-sm" placeholder="Purchase Price (₹)" min="0" title="Color Purchase Price (Leave blank to use variant price)" />
+        </div>
+        <div class="col-md-2">
+            <input type="number" step="0.01" name="Variants[${vIndex}].Colors[${cIndex}].SellingPrice" value="${sellPrice}" class="fg-control form-control-sm" placeholder="Selling Price (₹)" min="0" title="Color Selling Price (Leave blank to use variant price)" />
+        </div>
+        <div class="col-md-2">
+            <input type="number" name="Variants[${vIndex}].Colors[${cIndex}].InitialStock" value="${initialStock}" class="fg-control form-control-sm" placeholder="Initial Stock" min="0" title="Initial Stock for this color" />
+        </div>
+        <div class="col-md-2">
+            <label class="btn btn-sm btn-outline-secondary mb-0 w-100 text-truncate">
+                <i class="bi bi-upload me-1"></i> Images
+                <input type="file" name="Variants[${vIndex}].Colors[${cIndex}].ImageFiles" multiple accept="image/*" class="d-none" onchange="updateColorFileBadge(this)" />
+            </label>
+            <span class="badge bg-light text-dark border color-file-badge mt-1 d-none">0 files</span>
+        </div>
+        <div class="col-md-1 text-end">
+            <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="this.closest('.row').remove()">
+                <i class="bi bi-x-circle fs-6"></i>
+            </button>
+        </div>
+    </div>`;
+
+    colorContainer.insertAdjacentHTML('beforeend', colorHtml);
+}
+
+function updateColorFileBadge(input) {
+    const badge = input.closest('.row').querySelector('.color-file-badge');
+    if (badge && input.files) {
+        badge.textContent = `${input.files.length} images selected`;
+        badge.classList.remove('d-none');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const container = document.getElementById('variantsContainer');
+    if (container && container.children.length === 0) {
+        addVariantCard();
+    }
+});
 </script>
 }
 

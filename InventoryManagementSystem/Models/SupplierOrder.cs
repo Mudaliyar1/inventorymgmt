@@ -111,6 +111,12 @@ namespace InventoryManagementSystem.Models
         [BsonElement("Model")]
         public string Model { get; set; } = string.Empty;
 
+        [BsonElement("VariantId")]
+        public string VariantId { get; set; } = string.Empty;
+
+        [BsonElement("ColorId")]
+        public string ColorId { get; set; } = string.Empty;
+
         [BsonElement("Variant")]
         public string Variant { get; set; } = string.Empty;
 

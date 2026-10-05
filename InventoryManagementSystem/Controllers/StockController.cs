@@ -169,6 +169,8 @@ namespace InventoryManagementSystem.Controllers
                     {
                         ProductId = request.ProductId,
                         SupplierName = request.SupplierName,
+                        VariantId = request.VariantId,
+                        ColorId = request.ColorId,
                         Variant = request.Variant,
                         Color = request.Color,
                         PurchasePrice = request.PurchasePrice,
@@ -275,6 +277,25 @@ namespace InventoryManagementSystem.Controllers
                 serialNumber = d.SerialNumber,
                 variant = d.Variant,
                 color = d.Color,
+                displayText = $"{d.Brand} {d.ModelName} ({d.Variant} {d.Color}) - IMEI: {d.IMEI1}"
+            }));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAvailableDevicesForVariant(string productId, string? variantId = null, string? color = null)
+        {
+            if (string.IsNullOrWhiteSpace(productId)) return Json(new List<object>());
+            var devices = await _deviceService.GetAvailableDevicesForVariantAsync(productId, variantId, color);
+            return Json(devices.Select(d => new
+            {
+                id = d.Id,
+                imei1 = d.IMEI1,
+                imei2 = d.IMEI2,
+                serialNumber = d.SerialNumber,
+                variant = d.Variant,
+                variantId = d.VariantId,
+                color = d.Color,
+                colorId = d.ColorId,
                 displayText = $"{d.Brand} {d.ModelName} ({d.Variant} {d.Color}) - IMEI: {d.IMEI1}"
             }));
         }

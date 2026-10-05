@@ -37,6 +37,11 @@ namespace InventoryManagementSystem.Services
             return await _deviceRepository.GetAvailableDevicesForProductAsync(productId);
         }
 
+        public async Task<IEnumerable<Device>> GetAvailableDevicesForVariantAsync(string productId, string? variantId = null, string? color = null)
+        {
+            return await _deviceRepository.GetAvailableDevicesForVariantAsync(productId, variantId, color);
+        }
+
         public async Task<IEnumerable<Device>> GetPagedDevicesAsync(string? search, string? productId, string? status, string? brand, int page, int pageSize)
         {
             return await _deviceRepository.GetPagedDevicesAsync(search, productId, status, brand, page, pageSize);

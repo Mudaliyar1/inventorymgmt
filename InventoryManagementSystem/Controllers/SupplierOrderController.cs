@@ -328,8 +328,10 @@ namespace InventoryManagementSystem.Controllers
                     ProductName = p.Name,
                     Brand = p.Brand,
                     Model = p.ModelName,
-                    Variant = p.Variant,
-                    Color = p.Color,
+                    VariantId = input.VariantId ?? string.Empty,
+                    ColorId = input.ColorId ?? string.Empty,
+                    Variant = !string.IsNullOrWhiteSpace(input.Variant) ? input.Variant : p.Variant,
+                    Color = !string.IsNullOrWhiteSpace(input.Color) ? input.Color : p.Color,
                     Ram = p.Ram,
                     Storage = p.Storage,
                     ImageUrl = p.ImageUrl,
@@ -458,6 +460,10 @@ namespace InventoryManagementSystem.Controllers
     public class OrderItemFormInput
     {
         public string ProductId { get; set; } = string.Empty;
+        public string VariantId { get; set; } = string.Empty;
+        public string ColorId { get; set; } = string.Empty;
+        public string Variant { get; set; } = string.Empty;
+        public string Color { get; set; } = string.Empty;
         public int Quantity { get; set; }
         public decimal UnitPrice { get; set; }
     }

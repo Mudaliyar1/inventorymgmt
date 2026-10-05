@@ -167,6 +167,40 @@ namespace InventoryManagementSystem.Models
         [BsonElement("ImageOriginalFilename")]
         public string ImageOriginalFilename { get; set; } = string.Empty;
 
+        [BsonElement("Variants")]
+        public List<ProductVariant> Variants { get; set; } = new List<ProductVariant>();
+
+        [BsonIgnore]
+        public List<ProductVariant> EffectiveVariants => GetEffectiveVariants();
+
+        public List<ProductVariant> GetEffectiveVariants()
+        {
+            if (Variants != null && Variants.Any()) return Variants;
+
+            var defaultColor = new ProductColor
+            {
+                ColorId = "default-color",
+                Name = !string.IsNullOrWhiteSpace(Color) ? Color : "Default",
+                ImageUrl = ImageUrl,
+                ImageUrls = ImageUrls ?? new List<string>()
+            };
+
+            var defaultVariant = new ProductVariant
+            {
+                VariantId = "default-variant",
+                Ram = Ram,
+                Storage = Storage,
+                Sku = Code,
+                SupplierPrice = SupplierPrice,
+                PurchasePrice = PurchasePrice,
+                SellingPrice = SellingPrice,
+                Mrp = Mrp,
+                Colors = new List<ProductColor> { defaultColor }
+            };
+
+            return new List<ProductVariant> { defaultVariant };
+        }
+
         [BsonElement("Status")]
         public string Status { get; set; } = "Active"; // Active, Inactive
 
@@ -178,5 +212,76 @@ namespace InventoryManagementSystem.Models
 
         [BsonElement("UpdatedDate")]
         public DateTime UpdatedDate { get; set; } = DateTime.UtcNow;
+    }
+
+    public class ProductColor
+    {
+        [BsonElement("ColorId")]
+        public string ColorId { get; set; } = Guid.NewGuid().ToString("N");
+
+        [BsonElement("Name")]
+        public string Name { get; set; } = string.Empty;
+
+        [BsonElement("Code")]
+        public string Code { get; set; } = string.Empty; // Hex color code e.g. #000000
+
+        [BsonElement("ImageUrl")]
+        public string ImageUrl { get; set; } = string.Empty;
+
+        [BsonElement("ImageUrls")]
+        public List<string> ImageUrls { get; set; } = new List<string>();
+
+        [BsonElement("InitialStock")]
+        public int InitialStock { get; set; }
+
+        [BsonElement("CurrentStock")]
+        public int CurrentStock { get; set; }
+
+        [BsonElement("PurchasePrice")]
+        public decimal PurchasePrice { get; set; }
+
+        [BsonElement("SellingPrice")]
+        public decimal SellingPrice { get; set; }
+    }
+
+    public class ProductVariant
+    {
+        [BsonElement("VariantId")]
+        public string VariantId { get; set; } = Guid.NewGuid().ToString("N");
+
+        [BsonElement("Ram")]
+        public string Ram { get; set; } = string.Empty;
+
+        [BsonElement("Storage")]
+        public string Storage { get; set; } = string.Empty;
+
+        [BsonElement("Sku")]
+        public string Sku { get; set; } = string.Empty;
+
+        [BsonElement("SupplierPrice")]
+        public decimal SupplierPrice { get; set; }
+
+        [BsonElement("PurchasePrice")]
+        public decimal PurchasePrice { get; set; }
+
+        [BsonElement("SellingPrice")]
+        public decimal SellingPrice { get; set; }
+
+        [BsonElement("Mrp")]
+        public decimal Mrp { get; set; }
+
+        [BsonElement("InitialStock")]
+        public int InitialStock { get; set; }
+
+        [BsonElement("CurrentStock")]
+        public int CurrentStock { get; set; }
+
+        [BsonElement("Colors")]
+        public List<ProductColor> Colors { get; set; } = new List<ProductColor>();
+
+        [BsonIgnore]
+        public string DisplayVariantName => !string.IsNullOrWhiteSpace(Ram) && !string.IsNullOrWhiteSpace(Storage)
+            ? $"{Ram} / {Storage}"
+            : (!string.IsNullOrWhiteSpace(Storage) ? Storage : (!string.IsNullOrWhiteSpace(Ram) ? Ram : "Standard"));
     }
 }

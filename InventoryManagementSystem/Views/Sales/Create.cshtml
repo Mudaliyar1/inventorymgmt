@@ -72,11 +72,11 @@
                 <div class="s-title"><i class="bi bi-cart-plus me-2" style="color:var(--success)"></i>Billing Lines</div>
                 
                 <div class="row g-3 align-items-end mb-3">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <div class="fg mb-0">
-                            <label class="fg-label">Product Search <span class="req">*</span></label>
+                            <label class="fg-label">Product Model Search <span class="req">*</span></label>
                             <select id="productSelect" class="fg-control" onchange="onProductSelectChange()">
-                                <option value="">— Choose Product SKU —</option>
+                                <option value="">— Choose Product —</option>
                                 @foreach (var prod in products)
                                 {
                                     bool isImeiTracked = prod.IsImeiRequired || prod.ProductType == "Smartphone" || prod.ProductType == "Feature Phone" || prod.ProductType == "Tablet" || prod.ProductType == "Smartwatch";
@@ -86,9 +86,25 @@
                                             data-price="@prod.SellingPrice" 
                                             data-stock="@prod.CurrentStock"
                                             data-imei-required="@isImeiTracked.ToString().ToLower()">
-                                        @prod.Name (SKU: @prod.Code - Price: ₹@prod.SellingPrice - Stock: @prod.CurrentStock)
+                                        @prod.Name (@prod.Brand)
                                     </option>
                                 }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3" id="posVariantWrap" style="display:none">
+                        <div class="fg mb-0">
+                            <label class="fg-label">Hardware Variant</label>
+                            <select id="posVariantSelect" class="fg-control" onchange="onPosVariantChange()">
+                                <option value="">— Select Variant —</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3" id="posColorWrap" style="display:none">
+                        <div class="fg mb-0">
+                            <label class="fg-label">Color Option</label>
+                            <select id="posColorSelect" class="fg-control" onchange="onPosColorChange()">
+                                <option value="">— Select Color —</option>
                             </select>
                         </div>
                     </div>
@@ -98,8 +114,8 @@
                             <input type="number" id="qtyInput" min="1" value="1" class="fg-control" oninput="onQtyChange()" onchange="onQtyChange()" />
                         </div>
                     </div>
-                    <div class="col-md-4 text-end">
-                        <button type="button" class="btn-d btn-primary w-100" onclick="addProductLine()">
+                    <div class="col-md-12 text-end mt-2">
+                        <button type="button" class="btn-d btn-primary" onclick="addProductLine()">
                             <i class="bi bi-plus-lg me-1"></i> Add Item(s) to Cart
                         </button>
                     </div>
@@ -233,7 +249,85 @@
     <script>
         var itemIndex = 0;
 
-        function onProductSelectChange() {
+        let currentProductVariants = [];
+
+        async function onProductSelectChange() {
+            var select = document.getElementById('productSelect');
+            var productId = select.value;
+
+            var variantWrap = document.getElementById('posVariantWrap');
+            var variantSelect = document.getElementById('posVariantSelect');
+            var colorWrap = document.getElementById('posColorWrap');
+            var colorSelect = document.getElementById('posColorSelect');
+
+            variantSelect.innerHTML = '<option value="">— Select Variant —</option>';
+            colorSelect.innerHTML = '<option value="">— Select Color —</option>';
+            variantWrap.style.display = 'none';
+            colorWrap.style.display = 'none';
+
+            if (!productId) {
+                renderImeiFields();
+                return;
+            }
+
+            try {
+                const res = await fetch(`/Product/GetProductVariants?productId=${productId}`);
+                currentProductVariants = await res.json();
+
+                if (currentProductVariants && currentProductVariants.length > 0) {
+                    currentProductVariants.forEach(v => {
+                        const opt = document.createElement('option');
+                        opt.value = v.variantId;
+                        opt.textContent = `${v.displayVariant} (₹${v.sellingPrice})`;
+                        opt.setAttribute('data-price', v.sellingPrice);
+                        variantSelect.appendChild(opt);
+                    });
+                    variantWrap.style.display = 'block';
+                    if (currentProductVariants.length === 1) {
+                        variantSelect.selectedIndex = 1;
+                        onPosVariantChange();
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load variants', e);
+            }
+
+            renderImeiFields();
+        }
+
+        function onPosVariantChange() {
+            var variantSelect = document.getElementById('posVariantSelect');
+            var variantId = variantSelect.value;
+            var colorWrap = document.getElementById('posColorWrap');
+            var colorSelect = document.getElementById('posColorSelect');
+
+            colorSelect.innerHTML = '<option value="">— Select Color —</option>';
+            colorWrap.style.display = 'none';
+
+            if (!variantId || !currentProductVariants) return;
+
+            var selectedVariant = currentProductVariants.find(v => v.variantId === variantId);
+            if (selectedVariant && selectedVariant.colors && selectedVariant.colors.length > 0) {
+                selectedVariant.colors.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.name;
+                    const stockLabel = c.availableStock > 0 ? `${c.availableStock} Available` : 'Out of Stock';
+                    opt.textContent = `${c.name} — ${stockLabel}`;
+                    opt.setAttribute('data-stock', c.availableStock);
+                    if (c.availableStock <= 0) opt.disabled = true;
+                    colorSelect.appendChild(opt);
+                });
+                colorWrap.style.display = 'block';
+                if (selectedVariant.colors.length === 1) {
+                    colorSelect.selectedIndex = 1;
+                    onPosColorChange();
+                }
+            }
+
+            renderImeiFields();
+        }
+
+        function onPosColorChange() {
             renderImeiFields();
         }
 
@@ -313,13 +407,18 @@
                 return;
             }
 
-            var option = select.options[select.selectedIndex];
-            var name = option.getAttribute('data-name');
-            var code = option.getAttribute('data-code');
-            var price = parseFloat(option.getAttribute('data-price'));
-            var stock = parseInt(option.getAttribute('data-stock'));
-            var quantity = parseInt(document.getElementById('qtyInput').value);
-            var isImeiRequired = option.getAttribute('data-imei-required') === 'true';
+            var variantSelect = document.getElementById('posVariantSelect');
+            var colorSelect = document.getElementById('posColorSelect');
+            var selectedVariantId = variantSelect ? variantSelect.value : '';
+            var selectedColor = colorSelect ? colorSelect.value : '';
+
+            var selectedVariantObj = (currentProductVariants && selectedVariantId) ? currentProductVariants.find(v => v.variantId === selectedVariantId) : null;
+            if (selectedVariantObj && selectedVariantObj.sellingPrice > 0) {
+                price = selectedVariantObj.sellingPrice;
+            }
+
+            var variantText = selectedVariantObj ? selectedVariantObj.displayVariant : '';
+            var displayName = name + (variantText ? ' (' + variantText + ')' : '') + (selectedColor ? ' - ' + selectedColor : '');
 
             if (isNaN(quantity) || quantity <= 0) {
                 alert('Please enter a valid quantity.');
@@ -398,7 +497,7 @@
                     row.innerHTML = `
                         <td class="row-num" style="color:var(--text-muted)"></td>
                         <td>
-                            <div class="td-strong">${name}</div>
+                            <div class="td-strong">${displayName}</div>
                             <span class="code-pill">${code}</span>
                             ${imeiBadges}
                             <input type="hidden" name="Items[${itemIndex}].ProductId" value="${productId}" />
@@ -425,7 +524,7 @@
                 row.innerHTML = `
                     <td class="row-num" style="color:var(--text-muted)"></td>
                     <td>
-                        <div class="td-strong">${name}</div>
+                        <div class="td-strong">${displayName}</div>
                         <span class="code-pill">${code}</span>
                         <input type="hidden" name="Items[${itemIndex}].ProductId" value="${productId}" />
                         <input type="hidden" name="Items[${itemIndex}].Quantity" value="${quantity}" />

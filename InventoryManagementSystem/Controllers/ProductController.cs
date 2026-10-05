@@ -21,6 +21,8 @@ namespace InventoryManagementSystem.Controllers
         private readonly INotificationRepository _notificationRepository;
         private readonly IMobileSpecSearchService _specSearchService;
         private readonly IDeviceRepository _deviceRepository;
+        private readonly IDeviceService _deviceService;
+        private readonly ISupplierService _supplierService;
 
         public ProductController(
             IProductService productService,
@@ -29,7 +31,9 @@ namespace InventoryManagementSystem.Controllers
             IAuditLogService auditLogService,
             INotificationRepository notificationRepository,
             IMobileSpecSearchService specSearchService,
-            IDeviceRepository deviceRepository)
+            IDeviceRepository deviceRepository,
+            IDeviceService deviceService,
+            ISupplierService supplierService)
         {
             _productService = productService;
             _categoryService = categoryService;
@@ -38,6 +42,8 @@ namespace InventoryManagementSystem.Controllers
             _notificationRepository = notificationRepository;
             _specSearchService = specSearchService;
             _deviceRepository = deviceRepository;
+            _deviceService = deviceService;
+            _supplierService = supplierService;
         }
 
 
@@ -96,6 +102,12 @@ namespace InventoryManagementSystem.Controllers
                 if (category != null) categoryName = category.Name;
             }
 
+            if (!string.IsNullOrEmpty(product.SupplierId))
+            {
+                var supplier = await _supplierService.GetSupplierByIdAsync(product.SupplierId);
+                ViewBag.Supplier = supplier;
+            }
+
             ViewBag.CategoryName = categoryName;
             return View(product);
         }
@@ -119,17 +131,28 @@ namespace InventoryManagementSystem.Controllers
                 ModelState.AddModelError(nameof(model.Code), "Product SKU Code is already in use.");
             }
 
-            // Validate Barcode uniqueness
-            var existingByBarcode = await _productService.GetProductByBarcodeAsync(model.Barcode);
-            if (existingByBarcode != null)
+            if (string.IsNullOrWhiteSpace(model.Barcode))
             {
-                ModelState.AddModelError(nameof(model.Barcode), "Barcode is already in use by another product.");
+                model.Barcode = "890" + Random.Shared.Next(100000000, 999999999).ToString();
+            }
+            else
+            {
+                var existingByBarcode = await _productService.GetProductByBarcodeAsync(model.Barcode);
+                if (existingByBarcode != null)
+                {
+                    ModelState.AddModelError(nameof(model.Barcode), "Barcode is already in use by another product.");
+                }
             }
 
             if (!ModelState.IsValid)
             {
                 await PopulateCategoriesList(model);
                 return View(model);
+            }
+
+            if (string.IsNullOrWhiteSpace(model.Code))
+            {
+                model.Code = !string.IsNullOrWhiteSpace(model.ModelName) ? $"{model.Brand}-{model.ModelName}".Replace(" ", "-").ToUpper() : $"PROD-{Guid.NewGuid().ToString("N")[..8].ToUpper()}";
             }
 
             var product = new Product
@@ -192,6 +215,34 @@ namespace InventoryManagementSystem.Controllers
                 }
             }
 
+            // Process Variants & Colors
+            var processedVariants = await ProcessVariantsAsync(model.Variants, model.ProductImages);
+            if (processedVariants.Any())
+            {
+                product.Variants = processedVariants;
+                int variantStockSum = processedVariants.Sum(v => v.CurrentStock > 0 ? v.CurrentStock : v.InitialStock);
+                if (variantStockSum > 0 || product.CurrentStock == 0)
+                {
+                    product.CurrentStock = variantStockSum;
+                }
+                var primaryVariant = processedVariants.First();
+                var primaryColor = primaryVariant.Colors.FirstOrDefault();
+
+                product.Ram = primaryVariant.Ram;
+                product.Storage = primaryVariant.Storage;
+                product.Variant = primaryVariant.DisplayVariantName;
+                if (primaryVariant.PurchasePrice > 0) product.PurchasePrice = primaryVariant.PurchasePrice;
+                if (primaryVariant.SellingPrice > 0) product.SellingPrice = primaryVariant.SellingPrice;
+                if (primaryVariant.SupplierPrice > 0) product.SupplierPrice = primaryVariant.SupplierPrice;
+
+                if (primaryColor != null)
+                {
+                    product.Color = primaryColor.Name;
+                    if (!string.IsNullOrEmpty(primaryColor.ImageUrl)) product.ImageUrl = primaryColor.ImageUrl;
+                    if (primaryColor.ImageUrls.Any()) product.ImageUrls = primaryColor.ImageUrls;
+                }
+            }
+
             product.ImageUrls = imageUrls;
 
             try
@@ -239,6 +290,8 @@ namespace InventoryManagementSystem.Controllers
                 ModelName = product.ModelName,
                 Variant = product.Variant,
                 Color = product.Color,
+                Ram = product.Ram,
+                Storage = product.Storage,
                 PurchasePrice = product.PurchasePrice,
                 SellingPrice = product.SellingPrice,
                 MinimumStock = product.MinimumStock,
@@ -248,6 +301,36 @@ namespace InventoryManagementSystem.Controllers
                 ExistingImageUrls = product.ImageUrls ?? new List<string>(),
                 Specs = product.Specs ?? new MobileSpecifications()
             };
+
+            var effectiveVariants = product.GetEffectiveVariants();
+            if (effectiveVariants != null && effectiveVariants.Any())
+            {
+                model.Variants = effectiveVariants.Select(v => new ProductVariantInputModel
+                {
+                    VariantId = v.VariantId,
+                    Ram = v.Ram,
+                    Storage = v.Storage,
+                    Sku = v.Sku,
+                    SupplierPrice = v.SupplierPrice,
+                    PurchasePrice = v.PurchasePrice,
+                    SellingPrice = v.SellingPrice,
+                    Mrp = v.Mrp,
+                    InitialStock = v.InitialStock,
+                    CurrentStock = v.CurrentStock,
+                    Colors = (v.Colors ?? new List<ProductColor>()).Select(c => new ProductColorInputModel
+                    {
+                        ColorId = c.ColorId,
+                        Name = c.Name,
+                        Code = c.Code,
+                        ImageUrl = c.ImageUrl,
+                        ExistingImageUrls = c.ImageUrls ?? new List<string>(),
+                        InitialStock = c.InitialStock,
+                        CurrentStock = c.CurrentStock,
+                        PurchasePrice = c.PurchasePrice,
+                        SellingPrice = c.SellingPrice
+                    }).ToList()
+                }).ToList();
+            }
 
             await PopulateCategoriesList(model);
             return View(model);
@@ -270,16 +353,30 @@ namespace InventoryManagementSystem.Controllers
                 return NotFound();
             }
 
-            var existingByCode = await _productService.GetProductByCodeAsync(model.Code);
-            if (existingByCode != null && existingByCode.Id != model.Id)
+            if (string.IsNullOrWhiteSpace(model.Code))
             {
-                ModelState.AddModelError(nameof(model.Code), "Product SKU Code is already in use by another product.");
+                model.Code = existingProduct.Code;
+            }
+            else
+            {
+                var existingByCode = await _productService.GetProductByCodeAsync(model.Code);
+                if (existingByCode != null && existingByCode.Id != model.Id)
+                {
+                    ModelState.AddModelError(nameof(model.Code), "Product SKU Code is already in use by another product.");
+                }
             }
 
-            var existingByBarcode = await _productService.GetProductByBarcodeAsync(model.Barcode);
-            if (existingByBarcode != null && existingByBarcode.Id != model.Id)
+            if (string.IsNullOrWhiteSpace(model.Barcode))
             {
-                ModelState.AddModelError(nameof(model.Barcode), "Barcode is already in use by another product.");
+                model.Barcode = !string.IsNullOrWhiteSpace(existingProduct.Barcode) ? existingProduct.Barcode : "890" + Random.Shared.Next(100000000, 999999999).ToString();
+            }
+            else
+            {
+                var existingByBarcode = await _productService.GetProductByBarcodeAsync(model.Barcode);
+                if (existingByBarcode != null && existingByBarcode.Id != model.Id)
+                {
+                    ModelState.AddModelError(nameof(model.Barcode), "Barcode is already in use by another product.");
+                }
             }
 
             if (!ModelState.IsValid)
@@ -344,6 +441,33 @@ namespace InventoryManagementSystem.Controllers
                 }
             }
 
+            // Process Variants & Colors for Edit
+            var updatedVariants = await ProcessVariantsAsync(model.Variants, model.ProductImages);
+            if (updatedVariants.Any())
+            {
+                existingProduct.Variants = updatedVariants;
+                int variantStockSum = updatedVariants.Sum(v => v.CurrentStock > 0 ? v.CurrentStock : v.InitialStock);
+                if (variantStockSum > 0 || existingProduct.CurrentStock == 0)
+                {
+                    existingProduct.CurrentStock = variantStockSum;
+                }
+                var primaryVariant = updatedVariants.First();
+                var primaryColor = primaryVariant.Colors.FirstOrDefault();
+
+                existingProduct.Ram = primaryVariant.Ram;
+                existingProduct.Storage = primaryVariant.Storage;
+                existingProduct.Variant = primaryVariant.DisplayVariantName;
+                if (primaryVariant.PurchasePrice > 0) existingProduct.PurchasePrice = primaryVariant.PurchasePrice;
+                if (primaryVariant.SellingPrice > 0) existingProduct.SellingPrice = primaryVariant.SellingPrice;
+                if (primaryVariant.SupplierPrice > 0) existingProduct.SupplierPrice = primaryVariant.SupplierPrice;
+
+                if (primaryColor != null)
+                {
+                    existingProduct.Color = primaryColor.Name;
+                    if (!string.IsNullOrEmpty(primaryColor.ImageUrl)) existingProduct.ImageUrl = primaryColor.ImageUrl;
+                }
+            }
+
             existingProduct.ImageUrls = imageUrls;
 
             try
@@ -362,6 +486,149 @@ namespace InventoryManagementSystem.Controllers
                 await PopulateCategoriesList(model);
                 return View(model);
             }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetProductVariants(string productId)
+        {
+            if (string.IsNullOrWhiteSpace(productId)) return Json(new List<object>());
+            var product = await _productService.GetProductByIdAsync(productId);
+            if (product == null) return Json(new List<object>());
+
+            var variants = product.GetEffectiveVariants();
+            var result = new List<object>();
+
+            foreach (var v in variants)
+            {
+                var colorList = new List<object>();
+                foreach (var c in v.Colors ?? new List<ProductColor>())
+                {
+                    var availableDevices = await _deviceService.GetAvailableDevicesForVariantAsync(product.Id, v.VariantId, c.Name);
+                    int stockCount = availableDevices.Count();
+
+                    colorList.Add(new
+                    {
+                        colorId = c.ColorId,
+                        name = c.Name,
+                        code = c.Code,
+                        imageUrl = !string.IsNullOrEmpty(c.ImageUrl) ? c.ImageUrl : product.ImageUrl,
+                        imageUrls = c.ImageUrls != null && c.ImageUrls.Any() ? c.ImageUrls : product.ImageUrls,
+                        availableStock = stockCount
+                    });
+                }
+
+                result.Add(new
+                {
+                    variantId = v.VariantId,
+                    ram = v.Ram,
+                    storage = v.Storage,
+                    displayVariant = v.DisplayVariantName,
+                    sku = v.Sku,
+                    purchasePrice = v.PurchasePrice > 0 ? v.PurchasePrice : product.PurchasePrice,
+                    sellingPrice = v.SellingPrice > 0 ? v.SellingPrice : product.SellingPrice,
+                    supplierPrice = v.SupplierPrice > 0 ? v.SupplierPrice : product.SupplierPrice,
+                    mrp = v.Mrp > 0 ? v.Mrp : product.Mrp,
+                    colors = colorList
+                });
+            }
+
+            return Json(result);
+        }
+
+        private async Task<List<ProductVariant>> ProcessVariantsAsync(List<ProductVariantInputModel>? variantInputs, List<IFormFile>? productImages)
+        {
+            var result = new List<ProductVariant>();
+            if (variantInputs == null || !variantInputs.Any()) return result;
+
+            var seenCombinations = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var vInput in variantInputs)
+            {
+                var ram = (vInput.Ram ?? string.Empty).Trim();
+                var storage = (vInput.Storage ?? string.Empty).Trim();
+                var sku = (vInput.Sku ?? string.Empty).Trim();
+
+                var variant = new ProductVariant
+                {
+                    VariantId = !string.IsNullOrWhiteSpace(vInput.VariantId) ? vInput.VariantId : Guid.NewGuid().ToString("N"),
+                    Ram = ram,
+                    Storage = storage,
+                    Sku = sku,
+                    SupplierPrice = vInput.SupplierPrice,
+                    PurchasePrice = vInput.PurchasePrice,
+                    SellingPrice = vInput.SellingPrice,
+                    Mrp = vInput.Mrp,
+                    InitialStock = vInput.InitialStock,
+                    CurrentStock = vInput.CurrentStock > 0 ? vInput.CurrentStock : vInput.InitialStock,
+                    Colors = new List<ProductColor>()
+                };
+
+                if (vInput.Colors != null && vInput.Colors.Any())
+                {
+                    foreach (var cInput in vInput.Colors)
+                    {
+                        var colorName = (cInput.Name ?? string.Empty).Trim();
+                        if (string.IsNullOrWhiteSpace(colorName)) continue;
+
+                        var comboKey = $"{ram}|{storage}|{colorName}";
+                        if (seenCombinations.Contains(comboKey))
+                        {
+                            continue; // Prevent duplicate RAM+Storage+Color combination
+                        }
+                        seenCombinations.Add(comboKey);
+
+                        var colorObj = new ProductColor
+                        {
+                            ColorId = !string.IsNullOrWhiteSpace(cInput.ColorId) ? cInput.ColorId : Guid.NewGuid().ToString("N"),
+                            Name = colorName,
+                            Code = (cInput.Code ?? string.Empty).Trim(),
+                            ImageUrl = cInput.ImageUrl ?? string.Empty,
+                            ImageUrls = cInput.ExistingImageUrls != null ? new List<string>(cInput.ExistingImageUrls) : new List<string>(),
+                            InitialStock = cInput.InitialStock,
+                            CurrentStock = cInput.CurrentStock > 0 ? cInput.CurrentStock : cInput.InitialStock,
+                            PurchasePrice = cInput.PurchasePrice > 0 ? cInput.PurchasePrice : vInput.PurchasePrice,
+                            SellingPrice = cInput.SellingPrice > 0 ? cInput.SellingPrice : vInput.SellingPrice
+                        };
+
+                        if (cInput.ImageFiles != null && cInput.ImageFiles.Any())
+                        {
+                            foreach (var file in cInput.ImageFiles)
+                            {
+                                if (file == null || file.Length == 0) continue;
+                                var uploadResult = await _imageService.UploadImageAsync(file, "products");
+                                if (uploadResult.IsSuccess)
+                                {
+                                    if (string.IsNullOrEmpty(colorObj.ImageUrl))
+                                    {
+                                        colorObj.ImageUrl = uploadResult.SecureUrl;
+                                    }
+                                    if (!colorObj.ImageUrls.Contains(uploadResult.SecureUrl))
+                                    {
+                                        colorObj.ImageUrls.Add(uploadResult.SecureUrl);
+                                    }
+                                }
+                            }
+                        }
+
+                        variant.Colors.Add(colorObj);
+                    }
+                }
+
+                if (variant.Colors.Any())
+                {
+                    int colorInitialSum = variant.Colors.Sum(c => c.InitialStock);
+                    int colorCurrentSum = variant.Colors.Sum(c => c.CurrentStock);
+                    if (colorInitialSum > 0 || colorCurrentSum > 0 || variant.InitialStock == 0)
+                    {
+                        variant.InitialStock = colorInitialSum;
+                        variant.CurrentStock = colorCurrentSum;
+                    }
+                }
+
+                result.Add(variant);
+            }
+
+            return result;
         }
 
         [HttpPost]

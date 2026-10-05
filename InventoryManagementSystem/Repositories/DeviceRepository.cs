@@ -41,6 +41,32 @@ namespace InventoryManagementSystem.Repositories
             return await _collection.Find(filter).SortBy(d => d.CreatedDate).ToListAsync();
         }
 
+        public async Task<IEnumerable<Device>> GetAvailableDevicesForVariantAsync(string productId, string? variantId = null, string? color = null)
+        {
+            var builder = Builders<Device>.Filter;
+            var filterList = new List<FilterDefinition<Device>>
+            {
+                builder.Eq(d => d.ProductId, productId),
+                builder.Eq(d => d.Status, "InStock")
+            };
+
+            if (!string.IsNullOrWhiteSpace(variantId) && variantId != "default-variant")
+            {
+                filterList.Add(builder.Or(
+                    builder.Eq(d => d.VariantId, variantId),
+                    builder.Regex(d => d.Variant, new BsonRegularExpression($"^{variantId}$", "i"))
+                ));
+            }
+
+            if (!string.IsNullOrWhiteSpace(color) && color != "default-color")
+            {
+                filterList.Add(builder.Regex(d => d.Color, new BsonRegularExpression($"^{color.Trim()}$", "i")));
+            }
+
+            var filter = builder.And(filterList);
+            return await _collection.Find(filter).SortBy(d => d.CreatedDate).ToListAsync();
+        }
+
         public async Task<IEnumerable<Device>> GetDevicesByStatusAsync(string status)
         {
             var filter = Builders<Device>.Filter.Eq(d => d.Status, status);

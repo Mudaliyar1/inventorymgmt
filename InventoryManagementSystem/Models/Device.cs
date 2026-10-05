@@ -28,6 +28,16 @@ namespace InventoryManagementSystem.Models
         [BsonElement("ModelName")]
         public string ModelName { get; set; } = string.Empty;
 
+        [BsonElement("VariantId")]
+        [BsonIgnoreIfNull]
+        [BsonIgnoreIfDefault]
+        public string? VariantId { get; set; }
+
+        [BsonElement("ColorId")]
+        [BsonIgnoreIfNull]
+        [BsonIgnoreIfDefault]
+        public string? ColorId { get; set; }
+
         [BsonElement("Variant")]
         public string Variant { get; set; } = string.Empty;
 

@@ -762,9 +762,9 @@
 
                                 <!-- Actions -->
                                 <div class="d-flex gap-2">
-                                    <button type="button" class="btn-d btn-outline btn-sm-d w-50" onclick='openProductSpecsModal(@Html.Raw(prodJson), @Html.Raw(supJson))'>
+                                    <a href="@Url.Action("Details", "Product", new { id = p.Id })" target="_blank" class="btn-d btn-outline btn-sm-d w-50 d-flex align-items-center justify-content-center text-decoration-none">
                                         <i class="bi bi-info-circle me-1"></i> Specs
-                                    </button>
+                                    </a>
                                     <button type="button" class="btn-d btn-primary btn-sm-d w-50" onclick='openQtyStepperModal(@Html.Raw(prodJson), @supplierPrice)'>
                                         <i class="bi bi-cart-plus me-1"></i> Add
                                     </button>
@@ -849,34 +849,50 @@
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-4">
+            <div class="modal-body p-4" style="overflow-x:hidden">
                 <div class="row g-4">
-                    <!-- Left: Gallery Image Slider -->
+                    <!-- Left: Gallery Image Slider & Color Swatches -->
                     <div class="col-lg-4">
-                        <div class="p-3 rounded text-center mb-3" style="background:var(--bg);border:1px solid var(--border);min-height:220px;display:flex;align-items:center;justify-content:center">
-                            <img id="ps_MainImg" src="" alt="Product" class="img-fluid rounded" style="max-height:220px;object-fit:contain" />
-                        </div>
-                        <div id="ps_ThumbStrip" class="d-flex flex-wrap gap-2 overflow-auto" style="max-height:80px"></div>
-                        
-                        <!-- Quick Add Stepper inside Details Modal -->
-                        <div class="p-3 rounded mt-3" style="background:var(--bg);border:1px solid var(--border)">
-                            <div style="font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase" class="mb-2">Quick Add to Order</div>
-                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                <span style="font-size:12px;color:var(--text-muted)">Supplier Price:</span>
-                                <span style="font-size:15px;font-weight:800;color:var(--primary)" id="ps_QuickPrice">₹0.00</span>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 mb-2">
-                                <button type="button" class="cart-qty-btn" onclick="adjustModalQty(-1)">-</button>
-                                <input type="number" id="ps_QuickQty" class="fg-control text-center py-1" value="1" min="1" style="font-weight:700" oninput="updateModalSubtotal()" />
-                                <button type="button" class="cart-qty-btn" onclick="adjustModalQty(1)">+</button>
-                            </div>
-                            <div class="d-flex justify-content-between mb-3" style="font-size:12px">
-                                <span class="text-muted">Line Subtotal:</span>
-                                <span class="fw-bold text-success" id="ps_QuickSubtotal">₹0.00</span>
-                            </div>
-                            <button type="button" class="btn-d btn-primary w-100 btn-sm-d" onclick="addFromDetailsModal()">
-                                <i class="bi bi-cart-plus me-1"></i> Add to Purchase Order
+                        <!-- Main Product Image Viewport -->
+                        <div class="p-3 rounded text-center pos-relative img-gallery-container" 
+                             onclick="openFullscreenGalleryModal()"
+                             title="Click to view full size"
+                             style="background:#0f172a;border:1px solid var(--border);height:250px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;cursor:pointer">
+                            
+                            <!-- Main Product Image -->
+                            <img id="ps_MainImg" src="" alt="Product Image" class="img-fluid rounded" style="max-height:220px;max-width:100%;object-fit:contain;transition:all 0.3s var(--ease)" />
+                            
+                            <!-- Image Counter Pill -->
+                            <span id="ps_ImageCounterPill" class="badge-d badge-gray" style="position:absolute;top:10px;left:10px;font-size:11px;background:rgba(0,0,0,0.75);border:1px solid rgba(255,255,255,0.2);display:none">1 / 1</span>
+                            
+                            <!-- Active Color Badge -->
+                            <span id="ps_ActiveColorBadge" class="badge-d badge-primary" style="position:absolute;top:10px;right:10px;font-size:11px;display:none"></span>
+                            
+                            <!-- Full Size Pill Button -->
+                            <button type="button" class="btn btn-sm btn-primary position-absolute bottom-0 end-0 m-2 px-3 py-1 rounded-pill d-flex align-items-center gap-1 shadow" onclick="event.stopPropagation(); openFullscreenGalleryModal()" style="font-size:11px;font-weight:700;z-index:5;background:var(--primary);border:none;color:#fff">
+                                <i class="bi bi-arrows-fullscreen"></i> Full Size
                             </button>
+                        </div>
+
+                        <!-- Carousel Controls Bar UNDER THE IMAGE -->
+                        <div id="ps_CarouselBar" class="d-flex align-items-center justify-content-between gap-2 my-2.5 p-2 rounded" style="background:var(--bg);border:1px solid var(--border)">
+                            <button type="button" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" id="ps_BtnPrevImg" onclick="navigateGalleryImg(-1)" style="font-size:12px;font-weight:600;padding:4px 10px;border-radius:8px">
+                                <i class="bi bi-chevron-left"></i> Prev
+                            </button>
+
+                            <div id="ps_ThumbStrip" class="d-flex align-items-center justify-content-center gap-2 overflow-auto mx-auto" style="max-height:50px"></div>
+
+                            <button type="button" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" id="ps_BtnNextImg" onclick="navigateGalleryImg(1)" style="font-size:12px;font-weight:600;padding:4px 10px;border-radius:8px">
+                                Next <i class="bi bi-chevron-right"></i>
+                            </button>
+                        </div>
+
+                        <!-- Interactive Color Option Image Selector -->
+                        <div id="ps_ColorSwatchesSection" class="mb-3 p-2.5 rounded" style="background:var(--bg);border:1px solid var(--border);display:none">
+                            <label class="fg-label text-muted mb-2 d-block" style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px">
+                                <i class="bi bi-palette me-1 text-primary"></i>Color Option Photos
+                            </label>
+                            <div id="ps_ColorSwatchesStrip" class="d-flex flex-wrap gap-2"></div>
                         </div>
                     </div>
 
@@ -894,16 +910,38 @@
                         <div class="tab-content">
                             <!-- Tab 1: Overview -->
                             <div class="tab-pane fade show active" id="mps-overview">
-                                <div class="row g-3">
+                                <div class="row g-3 mb-3">
                                     <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Brand & Model</div><div style="font-weight:700" id="ps_BrandModel">-</div></div>
-                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Variant</div><div style="font-weight:700" id="ps_Variant">-</div></div>
-                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Color</div><div style="font-weight:700" id="ps_Color">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Default Variant</div><div style="font-weight:700" id="ps_Variant">-</div></div>
+                                    <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Selected Color</div><div style="font-weight:700;color:var(--primary)" id="ps_Color">-</div></div>
                                     <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Supplied By</div><div style="font-weight:700;color:var(--primary)" id="ps_OverviewSupplier">-</div></div>
                                     <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Supplier Price</div><div style="font-weight:700;color:var(--primary)" id="ps_SupplierPrice">-</div></div>
                                     <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Retail Selling Price</div><div style="font-weight:700;color:var(--success)" id="ps_SellingPrice">-</div></div>
                                     <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Current Stock</div><div style="font-weight:700" id="ps_Stock">-</div></div>
                                     <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Barcode</div><div style="font-weight:700" id="ps_Barcode">-</div></div>
                                     <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Warranty</div><div style="font-weight:700" id="ps_Warranty">-</div></div>
+                                </div>
+
+                                <!-- All Available Hardware Variants & Color Options Box -->
+                                <div class="row g-3">
+                                    <div class="col-12">
+                                        <div class="p-3 rounded" style="background:var(--bg);border:1px solid var(--border)">
+                                            <div class="row g-3">
+                                                <div class="col-md-6">
+                                                    <label class="fg-label text-muted mb-2 d-block" style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px">
+                                                        <i class="bi bi-cpu me-1 text-info"></i>All Hardware Variants
+                                                    </label>
+                                                    <div id="ps_AllVariantsList" class="d-flex flex-wrap gap-2"></div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="fg-label text-muted mb-2 d-block" style="font-size:11px;text-transform:uppercase;letter-spacing:0.5px">
+                                                        <i class="bi bi-palette me-1 text-warning"></i>All Color Options
+                                                    </label>
+                                                    <div id="ps_AllColorsList" class="d-flex flex-wrap gap-2"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -924,7 +962,7 @@
                                     <div class="row g-3">
                                         <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Contact Person</div><div style="font-weight:700" id="ps_SupContact">-</div></div>
                                         <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Phone</div><div style="font-weight:700" id="ps_SupPhone">-</div></div>
-                                        <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Email</div><div style="font-weight:700" id="ps_SupEmail">-</div></div>
+                                        <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Email</div><div style="font-weight:700;word-break:break-all;overflow-wrap:anywhere" id="ps_SupEmail">-</div></div>
                                         <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">GSTIN</div><div style="font-weight:700;font-family:monospace" id="ps_SupGstin">-</div></div>
                                         <div class="col-6 col-md-4"><div style="font-size:11px;color:var(--text-muted)">Payment Terms</div><div style="font-weight:700" id="ps_SupTerms">-</div></div>
                                         <div class="col-12"><div style="font-size:11px;color:var(--text-muted)">Warehouse Address</div><div style="font-weight:600" id="ps_SupAddress">-</div></div>
@@ -992,38 +1030,60 @@
 </div>
 
 @* ========================================================
-   MODAL 2: QUICK QUANTITY STEPPER MODAL
+   MODAL 2: QUICK QUANTITY STEPPER MODAL (MULTI-VARIANT & COLOR BATCH ADD)
    ======================================================== *@
 <div class="modal fade" id="quickQtyModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content" style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;color:var(--text-primary)">
             <div class="modal-header border-bottom" style="border-color:var(--border)!important">
-                <h6 class="modal-title mb-0 fw-bold"><i class="bi bi-cart-plus me-1 text-primary"></i>Add to Purchase Order</h6>
+                <div class="d-flex align-items-center gap-2">
+                    <div style="width:38px;height:38px;border-radius:10px;background:var(--primary-dim);display:flex;align-items:center;justify-content:center;color:var(--primary)">
+                        <i class="bi bi-cart-plus" style="font-size:20px"></i>
+                    </div>
+                    <div>
+                        <h6 class="modal-title mb-0 fw-bold" id="qqm_Name" style="color:var(--text-primary)">Product Title</h6>
+                        <div style="font-size:12px;color:var(--text-muted)">Select order quantities for hardware variants & color options below</div>
+                    </div>
+                </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
-                <div class="text-center mb-3">
-                    <h6 class="mb-1 fw-bold text-truncate" id="qqm_Name" style="color:var(--text-primary)">Product Name</h6>
-                    <div class="text-muted" style="font-size:12px" id="qqm_Variant">8GB / 128GB</div>
-                    <div class="mt-2" style="font-size:18px;font-weight:800;color:var(--primary)" id="qqm_Price">₹0.00</div>
+                <div class="table-responsive" style="max-height:380px;overflow-y:auto">
+                    <table class="table table-dark table-hover mb-0" style="background:transparent">
+                        <thead>
+                            <tr style="border-bottom:1px solid var(--border);font-size:12px;color:var(--text-muted)">
+                                <th>RAM / STORAGE VARIANT</th>
+                                <th>COLOR OPTION</th>
+                                <th>AVAILABLE STOCK</th>
+                                <th>PURCHASE PRICE</th>
+                                <th style="width:140px">ORDER QUANTITY</th>
+                                <th class="text-end">SUBTOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody id="qqm_CombinationsTbody">
+                            <!-- Populated dynamically via JS -->
+                        </tbody>
+                    </table>
                 </div>
 
-                <div class="fg mb-3">
-                    <label class="fg-label text-center d-block">Order Quantity</label>
-                    <div class="d-flex align-items-center justify-content-center gap-2">
-                        <button type="button" class="cart-qty-btn" style="width:36px;height:36px;font-size:16px" onclick="adjustQuickModalQty(-1)">-</button>
-                        <input type="number" id="qqm_QtyInput" class="fg-control text-center" value="1" min="1" style="max-width:100px;font-size:16px;font-weight:700" oninput="updateQuickModalSubtotal()" />
-                        <button type="button" class="cart-qty-btn" style="width:36px;height:36px;font-size:16px" onclick="adjustQuickModalQty(1)">+</button>
+                <div class="d-flex align-items-center justify-content-between p-3 rounded mt-3" style="background:var(--bg);border:1px solid var(--border)">
+                    <div>
+                        <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;font-weight:700">Order Selection Summary</div>
+                        <div style="font-size:13px;font-weight:600;color:var(--text-primary)">
+                            <span id="qqm_TotalItemsCount" class="text-primary me-2">0 Options</span> · 
+                            <span id="qqm_TotalUnitsCount" class="text-info">0 Units</span>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <div style="font-size:11px;color:var(--text-muted)">Combined Subtotal</div>
+                        <div style="font-size:18px;font-weight:800;color:var(--success)" id="qqm_ModalSubtotal">₹0.00</div>
                     </div>
                 </div>
-
-                <div class="p-2 rounded mb-3 text-center" style="background:var(--bg);border:1px solid var(--border)">
-                    <span style="font-size:11px;color:var(--text-muted)">Subtotal:</span>
-                    <div style="font-size:16px;font-weight:800;color:var(--success)" id="qqm_Subtotal">₹0.00</div>
-                </div>
-
-                <button type="button" class="btn-d btn-primary w-100" onclick="submitQuickModalAdd()">
-                    <i class="bi bi-plus-lg me-1"></i> Add to Basket
+            </div>
+            <div class="modal-footer border-top d-flex justify-content-between" style="border-color:var(--border)!important">
+                <button type="button" class="btn-d btn-outline" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn-d btn-primary" onclick="submitQuickModalAddBatch()">
+                    <i class="bi bi-plus-lg me-1"></i> Add Selected Items to Basket
                 </button>
             </div>
         </div>
@@ -1086,7 +1146,7 @@
                     </div>
                     <div class="col-md-6">
                         <label class="fg-label text-muted mb-1">Email Address</label>
-                        <div style="font-size:14px;font-weight:700"><a id="ds_EmailLink" href="#" style="color:var(--primary);text-decoration:none"><i class="bi bi-envelope me-1"></i><span id="ds_Email">-</span></a></div>
+                        <div style="font-size:14px;font-weight:700"><a id="ds_EmailLink" href="#" style="color:var(--primary);text-decoration:none;word-break:break-all;overflow-wrap:anywhere"><i class="bi bi-envelope me-1"></i><span id="ds_Email">-</span></a></div>
                     </div>
                     <div class="col-md-6">
                         <label class="fg-label text-muted mb-1">Vendor GSTIN</label>
@@ -1108,6 +1168,52 @@
             </div>
             <div class="modal-footer border-top d-flex justify-content-end" style="border-color:var(--border)!important">
                 <button type="button" class="btn-d btn-outline" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ========================================================
+   MODAL 4: FULLSCREEN E-COMMERCE LIGHTBOX GALLERY MODAL
+   ======================================================== *@
+<div class="modal fade" id="fullscreenImageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl p-2 p-md-3">
+        <div class="modal-content" style="background:#090d16;border:1px solid var(--border);border-radius:20px;color:#fff;box-shadow:0 25px 50px -12px rgba(0,0,0,0.95);overflow:hidden">
+            <div class="modal-header border-bottom border-dark pb-3 px-4 d-flex align-items-center justify-content-between" style="border-color:rgba(255,255,255,0.1)!important">
+                <div class="d-flex align-items-center gap-3">
+                    <div style="width:38px;height:38px;border-radius:10px;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff">
+                        <i class="bi bi-arrows-angle-expand fs-5"></i>
+                    </div>
+                    <div>
+                        <h6 class="modal-title mb-0 fw-bold text-white" id="fs_Title">Product Photo Gallery</h6>
+                        <div style="font-size:12px;color:rgba(255,255,255,0.6)" id="fs_Counter">Image 1 of 1</div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <div class="modal-body p-3 d-flex align-items-center justify-content-center position-relative" style="height:480px;max-height:65vh;background:#0f172a;border-radius:14px;margin:16px;overflow:hidden">
+                <!-- Left Carousel Arrow (High Visibility Solid Indigo Circle) -->
+                <button type="button" class="btn rounded-circle d-flex align-items-center justify-content-center shadow-lg" id="fs_BtnPrev" onclick="navigateFsGallery(-1)" 
+                        style="position:absolute;left:16px;top:50%;transform:translateY(-50%);width:48px;height:48px;background:#4f46e5;border:2px solid #ffffff;color:#ffffff;z-index:99999;box-shadow:0 8px 20px rgba(0,0,0,0.7);cursor:pointer">
+                    <i class="bi bi-chevron-left fs-5" style="color:#ffffff;font-weight:800"></i>
+                </button>
+                
+                <!-- Main Image Viewport (Strict Object-Fit Contain) -->
+                <div class="text-center w-100 h-100 d-flex align-items-center justify-content-center p-2">
+                    <img id="fs_MainImg" src="" alt="Fullsize Product Image" class="img-fluid rounded" style="max-height:440px;max-width:92%;width:auto;height:auto;object-fit:contain!important;display:block;margin:0 auto;filter:drop-shadow(0 10px 20px rgba(0,0,0,0.6))" />
+                </div>
+                
+                <!-- Right Carousel Arrow (High Visibility Solid Indigo Circle) -->
+                <button type="button" class="btn rounded-circle d-flex align-items-center justify-content-center shadow-lg" id="fs_BtnNext" onclick="navigateFsGallery(1)" 
+                        style="position:absolute;right:16px;top:50%;transform:translateY(-50%);width:48px;height:48px;background:#4f46e5;border:2px solid #ffffff;color:#ffffff;z-index:99999;box-shadow:0 8px 20px rgba(0,0,0,0.7);cursor:pointer">
+                    <i class="bi bi-chevron-right fs-5" style="color:#ffffff;font-weight:800"></i>
+                </button>
+            </div>
+            
+            <div class="modal-footer border-top border-dark pt-3 pb-3 d-flex flex-column align-items-center justify-content-center" style="border-color:rgba(255,255,255,0.1)!important">
+                <div style="font-size:11px;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px" class="mb-2">Click thumbnails below or use Left/Right Arrow Keys</div>
+                <div id="fs_ThumbStrip" class="d-flex flex-wrap gap-2 justify-content-center overflow-auto" style="max-height:70px"></div>
             </div>
         </div>
     </div>
@@ -1228,40 +1334,57 @@
             saveCartToStorage();
         }
 
-        function addToCart(productId, productName, brand, variant, color, unitPrice, quantity) {
+        function addToCart(productId, productName, brand, variant, color, unitPrice, quantity, variantId = '', colorId = '', availableStock = 999999) {
             quantity = parseInt(quantity) || 1;
             unitPrice = parseFloat(unitPrice) || 0;
+            availableStock = parseInt(availableStock);
+            if (isNaN(availableStock)) availableStock = 999999;
 
-            const existing = cartItems.find(i => i.productId === productId);
+            const itemKey = `${productId}_${variantId || ''}_${colorId || ''}`;
+
+            const existing = cartItems.find(i => (i.itemKey || i.productId) === itemKey);
             if (existing) {
                 existing.quantity += quantity;
+                if (existing.quantity > availableStock) {
+                    existing.quantity = availableStock;
+                }
+                existing.unitPrice = unitPrice;
+                existing.availableStock = availableStock;
             } else {
                 cartItems.push({
+                    itemKey: itemKey,
                     productId: productId,
+                    variantId: variantId,
+                    colorId: colorId,
                     productName: productName,
                     brand: brand,
                     variant: variant,
                     color: color,
                     unitPrice: unitPrice,
-                    quantity: quantity
+                    quantity: Math.min(quantity, availableStock),
+                    availableStock: availableStock
                 });
             }
             saveCartToStorage();
         }
 
-        function updateCartItemQty(productId, delta) {
-            const item = cartItems.find(i => i.productId === productId);
+        function updateCartItemQty(itemKey, delta) {
+            const item = cartItems.find(i => (i.itemKey || i.productId) === itemKey);
             if (item) {
+                if (delta > 0 && item.availableStock !== undefined && item.availableStock !== null && (item.quantity + delta) > item.availableStock) {
+                    alert(`Cannot add more than available stock (${item.availableStock} units available).`);
+                    return;
+                }
                 item.quantity += delta;
                 if (item.quantity <= 0) {
-                    cartItems = cartItems.filter(i => i.productId !== productId);
+                    cartItems = cartItems.filter(i => (i.itemKey || i.productId) !== itemKey);
                 }
                 saveCartToStorage();
             }
         }
 
-        function removeCartItem(productId) {
-            cartItems = cartItems.filter(i => i.productId !== productId);
+        function removeCartItem(itemKey) {
+            cartItems = cartItems.filter(i => (i.itemKey || i.productId) !== itemKey);
             saveCartToStorage();
         }
 
@@ -1296,9 +1419,15 @@
                 totalQty += item.quantity;
                 subtotal += lineTotal;
 
+                const key = item.itemKey || item.productId;
+
                 // Hidden form inputs for Review action
                 hiddenInputsEl.innerHTML += `
                     <input type="hidden" name="items[${index}].ProductId" value="${item.productId}" />
+                    <input type="hidden" name="items[${index}].VariantId" value="${item.variantId || ''}" />
+                    <input type="hidden" name="items[${index}].ColorId" value="${item.colorId || ''}" />
+                    <input type="hidden" name="items[${index}].Variant" value="${escapeHtml(item.variant || '')}" />
+                    <input type="hidden" name="items[${index}].Color" value="${escapeHtml(item.color || '')}" />
                     <input type="hidden" name="items[${index}].Quantity" value="${item.quantity}" />
                     <input type="hidden" name="items[${index}].UnitPrice" value="${item.unitPrice}" />
                 `;
@@ -1309,7 +1438,7 @@
                 row.innerHTML = `
                     <div class="d-flex align-items-start justify-content-between mb-1">
                         <div class="fw-bold text-truncate" style="max-width:180px;font-size:13px;color:var(--text-primary)">${item.productName}</div>
-                        <button type="button" class="btn btn-link text-danger p-0" onclick="removeCartItem('${item.productId}')" style="font-size:12px;text-decoration:none">
+                        <button type="button" class="btn btn-link text-danger p-0" onclick="removeCartItem('${key}')" style="font-size:12px;text-decoration:none">
                             <i class="bi bi-x-circle"></i>
                         </button>
                     </div>
@@ -1318,9 +1447,9 @@
                     </div>
                     <div class="d-flex align-items-center justify-content-between">
                         <div class="d-flex align-items-center gap-1">
-                            <button type="button" class="cart-qty-btn" onclick="updateCartItemQty('${item.productId}', -1)">-</button>
+                            <button type="button" class="cart-qty-btn" onclick="updateCartItemQty('${key}', -1)">-</button>
                             <span class="px-2 fw-bold" style="font-size:13px">${item.quantity}</span>
-                            <button type="button" class="cart-qty-btn" onclick="updateCartItemQty('${item.productId}', 1)">+</button>
+                            <button type="button" class="cart-qty-btn" onclick="updateCartItemQty('${key}', 1)">+</button>
                         </div>
                         <div class="text-end">
                             <div style="font-size:10px;color:var(--text-muted)">₹${item.unitPrice.toLocaleString('en-IN', {minimumFractionDigits: 2})} ea</div>
@@ -1344,51 +1473,234 @@
             }
         });
 
-        // Quick Quantity Modal Logic
+        // Quick Quantity Modal Logic (Multi-Variant & Multi-Color Batch Selection)
         let activeQuickProduct = null;
-        let activeQuickUnitPrice = 0;
+        let activeQuickProductCombinations = [];
 
-        function openQtyStepperModal(product, unitPrice) {
+        function openQtyStepperModal(product, defaultUnitPrice) {
             activeQuickProduct = product;
-            activeQuickUnitPrice = unitPrice;
+            document.getElementById('qqm_Name').innerText = product.Name || 'Product Variants & Colors';
+            
+            activeQuickProductCombinations = [];
+            const variants = product.Variants || [];
 
-            document.getElementById('qqm_Name').innerText = product.Name || 'Product';
-            document.getElementById('qqm_Variant').innerText = (product.Variant || `${product.Ram || ''} / ${product.Storage || ''}`).trim() || '-';
-            document.getElementById('qqm_Price').innerText = `₹${unitPrice.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-            document.getElementById('qqm_QtyInput').value = '1';
-            updateQuickModalSubtotal();
+            function getStockForOption(c, v, p) {
+                if (c && c.CurrentStock !== undefined && c.CurrentStock !== null) return c.CurrentStock;
+                if (c && c.InitialStock !== undefined && c.InitialStock !== null) return c.InitialStock;
+                if (v && v.CurrentStock !== undefined && v.CurrentStock !== null) return v.CurrentStock;
+                if (v && v.InitialStock !== undefined && v.InitialStock !== null) return v.InitialStock;
+                if (p && p.CurrentStock !== undefined && p.CurrentStock !== null) return p.CurrentStock;
+                if (p && p.InitialStock !== undefined && p.InitialStock !== null) return p.InitialStock;
+                return 0;
+            }
 
-            const modal = new bootstrap.Modal(document.getElementById('quickQtyModal'));
+            if (variants.length > 0) {
+                variants.forEach(v => {
+                    const vName = (v.Ram && v.Storage) ? `${v.Ram} / ${v.Storage}` : (v.Storage || v.Ram || 'Standard Variant');
+                    const colors = v.Colors || [];
+                    if (colors.length > 0) {
+                        colors.forEach(c => {
+                            const price = (c.PurchasePrice && c.PurchasePrice > 0)
+                                ? c.PurchasePrice
+                                : ((v.PurchasePrice && v.PurchasePrice > 0) ? v.PurchasePrice : (product.PurchasePrice || defaultUnitPrice));
+                            const stock = getStockForOption(c, v, product);
+                            activeQuickProductCombinations.push({
+                                variantId: v.VariantId || '',
+                                variantName: vName,
+                                colorId: c.ColorId || '',
+                                colorName: c.Name || 'Standard Color',
+                                unitPrice: price,
+                                availableStock: stock < 0 ? 0 : stock,
+                                qty: 0
+                            });
+                        });
+                    } else {
+                        const price = (v.PurchasePrice && v.PurchasePrice > 0) ? v.PurchasePrice : (product.PurchasePrice || defaultUnitPrice);
+                        const stock = getStockForOption(null, v, product);
+                        activeQuickProductCombinations.push({
+                            variantId: v.VariantId || '',
+                            variantName: vName,
+                            colorId: '',
+                            colorName: product.Color || 'Standard Color',
+                            unitPrice: price,
+                            availableStock: stock < 0 ? 0 : stock,
+                            qty: 0
+                        });
+                    }
+                });
+            } else {
+                const vName = (product.Variant || `${product.Ram || ''} / ${product.Storage || ''}`).trim() || 'Standard Variant';
+                const price = (product.PurchasePrice && product.PurchasePrice > 0) ? product.PurchasePrice : defaultUnitPrice;
+                const stock = getStockForOption(null, null, product);
+                activeQuickProductCombinations.push({
+                    variantId: '',
+                    variantName: vName,
+                    colorId: '',
+                    colorName: product.Color || 'Standard Color',
+                    unitPrice: price,
+                    availableStock: stock < 0 ? 0 : stock,
+                    qty: stock > 0 ? 1 : 0
+                });
+            }
+
+            if (activeQuickProductCombinations.length > 0 && activeQuickProductCombinations.every(c => c.qty === 0)) {
+                const firstAvailable = activeQuickProductCombinations.find(c => c.availableStock > 0);
+                if (firstAvailable) {
+                    firstAvailable.qty = 1;
+                }
+            }
+
+            renderModalCombinationsTable();
+
+            const modalEl = document.getElementById('quickQtyModal');
+            let modal = bootstrap.Modal.getInstance(modalEl);
+            if (!modal) {
+                modal = new bootstrap.Modal(modalEl);
+            }
             modal.show();
         }
 
-        function adjustQuickModalQty(delta) {
-            const input = document.getElementById('qqm_QtyInput');
-            let val = (parseInt(input.value) || 1) + delta;
-            if (val < 1) val = 1;
-            input.value = val;
-            updateQuickModalSubtotal();
+        function renderModalCombinationsTable() {
+            const tbody = document.getElementById('qqm_CombinationsTbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            let totalSelectedItems = 0;
+            let totalUnits = 0;
+            let totalSubtotal = 0;
+
+            activeQuickProductCombinations.forEach((item, index) => {
+                const lineTotal = item.qty * item.unitPrice;
+                if (item.qty > 0) {
+                    totalSelectedItems++;
+                    totalUnits += item.qty;
+                    totalSubtotal += lineTotal;
+                }
+
+                const isOutOfStock = item.availableStock <= 0;
+                const isMaxReached = item.qty >= item.availableStock;
+
+                const tr = document.createElement('tr');
+                tr.style.background = item.qty > 0 ? 'rgba(79, 70, 229, 0.12)' : 'transparent';
+                tr.style.transition = 'background 0.2s var(--ease)';
+                if (isOutOfStock) {
+                    tr.style.opacity = '0.75';
+                }
+
+                tr.innerHTML = `
+                    <td class="align-middle">
+                        <div class="fw-bold" style="color:var(--text-primary);font-size:13px">${escapeHtml(item.variantName)}</div>
+                    </td>
+                    <td class="align-middle">
+                        <span class="badge-d badge-gray" style="font-size:11px">${escapeHtml(item.colorName)}</span>
+                    </td>
+                    <td class="align-middle">
+                        ${isOutOfStock 
+                            ? '<span class="badge-d" style="font-size:11px;background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3)"><i class="bi bi-x-circle me-1"></i>Out of Stock</span>'
+                            : `<span class="badge-d ${item.availableStock <= 5 ? 'badge-warning' : 'badge-info'}" style="font-size:11px"><i class="bi bi-box-seam me-1"></i>${item.availableStock} Units</span>`
+                        }
+                    </td>
+                    <td class="align-middle fw-bold text-primary" style="font-size:13px">
+                        ₹${item.unitPrice.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </td>
+                    <td class="align-middle">
+                        <div class="d-flex align-items-center gap-1" style="max-width:120px">
+                            <button type="button" class="cart-qty-btn" onclick="adjustCombinationQty(${index}, -1)" ${item.qty <= 0 || isOutOfStock ? 'disabled' : ''}>-</button>
+                            <input type="number" class="fg-control text-center py-1 px-1" value="${item.qty}" min="0" max="${item.availableStock}" 
+                                   ${isOutOfStock ? 'disabled' : ''}
+                                   style="font-weight:700;font-size:13px;width:50px" oninput="setCombinationQty(${index}, this.value)" />
+                            <button type="button" class="cart-qty-btn" onclick="adjustCombinationQty(${index}, 1)" ${isMaxReached || isOutOfStock ? 'disabled' : ''}>+</button>
+                        </div>
+                    </td>
+                    <td class="align-middle text-end fw-bold ${item.qty > 0 ? 'text-success' : 'text-muted'}" style="font-size:13px">
+                        ₹${lineTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            const itemsEl = document.getElementById('qqm_TotalItemsCount');
+            const unitsEl = document.getElementById('qqm_TotalUnitsCount');
+            const subtotalEl = document.getElementById('qqm_ModalSubtotal');
+
+            if (itemsEl) itemsEl.innerText = `${totalSelectedItems} Selected`;
+            if (unitsEl) unitsEl.innerText = `${totalUnits} Units`;
+            if (subtotalEl) subtotalEl.innerText = `₹${totalSubtotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         }
 
-        function updateQuickModalSubtotal() {
-            const qty = parseInt(document.getElementById('qqm_QtyInput').value) || 1;
-            const sub = qty * activeQuickUnitPrice;
-            document.getElementById('qqm_Subtotal').innerText = `₹${sub.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+        function adjustCombinationQty(index, delta) {
+            const item = activeQuickProductCombinations[index];
+            if (!item) return;
+            const maxStock = item.availableStock || 0;
+            let newQty = (item.qty || 0) + delta;
+            if (newQty < 0) newQty = 0;
+            if (newQty > maxStock) {
+                newQty = maxStock;
+                alert(`Cannot add more than available stock (${maxStock} units available).`);
+            }
+            item.qty = newQty;
+            renderModalCombinationsTable();
         }
 
-        function submitQuickModalAdd() {
-            if (!activeQuickProduct) return;
-            const qty = parseInt(document.getElementById('qqm_QtyInput').value) || 1;
-            addToCart(
-                activeQuickProduct.Id,
-                activeQuickProduct.Name,
-                activeQuickProduct.Brand,
-                activeQuickProduct.Variant || `${activeQuickProduct.Ram || ''} / ${activeQuickProduct.Storage || ''}`,
-                activeQuickProduct.Color,
-                activeQuickUnitPrice,
-                qty
-            );
-            bootstrap.Modal.getInstance(document.getElementById('quickQtyModal'))?.hide();
+        function setCombinationQty(index, valStr) {
+            const item = activeQuickProductCombinations[index];
+            if (!item) return;
+            const maxStock = item.availableStock || 0;
+            let val = parseInt(valStr);
+            if (isNaN(val) || val < 0) val = 0;
+            if (val > maxStock) {
+                val = maxStock;
+                alert(`Cannot add more than available stock (${maxStock} units available).`);
+            }
+            item.qty = val;
+            renderModalCombinationsTable();
+        }
+
+        function submitQuickModalAddBatch() {
+            if (!activeQuickProduct || !activeQuickProductCombinations) return;
+
+            let stockExceeded = false;
+            activeQuickProductCombinations.forEach(item => {
+                if (item.qty > 0) {
+                    const itemKey = `${activeQuickProduct.Id}_${item.variantId || ''}_${item.colorId || ''}`;
+                    const existingInCart = cartItems.find(i => (i.itemKey || i.productId) === itemKey)?.quantity || 0;
+                    const maxStock = item.availableStock;
+                    if (existingInCart + item.qty > maxStock) {
+                        stockExceeded = true;
+                        const remaining = Math.max(0, maxStock - existingInCart);
+                        alert(`Cannot add ${item.qty} units of ${item.variantName} (${item.colorName}). Total in basket (${existingInCart + item.qty}) would exceed available stock (${maxStock} units). You can add at most ${remaining} more unit(s).`);
+                    }
+                }
+            });
+
+            if (stockExceeded) return;
+
+            let addedCount = 0;
+            activeQuickProductCombinations.forEach(item => {
+                if (item.qty > 0) {
+                    addToCart(
+                        activeQuickProduct.Id,
+                        activeQuickProduct.Name,
+                        activeQuickProduct.Brand,
+                        item.variantName,
+                        item.colorName,
+                        item.unitPrice,
+                        item.qty,
+                        item.variantId,
+                        item.colorId,
+                        item.availableStock
+                    );
+                    addedCount++;
+                }
+            });
+
+            if (addedCount === 0) {
+                alert('Please specify quantity > 0 for at least one available variant / color option.');
+                return;
+            }
+
+            const modalEl = document.getElementById('quickQtyModal');
+            bootstrap.Modal.getInstance(modalEl)?.hide();
         }
 
         // Details Modal Quick Add
@@ -1404,126 +1716,418 @@
         }
 
         function updateModalSubtotal() {
-            const qty = parseInt(document.getElementById('ps_QuickQty').value) || 1;
+            const qtyEl = document.getElementById('ps_QuickQty');
+            const subtotalEl = document.getElementById('ps_QuickSubtotal');
+            if (!qtyEl || !subtotalEl) return;
+            const qty = parseInt(qtyEl.value) || 1;
             const sub = qty * activeModalPrice;
-            document.getElementById('ps_QuickSubtotal').innerText = `₹${sub.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            subtotalEl.innerText = `₹${sub.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
         }
 
         function addFromDetailsModal() {
             if (!activeModalProduct) return;
-            const qty = parseInt(document.getElementById('ps_QuickQty').value) || 1;
-            addToCart(
-                activeModalProduct.Id,
-                activeModalProduct.Name,
-                activeModalProduct.Brand,
-                activeModalProduct.Variant || `${activeModalProduct.Ram || ''} / ${activeModalProduct.Storage || ''}`,
-                activeModalProduct.Color,
-                activeModalPrice,
-                qty
-            );
-            bootstrap.Modal.getInstance(document.getElementById('productSpecsModal'))?.hide();
+            const modalEl = document.getElementById('productSpecsModal');
+            if (modalEl) {
+                const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                if (modalInstance) modalInstance.hide();
+            }
+            openQtyStepperModal(activeModalProduct, activeModalPrice);
+        }
+
+        function setElText(id, text) {
+            const el = document.getElementById(id);
+            if (el) el.innerText = text;
         }
 
         // Specs Modal Inspection
         function openProductSpecsModal(p, sup) {
+            if (!p) return;
             activeModalProduct = p;
-            activeModalPrice = p.SupplierPrice > 0 ? p.SupplierPrice : p.PurchasePrice;
+            window.activeModalProduct = p;
 
-            document.getElementById('ps_QuickPrice').innerText = `₹${activeModalPrice.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-            document.getElementById('ps_QuickQty').value = '1';
+            let effectivePrice = p.SupplierPrice > 0 ? p.SupplierPrice : p.PurchasePrice;
+            if ((!effectivePrice || effectivePrice <= 0) && p.Variants && p.Variants.length > 0) {
+                const firstV = p.Variants[0];
+                if (firstV.Colors && firstV.Colors.length > 0 && firstV.Colors[0].PurchasePrice > 0) {
+                    effectivePrice = firstV.Colors[0].PurchasePrice;
+                } else if (firstV.PurchasePrice > 0) {
+                    effectivePrice = firstV.PurchasePrice;
+                } else if (firstV.SupplierPrice > 0) {
+                    effectivePrice = firstV.SupplierPrice;
+                }
+            }
+            activeModalPrice = effectivePrice || 0;
+
+            const quickPriceEl = document.getElementById('ps_QuickPrice');
+            if (quickPriceEl) quickPriceEl.innerText = `₹${activeModalPrice.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
+            const quickQtyEl = document.getElementById('ps_QuickQty');
+            if (quickQtyEl) quickQtyEl.value = '1';
             updateModalSubtotal();
 
             const s = p.Specs || {};
-            document.getElementById('ps_Name').innerText = p.Name || 'Product Specs';
-            document.getElementById('ps_Code').innerText = `SKU: ${p.Code || '-'}`;
-            document.getElementById('ps_BrandModel').innerText = `${p.Brand || ''} ${p.ModelName || ''}`.trim() || '-';
-            document.getElementById('ps_Variant').innerText = p.Variant || `${p.Ram || ''} / ${p.Storage || ''}`.trim() || '-';
-            document.getElementById('ps_Color').innerText = p.Color || '-';
-            document.getElementById('ps_SupplierPrice').innerText = `₹${activeModalPrice.toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-            document.getElementById('ps_SellingPrice').innerText = `₹${(p.SellingPrice || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`;
-            document.getElementById('ps_Stock').innerText = `${p.CurrentStock || 0} Units`;
-            document.getElementById('ps_Barcode').innerText = p.Barcode || '-';
-            document.getElementById('ps_Warranty').innerText = `${p.WarrantyDurationMonths || 12} Months`;
-            document.getElementById('ps_Description').innerText = p.Description || 'No description provided.';
+            setElText('ps_Name', p.Name || 'Product Specs');
+            setElText('ps_Code', `SKU: ${p.Code || '-'}`);
+            setElText('ps_BrandModel', `${p.Brand || ''} ${p.ModelName || ''}`.trim() || '-');
+            setElText('ps_Variant', p.Variant || `${p.Ram || ''} / ${p.Storage || ''}`.trim() || '-');
+            setElText('ps_Color', p.Color || '-');
+            setElText('ps_SupplierPrice', `₹${activeModalPrice.toLocaleString('en-IN', {minimumFractionDigits: 2})}`);
+            setElText('ps_SellingPrice', `₹${(p.SellingPrice || 0).toLocaleString('en-IN', {minimumFractionDigits: 2})}`);
+            setElText('ps_Stock', `${p.CurrentStock || 0} Units`);
+            setElText('ps_Barcode', p.Barcode || '-');
+            setElText('ps_Warranty', `${p.WarrantyDurationMonths || 12} Months`);
+            setElText('ps_Description', p.Description || 'No description provided.');
+
+            // 1. Gather & Render All Hardware Variants
+            const allVariants = [];
+            const varSet = new Set();
+            if (p.Variants && p.Variants.length > 0) {
+                p.Variants.forEach(v => {
+                    const vName = (v.Ram && v.Storage) ? `${v.Ram} / ${v.Storage}` : (v.Storage || v.Ram || 'Standard Variant');
+                    if (!varSet.has(vName)) {
+                        varSet.add(vName);
+                        const vStock = (v.CurrentStock !== undefined && v.CurrentStock !== null) ? v.CurrentStock : (v.InitialStock || 0);
+                        const vPrice = v.PurchasePrice || v.SupplierPrice || activeModalPrice;
+                        allVariants.push({ name: vName, stock: vStock, price: vPrice });
+                    }
+                });
+            } else {
+                const vName = (p.Variant || `${p.Ram || ''} / ${p.Storage || ''}`).trim() || 'Standard Variant';
+                allVariants.push({ name: vName, stock: p.CurrentStock || 0, price: activeModalPrice });
+            }
+
+            const varListEl = document.getElementById('ps_AllVariantsList');
+            if (varListEl) {
+                varListEl.innerHTML = '';
+                allVariants.forEach(v => {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge-d badge-gray py-1.5 px-2.5';
+                    badge.style.cssText = 'font-size:12px;border:1px solid var(--border);display:inline-flex;align-items:center;gap:6px';
+                    badge.innerHTML = `<i class="bi bi-cpu text-info"></i><strong style="color:var(--text-primary)">${escapeHtml(v.name)}</strong> <span class="text-muted" style="font-size:10px">(${v.stock} in stock)</span>`;
+                    varListEl.appendChild(badge);
+                });
+            }
+
+            // 2. Gather & Render All Unique Colors + Interactive Image Swatches (STRICT COLOR ISOLATION)
+            const colorOptions = [];
+            const colorNameSet = new Set();
+
+            if (p.Variants && p.Variants.length > 0) {
+                p.Variants.forEach(v => {
+                    if (v.Colors && v.Colors.length > 0) {
+                        v.Colors.forEach(c => {
+                            const cName = (c.Name || 'Standard Color').trim();
+                            const cKey = cName.toLowerCase();
+                            if (!colorNameSet.has(cKey)) {
+                                colorNameSet.add(cKey);
+                                // Collect ONLY color-specific images for this color
+                                const cImgs = [];
+                                if (c.ImageUrl) cImgs.push(c.ImageUrl);
+                                if (c.ImageUrls && Array.isArray(c.ImageUrls)) {
+                                    c.ImageUrls.forEach(u => { if (u && !cImgs.includes(u)) cImgs.push(u); });
+                                }
+                                const stock = (c.CurrentStock !== undefined && c.CurrentStock !== null) ? c.CurrentStock : (c.InitialStock || 0);
+                                colorOptions.push({
+                                    name: cName,
+                                    code: c.Code || '#4f46e5',
+                                    images: cImgs,
+                                    stock: stock,
+                                    price: c.PurchasePrice || v.PurchasePrice || activeModalPrice
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+
+            if (colorOptions.length === 0) {
+                const cName = (p.Color || 'Standard Color').trim();
+                const pImgs = [];
+                if (p.ImageUrl) pImgs.push(p.ImageUrl);
+                if (p.ImageUrls && Array.isArray(p.ImageUrls)) {
+                    p.ImageUrls.forEach(u => { if (u && !pImgs.includes(u)) pImgs.push(u); });
+                }
+                colorOptions.push({
+                    name: cName,
+                    code: '#4f46e5',
+                    images: pImgs,
+                    stock: p.CurrentStock || 0,
+                    price: activeModalPrice
+                });
+            }
+
+            // Render All Color Options list in Overview tab
+            const colorsListEl = document.getElementById('ps_AllColorsList');
+            if (colorsListEl) {
+                colorsListEl.innerHTML = '';
+                colorOptions.forEach(c => {
+                    const badge = document.createElement('span');
+                    badge.className = 'badge-d badge-gray py-1.5 px-2.5';
+                    badge.style.cssText = 'font-size:12px;border:1px solid var(--border);display:inline-flex;align-items:center;gap:6px;cursor:pointer';
+                    badge.onclick = () => selectColorOption(c);
+                    badge.innerHTML = `<span style="width:10px;height:10px;border-radius:50%;background:${c.code || 'var(--primary)'};display:inline-block;border:1px solid rgba(255,255,255,0.2)"></span><strong style="color:var(--text-primary)">${escapeHtml(c.name)}</strong>`;
+                    colorsListEl.appendChild(badge);
+                });
+            }
+
+            // Render Interactive Color Swatches under Image Section
+            const swatchesSection = document.getElementById('ps_ColorSwatchesSection');
+            const swatchesStrip = document.getElementById('ps_ColorSwatchesStrip');
+            const activeColorBadge = document.getElementById('ps_ActiveColorBadge');
+
+            if (swatchesSection && swatchesStrip) {
+                swatchesStrip.innerHTML = '';
+                if (colorOptions.length > 0) {
+                    swatchesSection.style.display = 'block';
+                    colorOptions.forEach((c, index) => {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = `btn btn-sm d-flex align-items-center gap-1.5 color-swatch-btn ${index === 0 ? 'active-swatch' : ''}`;
+                        btn.style.cssText = `font-size:12px;font-weight:600;padding:4px 10px;border-radius:8px;border:1px solid ${index === 0 ? 'var(--primary)' : 'var(--border)'};background:${index === 0 ? 'rgba(79,70,229,0.15)' : 'var(--bg-card)'};color:var(--text-primary);transition:all 0.2s var(--ease)`;
+                        btn.innerHTML = `
+                            <span style="width:12px;height:12px;border-radius:50%;background:${c.code || '#4f46e5'};display:inline-block;border:1px solid rgba(255,255,255,0.3)"></span>
+                            <span>${escapeHtml(c.name)}</span>
+                        `;
+                        btn.onclick = function() {
+                            selectColorOption(c, this);
+                        };
+                        swatchesStrip.appendChild(btn);
+                    });
+                } else {
+                    swatchesSection.style.display = 'none';
+                }
+            }
+
+            window.selectColorOption = function(c, clickedBtn) {
+                window.activeColorName = c.name;
+                // STRICT COLOR ISOLATION: activeGalleryImages comes ONLY from c.images
+                window.activeGalleryImages = c.images || [];
+                window.activeGalleryIndex = 0;
+
+                updateGalleryView(0);
+
+                // Update Color text in Overview
+                setElText('ps_Color', c.name);
+                if (activeColorBadge) {
+                    activeColorBadge.innerText = c.name;
+                    activeColorBadge.style.display = 'inline-block';
+                }
+                // Update Price & Stock if color specific
+                if (c.price > 0) {
+                    setElText('ps_SupplierPrice', `₹${c.price.toLocaleString('en-IN', {minimumFractionDigits: 2})}`);
+                }
+                setElText('ps_Stock', `${c.stock || 0} Units`);
+
+                // Update swatch active style
+                if (swatchesStrip) {
+                    swatchesStrip.querySelectorAll('.color-swatch-btn').forEach(btn => {
+                        btn.style.borderColor = 'var(--border)';
+                        btn.style.background = 'var(--bg-card)';
+                    });
+                }
+                if (clickedBtn) {
+                    clickedBtn.style.borderColor = 'var(--primary)';
+                    clickedBtn.style.background = 'rgba(79,70,229,0.15)';
+                }
+            };
+
+            // Set initial selected color state
+            if (colorOptions.length > 0) {
+                window.selectColorOption(colorOptions[0]);
+            }
 
             // Supplier Profile
             if (sup) {
-                document.getElementById('ps_OverviewSupplier').innerText = sup.CompanyName || '-';
-                document.getElementById('ps_SupCompany').innerText = sup.CompanyName || 'Vendor';
-                document.getElementById('ps_SupStatus').innerText = sup.Status || 'Active';
-                document.getElementById('ps_SupContact').innerText = sup.ContactPerson || '-';
-                document.getElementById('ps_SupPhone').innerText = sup.Phone || '-';
-                document.getElementById('ps_SupEmail').innerText = sup.Email || '-';
-                document.getElementById('ps_SupGstin').innerText = sup.Gstin || 'Not Registered';
-                document.getElementById('ps_SupTerms').innerText = sup.PaymentTerms || 'Net 30 Days';
+                setElText('ps_OverviewSupplier', sup.CompanyName || sup.DisplayCompanyName || sup.DisplayVendorName || '-');
+                setElText('ps_SupCompany', sup.CompanyName || sup.DisplayCompanyName || 'Vendor');
+                setElText('ps_SupStatus', sup.Status || 'Active');
+                setElText('ps_SupContact', sup.ContactPerson || sup.DisplayContactPerson || '-');
+                setElText('ps_SupPhone', sup.Phone || '-');
+                setElText('ps_SupEmail', sup.Email || '-');
+                setElText('ps_SupGstin', sup.Gstin || 'Not Registered');
+                setElText('ps_SupTerms', sup.PaymentTerms || 'Net 30 Days');
                 const fullAddr = [sup.Address, sup.City, sup.State, sup.Country].filter(Boolean).join(', ');
-                document.getElementById('ps_SupAddress').innerText = fullAddr || 'No physical address provided.';
+                setElText('ps_SupAddress', fullAddr || 'No physical address provided.');
             }
 
             // Specs
-            document.getElementById('ps_Proc').innerText = s.ProcessorName || s.ProcessorBrand || p.Processor || '-';
-            document.getElementById('ps_Cores').innerText = s.CpuCores || '-';
-            document.getElementById('ps_Gpu').innerText = s.Gpu || '-';
-            document.getElementById('ps_Ram').innerText = s.RamType || p.Ram || '-';
-            document.getElementById('ps_Storage').innerText = s.StorageType || p.Storage || '-';
-            document.getElementById('ps_Expandable').innerText = s.ExpandableStorage ? 'Supported' : 'No';
+            setElText('ps_Proc', s.ProcessorName || s.ProcessorBrand || p.Processor || '-');
+            setElText('ps_Cores', s.CpuCores || '-');
+            setElText('ps_Gpu', s.Gpu || '-');
+            setElText('ps_Ram', s.RamType || p.Ram || '-');
+            setElText('ps_Storage', s.StorageType || p.Storage || '-');
+            setElText('ps_Expandable', s.ExpandableStorage ? 'Supported' : 'No');
 
-            document.getElementById('ps_DispSize').innerText = s.DisplaySize || p.DisplaySize || '-';
-            document.getElementById('ps_DispRes').innerText = s.Resolution || '-';
-            document.getElementById('ps_Refresh').innerText = s.RefreshRate || '-';
-            document.getElementById('ps_RearCam').innerText = s.PrimaryRearCameraMp || '-';
-            document.getElementById('ps_FrontCam').innerText = s.FrontCameraMp || '-';
+            setElText('ps_DispSize', s.DisplaySize || p.DisplaySize || '-');
+            setElText('ps_DispRes', s.Resolution || '-');
+            setElText('ps_Refresh', s.RefreshRate || '-');
+            setElText('ps_RearCam', s.PrimaryRearCameraMp || '-');
+            setElText('ps_FrontCam', s.FrontCameraMp || '-');
 
-            document.getElementById('ps_Battery').innerText = (s.BatteryCapacityMah && s.BatteryCapacityMah > 0) ? `${s.BatteryCapacityMah} mAh` : (p.BatteryCapacity || '-');
-            document.getElementById('ps_Charging').innerText = s.FastChargingWattage || '-';
-            document.getElementById('ps_5G').innerText = s.Network5G ? '5G Supported' : '4G LTE';
-            document.getElementById('ps_Sim').innerText = s.SimType || p.SimType || '-';
+            setElText('ps_Battery', (s.BatteryCapacityMah && s.BatteryCapacityMah > 0) ? `${s.BatteryCapacityMah} mAh` : (p.BatteryCapacity || '-'));
+            setElText('ps_Charging', s.FastChargingWattage || '-');
+            setElText('ps_5G', s.Network5G ? '5G Supported' : '4G LTE');
+            setElText('ps_Sim', s.SimType || p.SimType || '-');
 
-            document.getElementById('ps_OS').innerText = s.OperatingSystem || s.OsVersion || p.OperatingSystem || '-';
-            document.getElementById('ps_Biometrics').innerText = s.FingerprintSensor || '-';
-            document.getElementById('ps_IP').innerText = s.WaterResistance || '-';
-            document.getElementById('ps_NFC').innerText = s.Nfc ? 'Available' : 'No';
+            setElText('ps_OS', s.OperatingSystem || s.OsVersion || p.OperatingSystem || '-');
+            setElText('ps_Biometrics', s.FingerprintSensor || '-');
+            setElText('ps_IP', s.WaterResistance || '-');
+            setElText('ps_NFC', s.Nfc ? 'Available' : 'No');
 
-            // Images
-            const images = [];
-            if (p.ImageUrl) images.push(p.ImageUrl);
-            if (p.ImageUrls && Array.isArray(p.ImageUrls)) {
-                p.ImageUrls.forEach(img => { if (!images.includes(img)) images.push(img); });
+            const overviewTabBtn = document.querySelector('[data-bs-target="#mps-overview"]');
+            if (overviewTabBtn) {
+                const tab = bootstrap.Tab.getOrCreateInstance(overviewTabBtn);
+                tab.show();
             }
 
-            const mainImg = document.getElementById('ps_MainImg');
-            const thumbStrip = document.getElementById('ps_ThumbStrip');
-            thumbStrip.innerHTML = '';
+            const modalEl = document.getElementById('productSpecsModal');
+            if (modalEl) {
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+            }
+        }
 
-            if (images.length > 0) {
-                mainImg.src = images[0];
-                if (images.length > 1) {
-                    images.forEach((imgUrl, i) => {
+        // Gallery Carousel & Fullscreen Lightbox logic
+        window.activeGalleryImages = [];
+        window.activeGalleryIndex = 0;
+        window.activeColorName = '';
+        window.activeProductName = '';
+        window.fsGalleryIndex = 0;
+
+        window.updateGalleryView = function(index) {
+            const mainImg = document.getElementById('ps_MainImg');
+            const counterPill = document.getElementById('ps_ImageCounterPill');
+            const btnPrev = document.getElementById('ps_BtnPrevImg');
+            const btnNext = document.getElementById('ps_BtnNextImg');
+            const thumbStrip = document.getElementById('ps_ThumbStrip');
+
+            const imgs = window.activeGalleryImages || [];
+            if (imgs.length === 0) {
+                window.activeGalleryIndex = 0;
+                if (mainImg) {
+                    mainImg.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" viewBox="0 0 300 200"><rect width="300" height="200" fill="%231e293b"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2364748b" font-family="sans-serif" font-size="14">No Photo Available For This Color</text></svg>';
+                }
+                if (counterPill) counterPill.style.display = 'none';
+                if (btnPrev) btnPrev.style.display = 'none';
+                if (btnNext) btnNext.style.display = 'none';
+                if (thumbStrip) thumbStrip.innerHTML = '';
+                return;
+            }
+
+            window.activeGalleryIndex = Math.max(0, Math.min(index, imgs.length - 1));
+            const currentUrl = imgs[window.activeGalleryIndex];
+
+            if (mainImg) mainImg.src = currentUrl;
+
+            if (counterPill) {
+                counterPill.innerText = `${window.activeGalleryIndex + 1} / ${imgs.length}`;
+                counterPill.style.display = 'inline-block';
+            }
+
+            if (btnPrev) btnPrev.style.display = imgs.length > 1 ? 'flex' : 'none';
+            if (btnNext) btnNext.style.display = imgs.length > 1 ? 'flex' : 'none';
+
+            if (thumbStrip) {
+                thumbStrip.innerHTML = '';
+                if (imgs.length > 1) {
+                    imgs.forEach((imgUrl, i) => {
                         const thumb = document.createElement('img');
                         thumb.src = imgUrl;
-                        thumb.className = `rounded thumb-img ${i === 0 ? 'active-thumb' : ''}`;
-                        thumb.style.cssText = 'width:42px;height:42px;object-fit:cover;cursor:pointer;border:2px solid var(--border)';
+                        thumb.className = `rounded thumb-img ${i === window.activeGalleryIndex ? 'active-thumb' : ''}`;
+                        thumb.style.cssText = `width:44px;height:44px;object-fit:cover;cursor:pointer;border:2px solid ${i === window.activeGalleryIndex ? 'var(--primary)' : 'var(--border)'};border-radius:8px;transition:all 0.2s var(--ease)`;
                         thumb.onclick = function() {
-                            mainImg.src = imgUrl;
-                            thumbStrip.querySelectorAll('img').forEach(t => t.style.borderColor = 'var(--border)');
-                            this.style.borderColor = 'var(--primary)';
+                            updateGalleryView(i);
                         };
                         thumbStrip.appendChild(thumb);
                     });
                 }
+            }
+        };
+
+        window.navigateGalleryImg = function(delta) {
+            const imgs = window.activeGalleryImages || [];
+            if (imgs.length <= 1) return;
+            let nextIndex = window.activeGalleryIndex + delta;
+            if (nextIndex < 0) nextIndex = imgs.length - 1;
+            if (nextIndex >= imgs.length) nextIndex = 0;
+            updateGalleryView(nextIndex);
+        };
+
+        window.openFullscreenGalleryModal = function() {
+            const imgs = window.activeGalleryImages || [];
+            if (imgs.length === 0) return;
+            window.fsGalleryIndex = window.activeGalleryIndex || 0;
+
+            const p = window.activeModalProduct || {};
+            const titleEl = document.getElementById('fs_Title');
+            if (titleEl) {
+                const colorStr = window.activeColorName ? ` (${window.activeColorName})` : '';
+                titleEl.innerText = `${p.Name || 'Product Image'}${colorStr}`;
+            }
+
+            renderFsGalleryView(window.fsGalleryIndex);
+
+            const modalEl = document.getElementById('fullscreenImageModal');
+            if (modalEl) {
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+            }
+        };
+
+        window.renderFsGalleryView = function(index) {
+            const imgs = window.activeGalleryImages || [];
+            if (imgs.length === 0) return;
+            window.fsGalleryIndex = (index + imgs.length) % imgs.length;
+
+            const fsMainImg = document.getElementById('fs_MainImg');
+            if (fsMainImg) fsMainImg.src = imgs[window.fsGalleryIndex];
+
+            const fsCounter = document.getElementById('fs_Counter');
+            if (fsCounter) fsCounter.innerText = `Image ${window.fsGalleryIndex + 1} of ${imgs.length}`;
+
+            const fsPrev = document.getElementById('fs_BtnPrev');
+            const fsNext = document.getElementById('fs_BtnNext');
+            if (fsPrev) fsPrev.style.display = imgs.length > 1 ? 'flex' : 'none';
+            if (fsNext) fsNext.style.display = imgs.length > 1 ? 'flex' : 'none';
+
+            const fsThumbStrip = document.getElementById('fs_ThumbStrip');
+            if (fsThumbStrip) {
+                fsThumbStrip.innerHTML = '';
+                if (imgs.length > 1) {
+                    imgs.forEach((imgUrl, i) => {
+                        const thumb = document.createElement('img');
+                        thumb.src = imgUrl;
+                        thumb.style.cssText = `width:56px;height:56px;object-fit:cover;border-radius:10px;cursor:pointer;border:2px solid ${i === window.fsGalleryIndex ? 'var(--primary)' : 'rgba(255,255,255,0.2)'};transition:all 0.2s var(--ease)`;
+                        thumb.onclick = () => renderFsGalleryView(i);
+                        fsThumbStrip.appendChild(thumb);
+                    });
+                }
+            }
+        };
+
+        window.navigateFsGallery = function(delta) {
+            renderFsGalleryView(window.fsGalleryIndex + delta);
+        };
+
+        // Keyboard arrow key listener for smooth carousel swiping
+        document.addEventListener('keydown', function(e) {
+            const fsModal = document.getElementById('fullscreenImageModal');
+            if (fsModal && fsModal.classList.contains('show')) {
+                if (e.key === 'ArrowLeft') {
+                    navigateFsGallery(-1);
+                } else if (e.key === 'ArrowRight') {
+                    navigateFsGallery(1);
+                }
             } else {
-                mainImg.src = 'https://placehold.co/400x300?text=No+Photo';
+                const psModal = document.getElementById('productSpecsModal');
+                if (psModal && psModal.classList.contains('show')) {
+                    if (e.key === 'ArrowLeft') {
+                        navigateGalleryImg(-1);
+                    } else if (e.key === 'ArrowRight') {
+                        navigateGalleryImg(1);
+                    }
+                }
             }
-
-            const overviewTabBtn = document.querySelector('[data-bs-target="#mps-overview"]');
-            if (overviewTabBtn) {
-                const tab = new bootstrap.Tab(overviewTabBtn);
-                tab.show();
-            }
-
-            const modal = new bootstrap.Modal(document.getElementById('productSpecsModal'));
-            modal.show();
-        }
+        });
 
         // Supplier Modal Inspection
         function openDirectSupplierModal(supOrId) {
