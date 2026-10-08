@@ -94,13 +94,9 @@
                                         <a href="@Url.Action("TenantDetails", "PlatformAdmin", new { id = tenant.Id })" class="btn btn-outline-primary shadow-sm" title="View Shop Details">
                                             <i class="bi bi-eye me-1"></i>View Details
                                         </a>
-                                        <form method="post" action="@Url.Action("DeleteTenant", "PlatformAdmin")" class="d-inline" onsubmit="return confirm('⚠️ ARE YOU SURE YOU WANT TO PERMANENTLY DELETE SHOP \'@tenant.ShopName\' (@tenant.TenantCode)?\n\nThis will permanently erase all associated products, inventory, sales, employees, and licenses! This action CANNOT be undone.');">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="tenantId" value="@tenant.Id" />
-                                            <button type="submit" class="btn btn-outline-danger shadow-sm ms-1" title="Delete Shop">
-                                                <i class="bi bi-trash me-1"></i>Delete
-                                            </button>
-                                        </form>
+                                        <button type="button" class="btn btn-outline-danger shadow-sm ms-1" onclick="openDeleteShopModal('@tenant.Id', '@tenant.ShopName', '@tenant.TenantCode')" title="Delete Shop">
+                                            <i class="bi bi-trash me-1"></i>Delete
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -117,4 +113,53 @@
         </div>
     </div>
 </div>
+
+<!-- Security Verification Modal for Shop Deletion -->
+<div class="modal fade" id="deleteTenantListModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-light border-danger shadow-lg">
+            <div class="modal-header border-secondary bg-danger bg-opacity-25 text-danger">
+                <h5 class="modal-title font-display fw-bold mb-0">
+                    <i class="bi bi-shield-lock-fill me-2"></i>Security Check — Confirm Shop Deletion
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="@Url.Action("DeleteTenant", "PlatformAdmin")">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="tenantId" id="delTenantId" value="" />
+                <div class="modal-body p-4">
+                    <div class="alert alert-danger border-danger text-light mb-3 fs-7">
+                        <i class="bi bi-exclamation-triangle-fill text-danger me-2 fs-6"></i>
+                        <strong>PERMANENT ACTION:</strong> Deleting <strong id="delTenantName">Shop</strong> (<span id="delTenantCode"></span>) will erase all inventory, sales, products, suppliers, customers, and user accounts.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-light font-mono fw-bold fs-7">Enter SaaS Super Admin Password:</label>
+                        <input type="password" name="adminPassword" class="form-control bg-dark border-danger text-light py-2" required placeholder="Super Admin Password..." autocomplete="current-password" />
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary justify-content-between">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger shadow-sm fw-bold">
+                        <i class="bi bi-trash-fill me-1"></i> Confirm & Delete Shop
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function openDeleteShopModal(id, name, code) {
+            document.getElementById('delTenantId').value = id;
+            document.getElementById('delTenantName').innerText = name;
+            document.getElementById('delTenantCode').innerText = code;
+            const modalEl = document.getElementById('deleteTenantListModal');
+            if (modalEl) {
+                const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                bsModal.show();
+            }
+        }
+    </script>
+}
 

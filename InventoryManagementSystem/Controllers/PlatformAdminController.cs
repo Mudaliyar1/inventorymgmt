@@ -233,8 +233,35 @@ namespace InventoryManagementSystem.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteTenant(string tenantId)
+        public async Task<IActionResult> DeleteTenant(string tenantId, string adminPassword, string? returnUrl = null)
         {
+            if (string.IsNullOrWhiteSpace(adminPassword))
+            {
+                TempData["ToastMessage"] = "Security Check Failed: Super Admin password is required to delete a shop.";
+                TempData["ToastType"] = "danger";
+                return RedirectToAction(nameof(Tenants));
+            }
+
+            // Verify Super Admin Password
+            var currentUsername = User.Identity?.Name;
+            var superAdmin = await _context.Users.Find(u => u.Role == Role.SuperAdmin && (u.Username == currentUsername || u.Email == currentUsername)).FirstOrDefaultAsync();
+
+            if (superAdmin == null)
+            {
+                superAdmin = await _context.Users.Find(u => u.Role == Role.SuperAdmin).FirstOrDefaultAsync();
+            }
+
+            if (superAdmin == null || string.IsNullOrEmpty(superAdmin.PasswordHash) || !BCrypt.Net.BCrypt.Verify(adminPassword, superAdmin.PasswordHash))
+            {
+                TempData["ToastMessage"] = "Security Check Failed: Incorrect Super Admin Password. Shop deletion cancelled.";
+                TempData["ToastType"] = "danger";
+                if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+                {
+                    return Redirect(returnUrl);
+                }
+                return RedirectToAction(nameof(Tenants));
+            }
+
             var tenant = await _context.Tenants.Find(t => t.Id == tenantId).FirstOrDefaultAsync();
             if (tenant == null)
             {
