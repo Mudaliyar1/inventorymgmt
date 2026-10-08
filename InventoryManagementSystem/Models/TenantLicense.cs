@@ -4,6 +4,7 @@ using System;
 
 namespace InventoryManagementSystem.Models
 {
+    [BsonIgnoreExtraElements]
     public class TenantLicense
     {
         [BsonId]

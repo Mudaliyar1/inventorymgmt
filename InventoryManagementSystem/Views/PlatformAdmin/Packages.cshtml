@@ -76,6 +76,9 @@
                             <small class="text-uppercase text-muted font-mono fw-bold d-block mb-1">Resource Limits:</small>
                             <div class="d-flex flex-wrap gap-2 text-light">
                                 <span class="badge bg-dark border border-secondary text-light">
+                                    <i class="bi bi-shield-lock text-warning me-1"></i>Admins: @(pkg.MaxAdmins > 0 ? pkg.MaxAdmins.ToString() : "Unlimited")
+                                </span>
+                                <span class="badge bg-dark border border-secondary text-light">
                                     <i class="bi bi-people text-info me-1"></i>Staff: @(pkg.MaxEmployees > 0 ? pkg.MaxEmployees.ToString() : "Unlimited")
                                 </span>
                                 <span class="badge bg-dark border border-secondary text-light">

@@ -16,30 +16,47 @@ namespace InventoryManagementSystem.Controllers
         private readonly IAuditLogService _auditLogService;
         private readonly IPermissionService _permissionService;
         private readonly IAccountValidationService _accountValidationService;
+        private readonly ILicenseService _licenseService;
 
         public AdminController(
             IUserRepository userRepository,
             IAuditLogService auditLogService,
             IPermissionService permissionService,
-            IAccountValidationService accountValidationService)
+            IAccountValidationService accountValidationService,
+            ILicenseService licenseService)
         {
             _userRepository = userRepository;
             _auditLogService = auditLogService;
             _permissionService = permissionService;
             _accountValidationService = accountValidationService;
+            _licenseService = licenseService;
         }
 
         [HttpGet]
         public async Task<IActionResult> Index()
         {
+            var tenantId = User.FindFirst("TenantId")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.GroupSid)?.Value;
+            var limitCheck = await _licenseService.CheckPackageLimitAsync(tenantId ?? string.Empty, "Admins");
+            ViewBag.LimitReached = !limitCheck.Allowed;
+            ViewBag.LimitMessage = limitCheck.Message;
+
             var allUsers = await _userRepository.GetAllAsync();
-            var admins = allUsers.Where(u => u.Role == Role.Admin).OrderByDescending(u => u.CreatedDate);
+            var admins = allUsers.Where(u => u.Role == Role.Admin && u.Role != Role.SuperAdmin).OrderByDescending(u => u.CreatedDate);
             return View(admins);
         }
 
         [HttpGet]
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
+            var tenantId = User.FindFirst("TenantId")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.GroupSid)?.Value;
+            var limitCheck = await _licenseService.CheckPackageLimitAsync(tenantId ?? string.Empty, "Admins");
+            if (!limitCheck.Allowed)
+            {
+                TempData["ToastMessage"] = limitCheck.Message;
+                TempData["ToastType"] = "warning";
+                return RedirectToAction(nameof(Index));
+            }
+
             var nextAdminId = $"ADM-{Random.Shared.Next(1000, 9999)}";
             return View(new User { EmployeeId = nextAdminId, Role = Role.Admin });
         }
@@ -48,6 +65,16 @@ namespace InventoryManagementSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(User model, string rawPassword)
         {
+            var tenantId = User.FindFirst("TenantId")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.GroupSid)?.Value;
+            var limitCheck = await _licenseService.CheckPackageLimitAsync(tenantId ?? string.Empty, "Admins");
+            if (!limitCheck.Allowed)
+            {
+                ModelState.AddModelError(string.Empty, limitCheck.Message);
+                TempData["ToastMessage"] = limitCheck.Message;
+                TempData["ToastType"] = "danger";
+                return View(model);
+            }
+
             if (!string.IsNullOrWhiteSpace(model.Email) && await _accountValidationService.IsEmailAlreadyRegisteredAsync(model.Email))
             {
                 ModelState.AddModelError(nameof(model.Email), "This email address is already registered with another account.");
@@ -74,6 +101,7 @@ namespace InventoryManagementSystem.Controllers
             }
 
             model.Role = Role.Admin;
+            model.TenantId = tenantId;
             model.PasswordHash = BCrypt.Net.BCrypt.HashPassword(rawPassword);
             model.Permissions = new List<string>();
             model.PermissionVersion = 1;
@@ -83,10 +111,10 @@ namespace InventoryManagementSystem.Controllers
             await _userRepository.CreateAsync(model);
             await _auditLogService.LogEmployeeActivityAsync(
                 "Administrator Registered", "Administrator Management", $"Admin: {model.FullName} ({model.Username})",
-                $"Created new Super Administrator account (ID: {model.EmployeeId}) with full unrestricted system privileges."
+                $"Created new Shop Administrator account (ID: {model.EmployeeId}) with shop administrative privileges."
             );
 
-            TempData["ToastMessage"] = $"Super Administrator account ({model.EmployeeId}) created successfully!";
+            TempData["ToastMessage"] = $"Shop Administrator account ({model.EmployeeId}) created successfully!";
             TempData["ToastType"] = "success";
             return RedirectToAction(nameof(Index));
         }

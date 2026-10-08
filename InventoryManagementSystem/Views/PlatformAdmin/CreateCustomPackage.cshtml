@@ -1,0 +1,310 @@
+@model SubscriptionPackage
+@{
+    ViewData["Title"] = "Create Custom Shop Package";
+    var groupedFeatures = ViewBag.GroupedFeatures as Dictionary<string, List<FeatureDefinition>> ?? new Dictionary<string, List<FeatureDefinition>>();
+    var totalFeatureCount = groupedFeatures.Values.Sum(list => list.Count);
+    var tenants = ViewBag.Tenants as List<InventoryManagementSystem.Models.Tenant> ?? new List<InventoryManagementSystem.Models.Tenant>();
+    var targetTenantId = ViewBag.TargetTenantId as string;
+    var targetTenant = ViewBag.TargetTenant as InventoryManagementSystem.Models.Tenant;
+}
+
+<div class="ph">
+    <div>
+        <h1 class="ph-title"><i class="bi bi-award-fill text-purple me-2" style="color:#a855f7;"></i>Create Custom Shop Package</h1>
+        <p class="ph-sub">Design a dedicated, tailored subscription package for a specific shop. This package will remain private and hidden from public visitors.</p>
+    </div>
+    <div class="ph-actions">
+        <a href="@Url.Action("CustomPackages", "PlatformAdmin")" class="btn-d btn-outline">
+            <i class="bi bi-arrow-left me-1"></i> Back to Custom Packages
+        </a>
+    </div>
+</div>
+
+<form asp-action="CreateCustomPackage" method="post" id="customPackageForm">
+    @Html.AntiForgeryToken()
+    <input type="hidden" asp-for="IsCustom" value="true" />
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger mb-4"></div>
+
+    <div class="row g-4">
+        <!-- Left Column: Shop Assignment & Custom Package Details -->
+        <div class="col-lg-4">
+            <div class="glass-card p-4 mb-4 border-purple" style="border-color:#a855f7 !important;">
+                <h5 class="fw-bold text-light mb-3">
+                    <i class="bi bi-shop text-purple me-2" style="color:#a855f7;"></i>Target Shop Assignment
+                </h5>
+
+                <div class="mb-3">
+                    <label class="fg-label">Select Target Shop <span class="text-danger">*</span></label>
+                    <select asp-for="AssignedTenantId" class="fg-control form-select bg-dark border-secondary text-light" id="assignedTenantSelect">
+                        <option value="">-- General Custom (Unassigned) --</option>
+                        @foreach (var t in tenants)
+                        {
+                            <option value="@t.Id" selected="@(t.Id == targetTenantId)">@t.ShopName (@t.TenantCode) — @t.ContactEmail</option>
+                        }
+                    </select>
+                    <small class="text-muted fs-8 d-block mt-1">Select which shop this custom package is specifically tailored for.</small>
+                </div>
+
+                <div class="form-check form-switch p-3 bg-dark bg-opacity-50 rounded border border-secondary mb-3">
+                    <input class="form-check-input ms-0 me-2" type="checkbox" name="allotNow" value="true" id="allotNowSwitch" checked />
+                    <label class="form-check-label text-success fw-bold fs-7" for="allotNowSwitch">
+                        Immediately Allot to Shop & Renew License
+                    </label>
+                </div>
+
+                <div class="mb-3">
+                    <label class="fg-label">Initial License Duration (Days)</label>
+                    <select name="extensionDays" class="fg-control form-select bg-dark border-secondary text-light">
+                        <option value="30">30 Days (1 Month)</option>
+                        <option value="90">90 Days (3 Months)</option>
+                        <option value="180">180 Days (6 Months)</option>
+                        <option value="365" selected>365 Days (1 Year)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="glass-card p-4 mb-4">
+                <h5 class="fw-bold text-light mb-3">
+                    <i class="bi bi-info-circle text-primary me-2"></i>Custom Package Information
+                </h5>
+
+                <div class="mb-3">
+                    <label class="fg-label">Custom Package Name <span class="text-danger">*</span></label>
+                    <input asp-for="Name" class="fg-control" placeholder="e.g. VIP Plan - Mobile Galaxy" required id="pkgNameInput" />
+                    <span asp-validation-for="Name" class="text-danger fs-7"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label class="fg-label">Description</label>
+                    <textarea asp-for="Description" class="fg-control" rows="3" placeholder="Tailored package details and custom agreement terms" id="pkgDescInput"></textarea>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="fg-label">Monthly Rate (₹) <span class="text-danger">*</span></label>
+                        <input asp-for="MonthlyPrice" type="number" step="1" class="fg-control" placeholder="2999" required id="pkgMonthlyPriceInput" />
+                    </div>
+                    <div class="col-6">
+                        <label class="fg-label">Yearly Rate (₹)</label>
+                        <input asp-for="YearlyPrice" type="number" step="1" class="fg-control" placeholder="29990" id="pkgYearlyPriceInput" />
+                    </div>
+                </div>
+
+                <h6 class="fw-bold text-info fs-7 uppercase font-mono mt-4 mb-3">Resource Capacity Limits</h6>
+
+                <div class="mb-2">
+                    <label class="fg-label">Max Shop Admins <small class="text-muted">(0 for Unlimited)</small></label>
+                    <input asp-for="MaxAdmins" type="number" class="fg-control" placeholder="2" />
+                </div>
+
+                <div class="mb-2">
+                    <label class="fg-label">Max Staff Employees <small class="text-muted">(0 for Unlimited)</small></label>
+                    <input asp-for="MaxEmployees" type="number" class="fg-control" placeholder="25" />
+                </div>
+
+                <div class="mb-2">
+                    <label class="fg-label">Max Product Catalog <small class="text-muted">(0 for Unlimited)</small></label>
+                    <input asp-for="MaxProducts" type="number" class="fg-control" placeholder="15000" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="fg-label">Max Suppliers Directory <small class="text-muted">(0 for Unlimited)</small></label>
+                    <input asp-for="MaxSuppliers" type="number" class="fg-control" placeholder="250" />
+                </div>
+
+                <div class="d-flex align-items-center gap-4 mt-4 pt-3 border-top border-secondary">
+                    <div class="form-check form-switch">
+                        <input asp-for="IsActive" class="form-check-input" type="checkbox" id="isActiveSwitch" checked />
+                        <label class="form-check-label text-light fs-7" for="isActiveSwitch">Active Package</label>
+                    </div>
+                </div>
+
+                <div class="mt-4 d-grid gap-2">
+                    <button type="submit" class="btn btn-primary fw-bold py-2" style="background-color:#a855f7; border-color:#a855f7;">
+                        <i class="bi bi-check-circle me-1"></i> Save & Allot Custom Package
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Interactive Feature & Module Selector Matrix -->
+        <div class="col-lg-8">
+            <div class="glass-card p-4">
+                <div class="d-flex flex-wrap align-items-center justify-content-between pb-3 mb-4 border-bottom border-secondary gap-3">
+                    <div>
+                        <h5 class="fw-bold text-light mb-1">
+                            <i class="bi bi-sliders text-purple me-2" style="color:#a855f7;"></i>Features Included
+                        </h5>
+                        <p class="text-muted fs-7 mb-0">Select the actual Shop Admin dashboard navigation modules enabled for this package.</p>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-purple text-white font-mono px-3 py-2" id="selectedFeaturesCountBadge" style="background-color:#a855f7 !important;">
+                            @totalFeatureCount of @totalFeatureCount features selected
+                        </span>
+                        <button type="button" class="btn btn-sm btn-outline-light" id="btnToggleSelectAllFeatures">
+                            Deselect All
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Search Input -->
+                <div class="mb-4">
+                    <div class="input-group">
+                        <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-search"></i></span>
+                        <input type="text" id="featureSearchInput" class="form-control bg-dark border-secondary text-light" placeholder="Search feature name or description..." />
+                    </div>
+                </div>
+
+                <!-- Accordion of Modules & Features -->
+                <div class="accordion" id="featuresAccordion">
+                    @{
+                        int moduleIdx = 0;
+                    }
+                    @foreach (var group in groupedFeatures)
+                    {
+                        moduleIdx++;
+                        var moduleName = group.Key;
+                        var features = group.Value;
+                        var collapseId = $"collapseModule_{moduleIdx}";
+                        var headingId = $"headingModule_{moduleIdx}";
+
+                        <div class="accordion-item bg-dark border-secondary mb-3 rounded overflow-hidden feature-group-container">
+                            <h2 class="accordion-header" id="@headingId">
+                                <div class="accordion-button bg-dark text-light border-0 py-3 px-4 d-flex align-items-center justify-content-between w-100"
+                                     data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="true" aria-controls="@collapseId">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="form-check form-switch mb-0" onclick="event.stopPropagation();">
+                                            <input class="form-check-input module-group-switch" type="checkbox" checked
+                                                   data-module-id="@collapseId" title="Select/Deselect all features in @moduleName" />
+                                        </div>
+                                        <div>
+                                            <span class="fw-bold text-uppercase font-mono text-warning fs-7 d-block">@moduleName</span>
+                                            <small class="text-muted font-mono module-feature-counter" id="counter_@collapseId">
+                                                @features.Count / @features.Count Selected
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </h2>
+
+                            <div id="@collapseId" class="accordion-collapse collapse show" aria-labelledby="@headingId" data-bs-parent="#featuresAccordion">
+                                <div class="accordion-body bg-dark bg-opacity-75 pt-2 pb-3 px-4 border-top border-secondary">
+                                    <div class="row g-3">
+                                        @foreach (var feat in features)
+                                        {
+                                            <div class="col-md-6 feature-item-col" data-feature-name="@feat.FeatureName.ToLower()" data-feature-desc="@feat.Description.ToLower()">
+                                                <div class="p-3 border border-secondary rounded bg-dark bg-opacity-50 h-100 d-flex gap-3 align-items-start feature-card">
+                                                    <div class="form-check form-switch mb-0 mt-1">
+                                                        <input class="form-check-input feature-item-switch" type="checkbox"
+                                                               name="selectedFeatures" value="@feat.FeatureKey" checked
+                                                               id="feat_@feat.FeatureKey" data-module-id="@collapseId" />
+                                                    </div>
+                                                    <div>
+                                                        <label class="form-check-label text-light fw-bold fs-6 d-block mb-1 cursor-pointer" for="feat_@feat.FeatureKey">
+                                                            @feat.FeatureName
+                                                        </label>
+                                                        <span class="badge bg-secondary font-mono fs-8 mb-1">@feat.FeatureKey</span>
+                                                        <p class="text-muted fs-7 mb-0 leading-tight">@feat.Description</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const featureSwitches = document.querySelectorAll('.feature-item-switch');
+            const moduleGroupSwitches = document.querySelectorAll('.module-group-switch');
+            const selectedBadge = document.getElementById('selectedFeaturesCountBadge');
+            const toggleSelectAllBtn = document.getElementById('btnToggleSelectAllFeatures');
+            const featureSearchInput = document.getElementById('featureSearchInput');
+            const totalFeatures = featureSwitches.length;
+
+            function updateCounts() {
+                let totalSelected = 0;
+                featureSwitches.forEach(sw => {
+                    if (sw.checked) totalSelected++;
+                });
+
+                if (selectedBadge) {
+                    selectedBadge.innerText = `${totalSelected} of ${totalFeatures} features selected`;
+                }
+
+                if (toggleSelectAllBtn) {
+                    toggleSelectAllBtn.innerText = (totalSelected === totalFeatures) ? 'Deselect All' : 'Select All Features';
+                }
+
+                moduleGroupSwitches.forEach(modSw => {
+                    const modId = modSw.getAttribute('data-module-id');
+                    const modFeatureSwitches = document.querySelectorAll(`.feature-item-switch[data-module-id="${modId}"]`);
+                    let modSelected = 0;
+                    modFeatureSwitches.forEach(sw => {
+                        if (sw.checked) modSelected++;
+                    });
+
+                    modSw.checked = modSelected > 0;
+                    modSw.indeterminate = (modSelected > 0 && modSelected < modFeatureSwitches.length);
+
+                    const counterEl = document.getElementById(`counter_${modId}`);
+                    if (counterEl) {
+                        counterEl.innerText = `${modSelected} / ${modFeatureSwitches.length} Selected`;
+                    }
+                });
+            }
+
+            featureSwitches.forEach(sw => sw.addEventListener('change', updateCounts));
+
+            moduleGroupSwitches.forEach(modSw => {
+                modSw.addEventListener('change', function () {
+                    const modId = this.getAttribute('data-module-id');
+                    const modFeatureSwitches = document.querySelectorAll(`.feature-item-switch[data-module-id="${modId}"]`);
+                    modFeatureSwitches.forEach(sw => {
+                        sw.checked = this.checked;
+                    });
+                    updateCounts();
+                });
+            });
+
+            if (toggleSelectAllBtn) {
+                toggleSelectAllBtn.addEventListener('click', function () {
+                    const allSelected = Array.from(featureSwitches).every(sw => sw.checked);
+                    featureSwitches.forEach(sw => {
+                        sw.checked = !allSelected;
+                    });
+                    updateCounts();
+                });
+            }
+
+            if (featureSearchInput) {
+                featureSearchInput.addEventListener('input', function () {
+                    const query = this.value.toLowerCase().trim();
+                    const cols = document.querySelectorAll('.feature-item-col');
+
+                    cols.forEach(col => {
+                        const name = col.getAttribute('data-feature-name') || '';
+                        const desc = col.getAttribute('data-feature-desc') || '';
+                        if (name.includes(query) || desc.includes(query)) {
+                            col.style.display = '';
+                        } else {
+                            col.style.display = 'none';
+                        }
+                    });
+                });
+            }
+
+            updateCounts();
+        });
+    </script>
+}

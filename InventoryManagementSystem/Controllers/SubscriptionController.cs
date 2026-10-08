@@ -27,7 +27,7 @@ namespace InventoryManagementSystem.Controllers
             var tenantId = User.FindFirst("TenantId")?.Value ?? User.FindFirst(ClaimTypes.GroupSid)?.Value;
             var currentPackage = await _licenseService.GetTenantPackageAsync(tenantId ?? string.Empty);
             var activeLicense = await _licenseService.GetActiveLicenseAsync(tenantId ?? string.Empty);
-            var allPackages = await _licenseService.GetAllPackagesAsync();
+            var allPackages = await _licenseService.GetPublicPackagesAsync();
             var groupedFeatures = await _featureCatalogService.GetGroupedFeaturesAsync();
             var allFeatures = await _featureCatalogService.GetActiveFeaturesAsync();
 

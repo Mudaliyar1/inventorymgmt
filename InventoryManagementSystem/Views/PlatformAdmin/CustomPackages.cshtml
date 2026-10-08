@@ -1,0 +1,290 @@
+@model IEnumerable<InventoryManagementSystem.Models.SubscriptionPackage>
+@{
+    ViewData["Title"] = "Super Admin — Custom Shop Packages";
+    var tenantDict = ViewBag.Tenants as Dictionary<string, InventoryManagementSystem.Models.Tenant> ?? new Dictionary<string, InventoryManagementSystem.Models.Tenant>();
+    var subscriberCounts = ViewBag.SubscriberCounts as Dictionary<string, int> ?? new Dictionary<string, int>();
+    var allTenantsList = ViewBag.AllTenantsList as List<InventoryManagementSystem.Models.Tenant> ?? new List<InventoryManagementSystem.Models.Tenant>();
+    var groupedFeatures = ViewBag.GroupedFeatures as Dictionary<string, List<InventoryManagementSystem.Models.FeatureDefinition>> ?? new Dictionary<string, List<InventoryManagementSystem.Models.FeatureDefinition>>();
+}
+
+<div class="ph">
+    <div>
+        <h1 class="ph-title"><i class="bi bi-award-fill text-purple me-2" style="color:#a855f7;"></i>Custom Shop Packages</h1>
+        <p class="ph-sub">Manage shop-specific custom pricing and feature packages. These packages are hidden from the public pricing page and visible only in SaaS Admin.</p>
+    </div>
+    <div class="ph-actions">
+        <a href="@Url.Action("CreateCustomPackage", "PlatformAdmin")" class="btn-d btn-primary fw-bold" style="background-color:#a855f7; border-color:#a855f7;">
+            <i class="bi bi-plus-lg me-1"></i> Create Custom Package
+        </a>
+    </div>
+</div>
+
+<!-- Metrics Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="glass-card p-3 d-flex align-items-center justify-content-between">
+            <div>
+                <small class="text-muted font-mono text-uppercase">Total Custom Packages</small>
+                <h3 class="font-display fw-bold text-light mb-0">@(Model != null ? Model.Count() : 0)</h3>
+            </div>
+            <div class="p-3 rounded-circle bg-purple bg-opacity-25 text-purple" style="color:#a855f7;">
+                <i class="bi bi-sliders fs-3"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="glass-card p-3 d-flex align-items-center justify-content-between">
+            <div>
+                <small class="text-muted font-mono text-uppercase">Assigned Shops</small>
+                <h3 class="font-display fw-bold text-success mb-0">
+                    @(Model != null ? Model.Count(p => !string.IsNullOrEmpty(p.AssignedTenantId)) : 0)
+                </h3>
+            </div>
+            <div class="p-3 rounded-circle bg-success bg-opacity-25 text-success">
+                <i class="bi bi-shop fs-3"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="glass-card p-3 d-flex align-items-center justify-content-between">
+            <div>
+                <small class="text-muted font-mono text-uppercase">Public Visibility</small>
+                <h3 class="font-display fw-bold text-info mb-0">Hidden <i class="bi bi-eye-slash-fill ms-1 fs-5 text-warning"></i></h3>
+            </div>
+            <div class="p-3 rounded-circle bg-info bg-opacity-25 text-info">
+                <i class="bi bi-shield-lock fs-3"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Custom Packages Table -->
+<div class="glass-card p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="font-display fw-bold text-light mb-0"><i class="bi bi-list-stars me-2 text-purple" style="color:#a855f7;"></i>Custom Package Directory</h5>
+        <span class="badge bg-purple bg-opacity-25 border border-purple text-purple px-3 py-2" style="color:#a855f7;">
+            <i class="bi bi-info-circle me-1"></i> Dedicated Shop Licenses
+        </span>
+    </div>
+
+    @if (Model != null && Model.Any())
+    {
+        <div class="table-responsive">
+            <table class="table table-dark table-hover align-middle mb-0 fs-7">
+                <thead>
+                    <tr class="text-muted font-mono">
+                        <th>Package Name</th>
+                        <th>Assigned Shop</th>
+                        <th>Features Included</th>
+                        <th>Pricing Rates</th>
+                        <th>Resource Limits</th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var pkg in Model)
+                    {
+                        var assignedTenant = !string.IsNullOrEmpty(pkg.AssignedTenantId) && tenantDict.ContainsKey(pkg.AssignedTenantId)
+                            ? tenantDict[pkg.AssignedTenantId]
+                            : null;
+                        var activeSubscribers = subscriberCounts.ContainsKey(pkg.Id) ? subscriberCounts[pkg.Id] : 0;
+                        var featList = pkg.EnabledFeatures ?? pkg.EnabledModules ?? new List<string>();
+
+                        <tr>
+                            <td>
+                                <div class="fw-bold text-light fs-6">@pkg.Name</div>
+                                <small class="text-muted d-block text-truncate" style="max-width: 250px;">@pkg.Description</small>
+                                <span class="badge bg-dark border border-purple text-purple font-mono mt-1" style="color:#c084fc; border-color:#a855f7 !important;">
+                                    <i class="bi bi-star-fill me-1"></i>CUSTOM VIP
+                                </span>
+                            </td>
+                            <td>
+                                @if (assignedTenant != null)
+                                {
+                                    <a href="@Url.Action("TenantDetails", "PlatformAdmin", new { id = assignedTenant.Id })" class="text-decoration-none">
+                                        <div class="fw-bold text-info"><i class="bi bi-shop me-1"></i>@assignedTenant.ShopName</div>
+                                        <small class="text-muted font-mono">Code: @assignedTenant.TenantCode</small>
+                                    </a>
+                                }
+                                else if (activeSubscribers > 0)
+                                {
+                                    <span class="badge bg-info bg-opacity-25 text-info">
+                                        <i class="bi bi-shop me-1"></i>In use by @activeSubscribers shop(s)
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary font-mono">Unassigned</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="fw-bold text-warning font-mono">
+                                    <i class="bi bi-ui-checks me-1"></i>@featList.Count Features
+                                </div>
+                                <button type="button" class="btn btn-link text-info p-0 fs-8 text-decoration-none" 
+                                        onclick="showFeaturesModal('@pkg.Name', @System.Text.Json.JsonSerializer.Serialize(featList))">
+                                    <i class="bi bi-eye me-1"></i>View Module List
+                                </button>
+                            </td>
+                            <td>
+                                <div class="font-mono text-success fw-bold">₹@pkg.MonthlyPrice/mo</div>
+                                <small class="text-muted font-mono d-block">₹@pkg.YearlyPrice/yr</small>
+                            </td>
+                            <td>
+                                <div class="fs-8 text-muted">
+                                    <div><i class="bi bi-shield-lock me-1 text-warning"></i>Admins: <strong>@(pkg.MaxAdmins > 0 ? pkg.MaxAdmins.ToString() : "∞")</strong></div>
+                                    <div><i class="bi bi-people me-1 text-info"></i>Staff: <strong>@(pkg.MaxEmployees > 0 ? pkg.MaxEmployees.ToString() : "∞")</strong></div>
+                                    <div><i class="bi bi-box-seam me-1 text-info"></i>Products: <strong>@(pkg.MaxProducts > 0 ? pkg.MaxProducts.ToString() : "∞")</strong></div>
+                                    <div><i class="bi bi-truck me-1 text-info"></i>Suppliers: <strong>@(pkg.MaxSuppliers > 0 ? pkg.MaxSuppliers.ToString() : "∞")</strong></div>
+                                </div>
+                            </td>
+                            <td>
+                                <form asp-action="TogglePackageActive" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@pkg.Id" />
+                                    <button type="submit" class="btn btn-sm border-0 p-0" title="Click to toggle status">
+                                        <span class="badge @(pkg.IsActive ? "bg-success" : "bg-danger") font-mono">
+                                            @(pkg.IsActive ? "Active" : "Inactive")
+                                        </span>
+                                    </button>
+                                </form>
+                            </td>
+                            <td class="text-end">
+                                <div class="d-flex justify-content-end gap-1">
+                                    <button type="button" class="btn btn-sm btn-outline-success" 
+                                            onclick="openAllotModal('@pkg.Id', '@pkg.Name', '@(pkg.AssignedTenantId ?? "")')" 
+                                            title="Allot to particular shop">
+                                        <i class="bi bi-check-circle me-1"></i> Allot to Shop
+                                    </button>
+                                    <a href="@Url.Action("EditPackage", "PlatformAdmin", new { id = pkg.Id })" class="btn btn-sm btn-outline-warning" title="Edit Custom Package">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <form asp-action="DeletePackage" method="post" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this custom package?');">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@pkg.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Package">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-award fs-1 text-purple mb-3 d-block" style="color:#a855f7;"></i>
+            <h5>No Custom Packages Created Yet</h5>
+            <p class="fs-7 text-muted mb-4">You can create shop-tailored packages with custom prices, custom limits, and specific module features.</p>
+            <a href="@Url.Action("CreateCustomPackage", "PlatformAdmin")" class="btn btn-primary fw-bold px-4" style="background-color:#a855f7; border-color:#a855f7;">
+                <i class="bi bi-plus-lg me-1"></i> Create First Custom Package
+            </a>
+        </div>
+    }
+</div>
+
+<!-- Allot Package Modal -->
+<div class="modal fade" id="allotPackageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-secondary text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title font-display fw-bold text-success">
+                    <i class="bi bi-award-fill me-2" style="color:#a855f7;"></i>Allot Custom Package to Shop
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="@Url.Action("AllotCustomPackage", "PlatformAdmin")">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="allotPackageId" name="packageId" value="" />
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted fs-7 font-mono">SELECTED CUSTOM PACKAGE</label>
+                        <input type="text" id="allotPackageName" class="form-control bg-dark border-secondary text-light fw-bold" readonly />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-light fs-7 fw-bold">Select Target Shop</label>
+                        <select name="tenantId" id="allotTenantId" class="form-select bg-dark border-secondary text-light" required>
+                            <option value="">-- Choose Shop --</option>
+                            @foreach (var tenant in allTenantsList)
+                            {
+                                <option value="@tenant.Id">@tenant.ShopName (@tenant.TenantCode) — @tenant.ContactEmail</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label text-light fs-7 fw-bold">License Duration (Days)</label>
+                        <select name="extensionDays" class="form-select bg-dark border-secondary text-light">
+                            <option value="30">30 Days (1 Month)</option>
+                            <option value="90">90 Days (3 Months)</option>
+                            <option value="180">180 Days (6 Months)</option>
+                            <option value="365" selected>365 Days (1 Year)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success fw-bold">
+                        <i class="bi bi-check-circle me-1"></i> Confirm & Allot Package
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Features Modal -->
+<div class="modal fade" id="featuresModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content bg-dark border-secondary text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title font-display fw-bold text-warning" id="featuresModalTitle">Included Package Features</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="featuresModalList" class="d-flex flex-wrap gap-2"></div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function openAllotModal(pkgId, pkgName, assignedTenantId) {
+            document.getElementById('allotPackageId').value = pkgId;
+            document.getElementById('allotPackageName').value = pkgName;
+            if (assignedTenantId) {
+                document.getElementById('allotTenantId').value = assignedTenantId;
+            }
+            var modal = new bootstrap.Modal(document.getElementById('allotPackageModal'));
+            modal.show();
+        }
+
+        function showFeaturesModal(pkgName, features) {
+            document.getElementById('featuresModalTitle').innerText = 'Included Features — ' + pkgName;
+            var container = document.getElementById('featuresModalList');
+            container.innerHTML = '';
+            if (features && features.length > 0) {
+                features.forEach(function(f) {
+                    var badge = document.createElement('span');
+                    badge.className = 'badge bg-dark border border-secondary text-light fs-7 p-2';
+                    badge.innerHTML = '<i class="bi bi-check-circle-fill text-success me-1"></i>' + f;
+                    container.appendChild(badge);
+                });
+            } else {
+                container.innerHTML = '<span class="text-muted">No specific features registered for this package.</span>';
+            }
+            var modal = new bootstrap.Modal(document.getElementById('featuresModal'));
+            modal.show();
+        }
+    </script>
+}

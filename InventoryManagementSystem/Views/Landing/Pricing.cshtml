@@ -235,6 +235,10 @@
             const pDesc = pkg.desc || pkg.Description || '';
             const pMonthly = pkg.monthly ?? pkg.MonthlyPrice ?? 0;
             const pFeatures = pkg.features || pkg.EnabledFeatures || pkg.EnabledModules || [];
+            const pMaxAdmins = pkg.maxAdmins ?? pkg.MaxAdmins ?? 0;
+            const pMaxStaff = pkg.maxEmployees ?? pkg.MaxEmployees ?? 0;
+            const pMaxProducts = pkg.maxProducts ?? pkg.MaxProducts ?? 0;
+            const pMaxSuppliers = pkg.maxSuppliers ?? pkg.MaxSuppliers ?? 0;
 
             const titleEl = document.getElementById('detModalTitle');
             if (titleEl) titleEl.innerText = `${pName} — Included Features`;
@@ -244,11 +248,17 @@
 
             let html = `
                 <div class="mb-4 pb-3 border-bottom border-secondary">
-                    <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
                         <h4 class="text-light font-display fw-bold mb-0">${pName}</h4>
                         <span class="fs-3 fw-bold text-success font-mono">₹${Number(pMonthly).toLocaleString('en-IN')}/mo</span>
                     </div>
-                    <p class="text-muted fs-7 mb-0">${pDesc}</p>
+                    <p class="text-muted fs-7 mb-3">${pDesc}</p>
+                    <div class="d-flex flex-wrap gap-2 text-light fs-8">
+                        <span class="badge bg-dark border border-secondary text-light"><i class="bi bi-shield-lock text-warning me-1"></i>Admins: ${pMaxAdmins > 0 ? pMaxAdmins : 'Unlimited'}</span>
+                        <span class="badge bg-dark border border-secondary text-light"><i class="bi bi-people text-info me-1"></i>Staff: ${pMaxStaff > 0 ? pMaxStaff : 'Unlimited'}</span>
+                        <span class="badge bg-dark border border-secondary text-light"><i class="bi bi-box-seam text-info me-1"></i>Products: ${pMaxProducts > 0 ? pMaxProducts : 'Unlimited'}</span>
+                        <span class="badge bg-dark border border-secondary text-light"><i class="bi bi-truck text-info me-1"></i>Suppliers: ${pMaxSuppliers > 0 ? pMaxSuppliers : 'Unlimited'}</span>
+                    </div>
                 </div>
                 <h6 class="font-display fw-bold text-warning mb-3 uppercase font-mono">What's Included</h6>
             `;

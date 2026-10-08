@@ -103,6 +103,13 @@
         <span class="sb-text">SaaS Packages</span>
       </a>
 
+      <a href="@Url.Action("CustomPackages","PlatformAdmin")"
+         class="sb-link @(ctrl=="PlatformAdmin"&&act=="CustomPackages"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Custom Shop Packages" data-bs-placement="right">
+        <i class="bi bi-award-fill sb-icon" style="color:#a855f7"></i>
+        <span class="sb-text">Custom Packages</span>
+      </a>
+
       <a href="@Url.Action("Payments","PlatformAdmin")"
          class="sb-link @(ctrl=="PlatformAdmin"&&act=="Payments"?"active":"")"
          data-bs-toggle="tooltip" data-bs-title="Revenue & Payments" data-bs-placement="right">

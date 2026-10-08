@@ -68,6 +68,11 @@
                 <h6 class="fw-bold text-info fs-7 uppercase font-mono mt-4 mb-3">Resource Capacity Limits</h6>
 
                 <div class="mb-2">
+                    <label class="fg-label">Max Shop Admins <small class="text-muted">(0 for Unlimited)</small></label>
+                    <input asp-for="MaxAdmins" type="number" class="fg-control" />
+                </div>
+
+                <div class="mb-2">
                     <label class="fg-label">Max Staff Employees <small class="text-muted">(0 for Unlimited)</small></label>
                     <input asp-for="MaxEmployees" type="number" class="fg-control" />
                 </div>

@@ -87,6 +87,17 @@ namespace InventoryManagementSystem.Services
                     }
                 }
             }
+            else if (string.Equals(resourceType, "Admins", StringComparison.OrdinalIgnoreCase) || string.Equals(resourceType, "Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                if (package.MaxAdmins > 0)
+                {
+                    var count = await _context.Users.CountDocumentsAsync(u => u.TenantId == tenantId && u.Role == Role.Admin);
+                    if (count >= package.MaxAdmins)
+                    {
+                        return (false, $"Package Limit Reached: Your current package ('{package.Name}') allows a maximum of {package.MaxAdmins} Shop Administrators. Please upgrade your subscription plan to add more shop admin accounts.");
+                    }
+                }
+            }
             else if (string.Equals(resourceType, "Suppliers", StringComparison.OrdinalIgnoreCase))
             {
                 if (package.MaxSuppliers > 0)
@@ -179,6 +190,16 @@ namespace InventoryManagementSystem.Services
         public async Task<IEnumerable<SubscriptionPackage>> GetAllPackagesAsync()
         {
             return await _context.SubscriptionPackages.Find(_ => true).SortBy(p => p.DisplayOrder).ToListAsync();
+        }
+
+        public async Task<IEnumerable<SubscriptionPackage>> GetPublicPackagesAsync()
+        {
+            return await _context.SubscriptionPackages.Find(p => p.IsActive && !p.IsCustom).SortBy(p => p.DisplayOrder).ToListAsync();
+        }
+
+        public async Task<IEnumerable<SubscriptionPackage>> GetCustomPackagesAsync()
+        {
+            return await _context.SubscriptionPackages.Find(p => p.IsCustom).SortByDescending(p => p.CreatedAt).ToListAsync();
         }
 
         public async Task<SubscriptionPackage?> GetPackageByIdAsync(string packageId)

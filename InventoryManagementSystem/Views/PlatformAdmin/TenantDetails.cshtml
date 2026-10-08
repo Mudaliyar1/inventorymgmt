@@ -4,6 +4,7 @@
     var license = (InventoryManagementSystem.Models.TenantLicense)ViewBag.License;
     var package = (InventoryManagementSystem.Models.SubscriptionPackage)ViewBag.Package;
     var packages = (List<InventoryManagementSystem.Models.SubscriptionPackage>)ViewBag.Packages ?? new List<InventoryManagementSystem.Models.SubscriptionPackage>();
+    var customPackages = (List<InventoryManagementSystem.Models.SubscriptionPackage>)ViewBag.CustomPackages ?? new List<InventoryManagementSystem.Models.SubscriptionPackage>();
     var suppliers = (List<InventoryManagementSystem.Models.Supplier>)ViewBag.Suppliers ?? new List<InventoryManagementSystem.Models.Supplier>();
     var users = (List<InventoryManagementSystem.Models.User>)ViewBag.Users ?? new List<InventoryManagementSystem.Models.User>();
     var staffCount = (int)(ViewBag.StaffCount ?? 0);
@@ -231,11 +232,21 @@
         <div class="col-lg-5">
             <!-- Current Subscription Package & License -->
             <div class="glass-card p-4 mb-4">
-                <h5 class="font-display fw-bold text-warning mb-3"><i class="bi bi-shield-check me-2"></i>Subscription & License Details</h5>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="font-display fw-bold text-warning mb-0"><i class="bi bi-shield-check me-2"></i>Subscription & License Details</h5>
+                    @if (package != null && package.IsCustom)
+                    {
+                        <span class="badge bg-purple text-white font-mono px-2 py-1" style="background-color:#a855f7 !important;">
+                            <i class="bi bi-star-fill me-1"></i>CUSTOM PACKAGE
+                        </span>
+                    }
+                </div>
                 <div class="p-3 rounded border border-secondary bg-dark mb-3">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="text-muted fs-7">Package:</span>
-                        <span class="badge bg-secondary font-mono fs-7">@(package != null ? package.Name : "Basic Plan")</span>
+                        <span class="badge @(package != null && package.IsCustom ? "bg-purple text-white" : "bg-secondary") font-mono fs-7" style="@(package != null && package.IsCustom ? "background-color:#a855f7 !important;" : "")">
+                            @(package != null ? package.Name : "Basic Plan")
+                        </span>
                     </div>
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="text-muted fs-7">Monthly Price:</span>
@@ -267,8 +278,9 @@
                 {
                     <div class="p-3 rounded border border-secondary bg-dark fs-7">
                         <h6 class="font-display fw-bold text-muted mb-2">Package Limits & Features</h6>
+                        <div class="mb-1"><strong class="text-muted">Max Shop Admins:</strong> @(package.MaxAdmins > 0 ? package.MaxAdmins.ToString() : "Unlimited")</div>
+                        <div class="mb-1"><strong class="text-muted">Max Staff Employees:</strong> @(package.MaxEmployees > 0 ? package.MaxEmployees.ToString() : "Unlimited")</div>
                         <div class="mb-1"><strong class="text-muted">Max Products:</strong> @(package.MaxProducts > 0 ? package.MaxProducts.ToString() : "Unlimited")</div>
-                        <div class="mb-1"><strong class="text-muted">Max Employees:</strong> @(package.MaxEmployees > 0 ? package.MaxEmployees.ToString() : "Unlimited")</div>
                         <div><strong class="text-muted">Enabled Modules:</strong> @(package.EnabledModules.Any() ? string.Join(", ", package.EnabledModules) : "All Standard Modules")</div>
                     </div>
                 }
@@ -276,18 +288,41 @@
 
             <!-- Extend License / Change Package Form -->
             <div class="glass-card p-4">
-                <h5 class="font-display fw-bold text-light mb-3"><i class="bi bi-clock-history me-2"></i>Extend License / Change Package</h5>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="font-display fw-bold text-light mb-0"><i class="bi bi-clock-history me-2"></i>Extend License / Change Package</h5>
+                </div>
+
+                <a href="@Url.Action("CreateCustomPackage", "PlatformAdmin", new { tenantId = Model.Id })" 
+                   class="btn btn-sm btn-outline-purple text-purple border-purple w-100 mb-3 font-mono fw-bold" 
+                   style="color:#c084fc; border-color:#a855f7;">
+                    <i class="bi bi-plus-circle me-1"></i> Create Custom Package For This Shop
+                </a>
+
                 <form method="post" action="@Url.Action("ExtendLicense", "PlatformAdmin")">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="tenantId" value="@Model.Id" />
                     <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
 
                     <div class="mb-3">
-                        <label class="form-label fs-7 text-muted">Subscription Package</label>
+                        <label class="form-label fs-7 text-muted">Select Subscription Package</label>
                         <select name="packageId" class="form-select bg-dark border-secondary text-light">
-                            @foreach (var p in packages)
+                            @if (packages.Any())
                             {
-                                <option value="@p.Id" selected="@(p.Id == Model.PackageId)">@p.Name (₹@p.MonthlyPrice/mo)</option>
+                                <optgroup label="Standard Packages">
+                                    @foreach (var p in packages)
+                                    {
+                                        <option value="@p.Id" selected="@(p.Id == Model.PackageId)">@p.Name (₹@p.MonthlyPrice/mo)</option>
+                                    }
+                                </optgroup>
+                            }
+                            @if (customPackages.Any())
+                            {
+                                <optgroup label="Custom Shop Packages">
+                                    @foreach (var cp in customPackages)
+                                    {
+                                        <option value="@cp.Id" selected="@(cp.Id == Model.PackageId)">★ @cp.Name (₹@cp.MonthlyPrice/mo)</option>
+                                    }
+                                </optgroup>
                             }
                         </select>
                     </div>

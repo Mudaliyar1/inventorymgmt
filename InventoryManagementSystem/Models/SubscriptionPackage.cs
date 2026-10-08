@@ -5,6 +5,7 @@ using System.Collections.Generic;
 
 namespace InventoryManagementSystem.Models
 {
+    [BsonIgnoreExtraElements]
     public class SubscriptionPackage
     {
         [BsonId]
@@ -32,6 +33,9 @@ namespace InventoryManagementSystem.Models
         [BsonElement("MaxEmployees")]
         public int MaxEmployees { get; set; } = 5;
 
+        [BsonElement("MaxAdmins")]
+        public int MaxAdmins { get; set; } = 2;
+
         [BsonElement("MaxProducts")]
         public int MaxProducts { get; set; } = 1000;
 
@@ -52,6 +56,12 @@ namespace InventoryManagementSystem.Models
 
         [BsonElement("DisplayOrder")]
         public int DisplayOrder { get; set; } = 1;
+
+        [BsonElement("IsCustom")]
+        public bool IsCustom { get; set; } = false; // Hidden from public pricing page when true
+
+        [BsonElement("AssignedTenantId")]
+        public string? AssignedTenantId { get; set; } // Optional: Specific shop ID this package is tailored for
 
         [BsonElement("CreatedAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

@@ -121,7 +121,8 @@ namespace InventoryManagementSystem.Controllers
             var package = !string.IsNullOrEmpty(tenant.PackageId)
                 ? await _context.SubscriptionPackages.Find(p => p.Id == tenant.PackageId).FirstOrDefaultAsync()
                 : null;
-            var allPackages = await _context.SubscriptionPackages.Find(_ => true).ToListAsync();
+            var allPackages = await _context.SubscriptionPackages.Find(p => !p.IsCustom).ToListAsync();
+            var customPackages = await _context.SubscriptionPackages.Find(p => p.IsCustom).ToListAsync();
 
             var suppliers = await _context.Suppliers.Find(s => s.TenantId == id).ToListAsync();
             var users = await _context.Users.Find(u => u.TenantId == id && u.Role != Role.SuperAdmin).ToListAsync();
@@ -132,6 +133,7 @@ namespace InventoryManagementSystem.Controllers
             ViewBag.License = license;
             ViewBag.Package = package;
             ViewBag.Packages = allPackages;
+            ViewBag.CustomPackages = customPackages;
             ViewBag.Suppliers = suppliers;
             ViewBag.Users = users;
             ViewBag.StaffCount = users.Count(u => u.Role != Role.Admin);
@@ -314,7 +316,7 @@ namespace InventoryManagementSystem.Controllers
         [HttpGet]
         public async Task<IActionResult> Packages()
         {
-            var packages = await _licenseService.GetAllPackagesAsync();
+            var packages = await _licenseService.GetPublicPackagesAsync();
             var tenants = await _context.Tenants.Find(_ => true).ToListAsync();
 
             var subscriberCounts = new Dictionary<string, int>();
@@ -325,6 +327,128 @@ namespace InventoryManagementSystem.Controllers
             ViewBag.SubscriberCounts = subscriberCounts;
 
             return View(packages);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> CustomPackages()
+        {
+            var customPackages = await _licenseService.GetCustomPackagesAsync();
+            var tenants = await _context.Tenants.Find(_ => true).ToListAsync();
+
+            var tenantDict = tenants.ToDictionary(t => t.Id, t => t);
+            ViewBag.Tenants = tenantDict;
+            ViewBag.AllTenantsList = tenants;
+
+            var subscriberCounts = new Dictionary<string, int>();
+            foreach (var pkg in customPackages)
+            {
+                subscriberCounts[pkg.Id] = tenants.Count(t => t.PackageId == pkg.Id);
+            }
+            ViewBag.SubscriberCounts = subscriberCounts;
+            ViewBag.GroupedFeatures = await _featureCatalogService.GetGroupedFeaturesAsync();
+
+            return View(customPackages);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> CreateCustomPackage(string? tenantId = null)
+        {
+            ViewBag.GroupedFeatures = await _featureCatalogService.GetGroupedFeaturesAsync();
+            ViewBag.Tenants = await _context.Tenants.Find(_ => true).ToListAsync();
+            ViewBag.TargetTenantId = tenantId;
+
+            Tenant? targetTenant = null;
+            if (!string.IsNullOrEmpty(tenantId))
+            {
+                targetTenant = await _context.Tenants.Find(t => t.Id == tenantId).FirstOrDefaultAsync();
+            }
+            ViewBag.TargetTenant = targetTenant;
+
+            return View(new SubscriptionPackage
+            {
+                Name = targetTenant != null ? $"Custom Plan - {targetTenant.ShopName}" : "Custom VIP Plan",
+                Description = targetTenant != null ? $"Exclusive custom subscription package tailored for {targetTenant.ShopName}" : "Exclusive shop-tailored subscription package",
+                MonthlyPrice = 2999,
+                YearlyPrice = 29990,
+                TrialDays = 14,
+                BillingCycle = "Monthly",
+                MaxEmployees = 25,
+                MaxProducts = 15000,
+                MaxSuppliers = 250,
+                IsActive = true,
+                IsCustom = true,
+                AssignedTenantId = tenantId,
+                DisplayOrder = 99
+            });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateCustomPackage(SubscriptionPackage package, List<string> selectedFeatures, bool allotNow = false, int extensionDays = 30)
+        {
+            if (string.IsNullOrWhiteSpace(package.Name))
+            {
+                ModelState.AddModelError("Name", "Custom Package Name is required.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                ViewBag.GroupedFeatures = await _featureCatalogService.GetGroupedFeaturesAsync();
+                ViewBag.Tenants = await _context.Tenants.Find(_ => true).ToListAsync();
+                return View(package);
+            }
+
+            package.IsCustom = true;
+            package.EnabledFeatures = selectedFeatures ?? new List<string>();
+            package.EnabledModules = package.EnabledFeatures;
+            package.CreatedAt = DateTime.UtcNow;
+
+            await _licenseService.CreateOrUpdatePackageAsync(package);
+
+            if (allotNow && !string.IsNullOrEmpty(package.AssignedTenantId))
+            {
+                await _licenseService.RenewOrExtendLicenseAsync(package.AssignedTenantId, package.Id, extensionDays);
+                TempData["ToastMessage"] = $"Custom Package '{package.Name}' created and immediately allotted to shop for {extensionDays} days!";
+            }
+            else
+            {
+                TempData["ToastMessage"] = $"Custom Package '{package.Name}' created successfully!";
+            }
+
+            TempData["ToastType"] = "success";
+            return RedirectToAction(nameof(CustomPackages));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AllotCustomPackage(string tenantId, string packageId, int extensionDays = 30, string? returnUrl = null)
+        {
+            var tenant = await _context.Tenants.Find(t => t.Id == tenantId).FirstOrDefaultAsync();
+            var package = await _context.SubscriptionPackages.Find(p => p.Id == packageId).FirstOrDefaultAsync();
+
+            if (tenant == null || package == null)
+            {
+                TempData["ToastMessage"] = "Invalid shop or package selection.";
+                TempData["ToastType"] = "danger";
+                return RedirectToAction(nameof(CustomPackages));
+            }
+
+            if (package.IsCustom && string.IsNullOrEmpty(package.AssignedTenantId))
+            {
+                package.AssignedTenantId = tenantId;
+                await _context.SubscriptionPackages.ReplaceOneAsync(p => p.Id == package.Id, package);
+            }
+
+            await _licenseService.RenewOrExtendLicenseAsync(tenantId, packageId, extensionDays);
+
+            TempData["ToastMessage"] = $"Custom Package '{package.Name}' allotted to '{tenant.ShopName}' for {extensionDays} days successfully.";
+            TempData["ToastType"] = "success";
+
+            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+            return RedirectToAction(nameof(TenantDetails), new { id = tenantId });
         }
 
         [HttpGet]

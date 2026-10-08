@@ -45,7 +45,7 @@ namespace InventoryManagementSystem.Controllers
                 return RedirectToAction("Index", "Home");
             }
 
-            var packages = await _licenseService.GetAllPackagesAsync();
+            var packages = await _licenseService.GetPublicPackagesAsync();
             ViewBag.Packages = packages;
             return View();
         }
@@ -53,7 +53,7 @@ namespace InventoryManagementSystem.Controllers
         [HttpGet]
         public async Task<IActionResult> Pricing()
         {
-            var packages = await _licenseService.GetAllPackagesAsync();
+            var packages = await _licenseService.GetPublicPackagesAsync();
             ViewBag.GroupedFeatures = await _featureCatalogService.GetGroupedFeaturesAsync();
             ViewBag.AllFeatures = await _featureCatalogService.GetActiveFeaturesAsync();
             return View(packages);
@@ -74,7 +74,7 @@ namespace InventoryManagementSystem.Controllers
         [HttpGet]
         public async Task<IActionResult> Register(string? packageId = null)
         {
-            ViewBag.Packages = await _licenseService.GetAllPackagesAsync();
+            ViewBag.Packages = await _licenseService.GetPublicPackagesAsync();
             ViewBag.SelectedPackageId = packageId;
             return View();
         }

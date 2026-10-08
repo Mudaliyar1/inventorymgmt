@@ -5,6 +5,7 @@ using System.Collections.Generic;
 
 namespace InventoryManagementSystem.Models
 {
+    [BsonIgnoreExtraElements]
     public class User : ITenantEntity
     {
         [BsonId]

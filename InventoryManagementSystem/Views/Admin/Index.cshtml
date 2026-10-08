@@ -10,14 +10,36 @@
 <div class="ph">
     <div>
         <h1 class="ph-title"><i class="bi bi-shield-lock text-primary me-2"></i>Administrator Management</h1>
-        <p class="ph-sub">Manage system Super Administrators with full unrestricted access privileges.</p>
+        <p class="ph-sub">Manage shop administrators with administrative access privileges to your store.</p>
     </div>
     <div class="ph-actions">
-        <a href="@Url.Action("Create","Admin")" class="btn-d btn-primary">
-            <i class="bi bi-person-plus"></i> Add New Administrator
-        </a>
+        @if (ViewBag.LimitReached == true)
+        {
+            <a href="@Url.Action("Plans", "Subscription")" class="btn-d btn-warning text-dark fw-bold">
+                <i class="bi bi-arrow-up-circle-fill me-1"></i> Upgrade Package for More Admins
+            </a>
+        }
+        else
+        {
+            <a href="@Url.Action("Create","Admin")" class="btn-d btn-primary">
+                <i class="bi bi-person-plus"></i> Add New Administrator
+            </a>
+        }
     </div>
 </div>
+
+@if (ViewBag.LimitReached == true)
+{
+    <div class="alert alert-warning border border-warning bg-dark text-warning d-flex align-items-center justify-content-between p-3 mb-4 rounded">
+        <div>
+            <i class="bi bi-exclamation-triangle-fill fs-4 me-2"></i>
+            <strong>Shop Administrator Capacity Limit Reached:</strong> @ViewBag.LimitMessage
+        </div>
+        <a href="@Url.Action("Plans", "Subscription")" class="btn btn-warning btn-sm font-mono fw-bold text-dark">
+            <i class="bi bi-lightning-charge-fill me-1"></i> Upgrade Subscription
+        </a>
+    </div>
+}
 
 <!-- Collapsible Detailed Filter Panel -->
 <div class="card-d mb-4">
@@ -189,7 +211,7 @@
                                 <span class="code-pill">@@@u.Username</span>
                             </td>
                             <td>
-                                <span class="badge-d badge-purple"><i class="bi bi-shield-check"></i> Super Admin</span>
+                                <span class="badge-d badge-blue"><i class="bi bi-shield-check"></i> Shop Admin</span>
                             </td>
                             <td>
                                 @if (u.IsLocked)
