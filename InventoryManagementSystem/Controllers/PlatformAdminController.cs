@@ -18,12 +18,18 @@ namespace InventoryManagementSystem.Controllers
         private readonly MongoDbContext _context;
         private readonly ILicenseService _licenseService;
         private readonly IAuthService _authService;
+        private readonly IFeatureCatalogService _featureCatalogService;
 
-        public PlatformAdminController(MongoDbContext context, ILicenseService licenseService, IAuthService authService)
+        public PlatformAdminController(
+            MongoDbContext context,
+            ILicenseService licenseService,
+            IAuthService authService,
+            IFeatureCatalogService featureCatalogService)
         {
             _context = context;
             _licenseService = licenseService;
             _authService = authService;
+            _featureCatalogService = featureCatalogService;
         }
 
         [HttpGet]
@@ -112,7 +118,9 @@ namespace InventoryManagementSystem.Controllers
             }
 
             var license = await _context.TenantLicenses.Find(l => l.TenantId == id).FirstOrDefaultAsync();
-            var package = await _context.SubscriptionPackages.Find(p => p.Id == tenant.PackageId).FirstOrDefaultAsync();
+            var package = !string.IsNullOrEmpty(tenant.PackageId)
+                ? await _context.SubscriptionPackages.Find(p => p.Id == tenant.PackageId).FirstOrDefaultAsync()
+                : null;
             var allPackages = await _context.SubscriptionPackages.Find(_ => true).ToListAsync();
 
             var suppliers = await _context.Suppliers.Find(s => s.TenantId == id).ToListAsync();
@@ -225,6 +233,45 @@ namespace InventoryManagementSystem.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteTenant(string tenantId)
+        {
+            var tenant = await _context.Tenants.Find(t => t.Id == tenantId).FirstOrDefaultAsync();
+            if (tenant == null)
+            {
+                TempData["ToastMessage"] = "Shop not found.";
+                TempData["ToastType"] = "danger";
+                return RedirectToAction(nameof(Tenants));
+            }
+
+            // Clean up all collections for this tenant
+            await _context.Tenants.DeleteOneAsync(t => t.Id == tenantId);
+            await _context.TenantLicenses.DeleteManyAsync(l => l.TenantId == tenantId);
+            await _context.Users.DeleteManyAsync(u => u.TenantId == tenantId && u.Role != Role.SuperAdmin);
+            await _context.Suppliers.DeleteManyAsync(s => s.TenantId == tenantId);
+            await _context.Products.DeleteManyAsync(p => p.TenantId == tenantId);
+            await _context.Customers.DeleteManyAsync(c => c.TenantId == tenantId);
+            await _context.Sales.DeleteManyAsync(s => s.TenantId == tenantId);
+            await _context.Categories.DeleteManyAsync(c => c.TenantId == tenantId);
+            await _context.Devices.DeleteManyAsync(d => d.TenantId == tenantId);
+            await _context.StockTransactions.DeleteManyAsync(st => st.TenantId == tenantId);
+            await _context.ReturnRecords.DeleteManyAsync(rr => rr.TenantId == tenantId);
+            await _context.ExchangeRecords.DeleteManyAsync(er => er.TenantId == tenantId);
+            await _context.RepairTickets.DeleteManyAsync(rt => rt.TenantId == tenantId);
+            await _context.SupplierOrders.DeleteManyAsync(so => so.TenantId == tenantId);
+            await _context.SupplierPurchaseReturns.DeleteManyAsync(spr => spr.TenantId == tenantId);
+            await _context.AuditLogs.DeleteManyAsync(al => al.TenantId == tenantId);
+            await _context.Notifications.DeleteManyAsync(n => n.TenantId == tenantId);
+            await _context.Settings.DeleteManyAsync(s => s.TenantId == tenantId);
+            await _context.SaaSPaymentTransactions.DeleteManyAsync(spt => spt.TenantId == tenantId);
+
+            TempData["ToastMessage"] = $"Shop '{tenant.ShopName}' ({tenant.TenantCode}) and all associated data deleted successfully.";
+            TempData["ToastType"] = "success";
+
+            return RedirectToAction(nameof(Tenants));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> ExtendLicense(string tenantId, string packageId, int extraDays, string? returnUrl = null)
         {
             await _licenseService.RenewOrExtendLicenseAsync(tenantId, packageId, extraDays);
@@ -241,22 +288,182 @@ namespace InventoryManagementSystem.Controllers
         public async Task<IActionResult> Packages()
         {
             var packages = await _licenseService.GetAllPackagesAsync();
+            var tenants = await _context.Tenants.Find(_ => true).ToListAsync();
+
+            var subscriberCounts = new Dictionary<string, int>();
+            foreach (var pkg in packages)
+            {
+                subscriberCounts[pkg.Id] = tenants.Count(t => t.PackageId == pkg.Id);
+            }
+            ViewBag.SubscriberCounts = subscriberCounts;
+
             return View(packages);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> CreatePackage()
+        {
+            ViewBag.GroupedFeatures = await _featureCatalogService.GetGroupedFeaturesAsync();
+            return View(new SubscriptionPackage
+            {
+                MonthlyPrice = 1999,
+                YearlyPrice = 19990,
+                TrialDays = 14,
+                BillingCycle = "Monthly",
+                MaxEmployees = 10,
+                MaxProducts = 5000,
+                MaxSuppliers = 100,
+                IsActive = true,
+                DisplayOrder = 1
+            });
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> SavePackage(SubscriptionPackage package, string enabledModulesCsv)
+        public async Task<IActionResult> CreatePackage(SubscriptionPackage package, List<string> selectedFeatures)
         {
-            if (!string.IsNullOrWhiteSpace(enabledModulesCsv))
+            if (string.IsNullOrWhiteSpace(package.Name))
             {
-                package.EnabledModules = enabledModulesCsv
+                ModelState.AddModelError("Name", "Package Name is required.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                ViewBag.GroupedFeatures = await _featureCatalogService.GetGroupedFeaturesAsync();
+                return View(package);
+            }
+
+            package.EnabledFeatures = selectedFeatures ?? new List<string>();
+            package.EnabledModules = package.EnabledFeatures;
+            package.CreatedAt = DateTime.UtcNow;
+
+            await _licenseService.CreateOrUpdatePackageAsync(package);
+
+            TempData["ToastMessage"] = $"SaaS Package '{package.Name}' created successfully with {package.EnabledFeatures.Count} enabled features!";
+            TempData["ToastType"] = "success";
+            return RedirectToAction(nameof(Packages));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> EditPackage(string id)
+        {
+            var package = await _context.SubscriptionPackages.Find(p => p.Id == id).FirstOrDefaultAsync();
+            if (package == null) return NotFound();
+
+            ViewBag.GroupedFeatures = await _featureCatalogService.GetGroupedFeaturesAsync();
+            return View(package);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> EditPackage(SubscriptionPackage package, List<string> selectedFeatures)
+        {
+            if (string.IsNullOrWhiteSpace(package.Name))
+            {
+                ModelState.AddModelError("Name", "Package Name is required.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                ViewBag.GroupedFeatures = await _featureCatalogService.GetGroupedFeaturesAsync();
+                return View(package);
+            }
+
+            package.EnabledFeatures = selectedFeatures ?? new List<string>();
+            package.EnabledModules = package.EnabledFeatures;
+
+            await _licenseService.CreateOrUpdatePackageAsync(package);
+
+            TempData["ToastMessage"] = $"SaaS Package '{package.Name}' updated successfully!";
+            TempData["ToastType"] = "success";
+            return RedirectToAction(nameof(Packages));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SavePackage(SubscriptionPackage package, List<string> selectedFeatures, string enabledModulesCsv)
+        {
+            if (selectedFeatures != null && selectedFeatures.Any())
+            {
+                package.EnabledFeatures = selectedFeatures;
+                package.EnabledModules = selectedFeatures;
+            }
+            else if (!string.IsNullOrWhiteSpace(enabledModulesCsv))
+            {
+                package.EnabledFeatures = enabledModulesCsv
                     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .ToList();
+                package.EnabledModules = package.EnabledFeatures;
             }
 
             await _licenseService.CreateOrUpdatePackageAsync(package);
             TempData["ToastMessage"] = $"Subscription Package '{package.Name}' saved successfully.";
+            TempData["ToastType"] = "success";
+            return RedirectToAction(nameof(Packages));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DuplicatePackage(string id)
+        {
+            var source = await _context.SubscriptionPackages.Find(p => p.Id == id).FirstOrDefaultAsync();
+            if (source == null) return NotFound();
+
+            var clone = new SubscriptionPackage
+            {
+                Name = $"{source.Name} (Copy)",
+                Description = source.Description,
+                MonthlyPrice = source.MonthlyPrice,
+                YearlyPrice = source.YearlyPrice,
+                TrialDays = source.TrialDays,
+                BillingCycle = source.BillingCycle,
+                MaxEmployees = source.MaxEmployees,
+                MaxProducts = source.MaxProducts,
+                MaxSuppliers = source.MaxSuppliers,
+                EnabledFeatures = new List<string>(source.EnabledFeatures ?? new List<string>()),
+                EnabledModules = new List<string>(source.EnabledModules ?? new List<string>()),
+                IsActive = true,
+                IsFeatured = false,
+                DisplayOrder = source.DisplayOrder + 1,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            await _context.SubscriptionPackages.InsertOneAsync(clone);
+
+            TempData["ToastMessage"] = $"Duplicated package '{source.Name}' into '{clone.Name}'.";
+            TempData["ToastType"] = "info";
+            return RedirectToAction(nameof(Packages));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> TogglePackageActive(string id)
+        {
+            var pkg = await _context.SubscriptionPackages.Find(p => p.Id == id).FirstOrDefaultAsync();
+            if (pkg != null)
+            {
+                pkg.IsActive = !pkg.IsActive;
+                await _context.SubscriptionPackages.ReplaceOneAsync(p => p.Id == id, pkg);
+                TempData["ToastMessage"] = $"Package '{pkg.Name}' is now {(pkg.IsActive ? "Active" : "Inactive")}.";
+                TempData["ToastType"] = "info";
+            }
+            return RedirectToAction(nameof(Packages));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeletePackage(string id)
+        {
+            var tenantCount = await _context.Tenants.CountDocumentsAsync(t => t.PackageId == id);
+            if (tenantCount > 0)
+            {
+                TempData["ToastMessage"] = $"Cannot delete package: {tenantCount} registered shop(s) are currently subscribed to this package.";
+                TempData["ToastType"] = "danger";
+                return RedirectToAction(nameof(Packages));
+            }
+
+            await _context.SubscriptionPackages.DeleteOneAsync(p => p.Id == id);
+            TempData["ToastMessage"] = "Subscription package deleted successfully.";
             TempData["ToastType"] = "success";
             return RedirectToAction(nameof(Packages));
         }

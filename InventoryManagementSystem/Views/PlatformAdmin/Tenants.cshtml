@@ -90,9 +90,18 @@
                                     @(license != null ? license.ExpiryDate.ToString("MMM dd, yyyy") : "N/A")
                                 </td>
                                 <td class="text-end">
-                                    <a href="@Url.Action("TenantDetails", "PlatformAdmin", new { id = tenant.Id })" class="btn btn-sm btn-outline-primary shadow-sm">
-                                        <i class="bi bi-eye me-1"></i>View Details
-                                    </a>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="@Url.Action("TenantDetails", "PlatformAdmin", new { id = tenant.Id })" class="btn btn-outline-primary shadow-sm" title="View Shop Details">
+                                            <i class="bi bi-eye me-1"></i>View Details
+                                        </a>
+                                        <form method="post" action="@Url.Action("DeleteTenant", "PlatformAdmin")" class="d-inline" onsubmit="return confirm('⚠️ ARE YOU SURE YOU WANT TO PERMANENTLY DELETE SHOP \'@tenant.ShopName\' (@tenant.TenantCode)?\n\nThis will permanently erase all associated products, inventory, sales, employees, and licenses! This action CANNOT be undone.');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="tenantId" value="@tenant.Id" />
+                                            <button type="submit" class="btn btn-outline-danger shadow-sm ms-1" title="Delete Shop">
+                                                <i class="bi bi-trash me-1"></i>Delete
+                                            </button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
                         }

@@ -15,12 +15,18 @@ namespace InventoryManagementSystem.Controllers
         private readonly ILicenseService _licenseService;
         private readonly MongoDbContext _context;
         private readonly IEmailService _emailService;
+        private readonly IFeatureCatalogService _featureCatalogService;
 
-        public LandingController(ILicenseService licenseService, MongoDbContext context, IEmailService emailService)
+        public LandingController(
+            ILicenseService licenseService,
+            MongoDbContext context,
+            IEmailService emailService,
+            IFeatureCatalogService featureCatalogService)
         {
             _licenseService = licenseService;
             _context = context;
             _emailService = emailService;
+            _featureCatalogService = featureCatalogService;
         }
 
         [HttpGet]
@@ -48,6 +54,8 @@ namespace InventoryManagementSystem.Controllers
         public async Task<IActionResult> Pricing()
         {
             var packages = await _licenseService.GetAllPackagesAsync();
+            ViewBag.GroupedFeatures = await _featureCatalogService.GetGroupedFeaturesAsync();
+            ViewBag.AllFeatures = await _featureCatalogService.GetActiveFeaturesAsync();
             return View(packages);
         }
 

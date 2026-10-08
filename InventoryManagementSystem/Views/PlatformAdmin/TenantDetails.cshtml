@@ -30,9 +30,16 @@
                 <input type="hidden" name="tenantId" value="@Model.Id" />
                 <input type="hidden" name="status" value="@(Model.Status == "Active" ? "Suspended" : "Active")" />
                 <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
-                <button type="submit" class="btn @(Model.Status == "Active" ? "btn-outline-danger" : "btn-outline-success") shadow-sm">
+                <button type="submit" class="btn @(Model.Status == "Active" ? "btn-outline-warning" : "btn-outline-success") shadow-sm">
                     <i class="bi @(Model.Status == "Active" ? "bi-pause-circle" : "bi-play-circle") me-1"></i>
                     @(Model.Status == "Active" ? "Suspend Shop" : "Activate Shop")
+                </button>
+            </form>
+            <form method="post" action="@Url.Action("DeleteTenant", "PlatformAdmin")" onsubmit="return confirm('⚠️ ARE YOU SURE YOU WANT TO PERMANENTLY DELETE SHOP \'@Model.ShopName\' (@Model.TenantCode)?\n\nThis will permanently erase all associated products, inventory, sales, employees, and licenses! This action CANNOT be undone.');">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="tenantId" value="@Model.Id" />
+                <button type="submit" class="btn btn-danger shadow-sm">
+                    <i class="bi bi-trash me-1"></i> Delete Shop Permanently
                 </button>
             </form>
         </div>

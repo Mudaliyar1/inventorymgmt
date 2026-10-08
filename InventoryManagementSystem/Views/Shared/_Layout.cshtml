@@ -1,4 +1,5 @@
 @using System.Security.Claims
+@inject InventoryManagementSystem.Interfaces.IFeatureCatalogService FeatureCatalogService
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -202,188 +203,282 @@
     }
     else
     {
-      <!-- MAIN / DASHBOARD -->
-      <div class="sb-label">MAIN / DASHBOARD</div>
+      var tenantIdForNav = User.FindFirst("TenantId")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.GroupSid)?.Value ?? "";
+      var enabledKeys = await FeatureCatalogService.GetEnabledFeatureKeysForTenantAsync(tenantIdForNav);
+      bool hasFeat(string key) => enabledKeys.Contains(key, StringComparer.OrdinalIgnoreCase);
 
-      <a href="@Url.Action("Index","Home")"
-         class="sb-link @(ctrl=="Home"&&act=="Index"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Dashboard" data-bs-placement="right">
-        <i class="bi bi-grid-1x2 sb-icon"></i>
-        <span class="sb-text">Dashboard</span>
-      </a>
+      <!-- MAIN / DASHBOARD -->
+      if (hasFeat("DASHBOARD"))
+      {
+        <div class="sb-label">MAIN / DASHBOARD</div>
+
+        <a href="@Url.Action("Index","Home")"
+           class="sb-link @(ctrl=="Home"&&act=="Index"?"active":"")"
+           data-bs-toggle="tooltip" data-bs-title="Dashboard" data-bs-placement="right">
+          <i class="bi bi-grid-1x2 sb-icon"></i>
+          <span class="sb-text">Dashboard</span>
+        </a>
+      }
 
       <!-- MOBILE SHOP -->
-      <div class="sb-label">MOBILE SHOP</div>
+      if (hasFeat("IMEI_DEVICES") || hasFeat("POS_BILLING") || hasFeat("TRADE_IN_EXCHANGE") || hasFeat("RETURNS_REFUNDS") || hasFeat("SERVICE_REPAIRS"))
+      {
+        <div class="sb-label">MOBILE SHOP</div>
 
-      <a href="@Url.Action("Index","Imei")"
-         class="sb-link @(ctrl=="Imei"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="IMEI & Devices" data-bs-placement="right">
-        <i class="bi bi-qr-code-scan sb-icon"></i>
-        <span class="sb-text">IMEI & Devices</span>
-      </a>
+        if (hasFeat("IMEI_DEVICES"))
+        {
+          <a href="@Url.Action("Index","Imei")"
+             class="sb-link @(ctrl=="Imei"?"active":"")"
+             data-bs-toggle="tooltip" data-bs-title="IMEI & Devices" data-bs-placement="right">
+            <i class="bi bi-qr-code-scan sb-icon"></i>
+            <span class="sb-text">IMEI & Devices</span>
+          </a>
+        }
 
-      <a href="@Url.Action("Create","Sales")"
-         class="sb-link @(ctrl=="Sales"&&act=="Create"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="POS Billing" data-bs-placement="right">
-        <i class="bi bi-receipt sb-icon"></i>
-        <span class="sb-text">POS Billing</span>
-      </a>
+        if (hasFeat("POS_BILLING"))
+        {
+          <a href="@Url.Action("Create","Sales")"
+             class="sb-link @(ctrl=="Sales"&&act=="Create"?"active":"")"
+             data-bs-toggle="tooltip" data-bs-title="POS Billing" data-bs-placement="right">
+            <i class="bi bi-receipt sb-icon"></i>
+            <span class="sb-text">POS Billing</span>
+          </a>
+        }
 
-      <a href="@Url.Action("Index","Exchange")"
-         class="sb-link @(ctrl=="Exchange"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Trade-In Exchange" data-bs-placement="right">
-        <i class="bi bi-arrow-left-right sb-icon"></i>
-        <span class="sb-text">Trade-In Exchange</span>
-      </a>
+        if (hasFeat("TRADE_IN_EXCHANGE"))
+        {
+          <a href="@Url.Action("Index","Exchange")"
+             class="sb-link @(ctrl=="Exchange"?"active":"")"
+             data-bs-toggle="tooltip" data-bs-title="Trade-In Exchange" data-bs-placement="right">
+            <i class="bi bi-arrow-left-right sb-icon"></i>
+            <span class="sb-text">Trade-In Exchange</span>
+          </a>
+        }
 
-      <a href="@Url.Action("Index","Return")"
-         class="sb-link @(ctrl=="Return"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Returns & Refunds" data-bs-placement="right">
-        <i class="bi bi-arrow-counterclockwise sb-icon"></i>
-        <span class="sb-text">Returns & Refunds</span>
-      </a>
+        if (hasFeat("RETURNS_REFUNDS"))
+        {
+          <a href="@Url.Action("Index","Return")"
+             class="sb-link @(ctrl=="Return"?"active":"")"
+             data-bs-toggle="tooltip" data-bs-title="Returns & Refunds" data-bs-placement="right">
+            <i class="bi bi-arrow-counterclockwise sb-icon"></i>
+            <span class="sb-text">Returns & Refunds</span>
+          </a>
+        }
 
-      <a href="@Url.Action("Index","Repair")"
-         class="sb-link @(ctrl=="Repair"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Service & Repairs" data-bs-placement="right">
-        <i class="bi bi-tools sb-icon"></i>
-        <span class="sb-text">Service & Repairs</span>
-      </a>
+        if (hasFeat("SERVICE_REPAIRS"))
+        {
+          <a href="@Url.Action("Index","Repair")"
+             class="sb-link @(ctrl=="Repair"?"active":"")"
+             data-bs-toggle="tooltip" data-bs-title="Service & Repairs" data-bs-placement="right">
+            <i class="bi bi-tools sb-icon"></i>
+            <span class="sb-text">Service & Repairs</span>
+          </a>
+        }
+      }
 
       <!-- DIRECTORY -->
-      <div class="sb-label">DIRECTORY</div>
+      if (hasFeat("CUSTOMERS") || hasFeat("SUPPLIERS"))
+      {
+        <div class="sb-label">DIRECTORY</div>
 
-      <a href="@Url.Action("Index","Customer")"
-         class="sb-link @(ctrl=="Customer"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Customers" data-bs-placement="right">
-        <i class="bi bi-person-heart sb-icon"></i>
-        <span class="sb-text">Customers</span>
-      </a>
+        if (hasFeat("CUSTOMERS"))
+        {
+          <a href="@Url.Action("Index","Customer")"
+             class="sb-link @(ctrl=="Customer"?"active":"")"
+             data-bs-toggle="tooltip" data-bs-title="Customers" data-bs-placement="right">
+            <i class="bi bi-person-heart sb-icon"></i>
+            <span class="sb-text">Customers</span>
+          </a>
+        }
 
-      <a href="@Url.Action("Index","Supplier")"
-         class="sb-link @(ctrl=="Supplier"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Suppliers" data-bs-placement="right">
-        <i class="bi bi-truck sb-icon"></i>
-        <span class="sb-text">Suppliers</span>
-      </a>
+        if (hasFeat("SUPPLIERS"))
+        {
+          <a href="@Url.Action("Index","Supplier")"
+             class="sb-link @(ctrl=="Supplier"?"active":"")"
+             data-bs-toggle="tooltip" data-bs-title="Suppliers" data-bs-placement="right">
+            <i class="bi bi-truck sb-icon"></i>
+            <span class="sb-text">Suppliers</span>
+          </a>
+        }
+      }
 
       <!-- INVENTORY & STOCK -->
-      <div class="sb-label">INVENTORY & STOCK</div>
+      if (hasFeat("PRODUCTS_SPECS") || hasFeat("CATEGORIES") || hasFeat("STOCK_IN") || hasFeat("STOCK_OUT") || hasFeat("STOCK_HISTORY") || hasFeat("PURCHASE_RETURNS") || hasFeat("INVENTORY_SUMMARY"))
+      {
+        <div class="sb-label">INVENTORY & STOCK</div>
 
-      <a href="@Url.Action("Index","Product")"
-         class="sb-link @(ctrl=="Product"&&act=="Index"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Products & Specs" data-bs-placement="right">
-        <i class="bi bi-box-seam sb-icon"></i>
-        <span class="sb-text">Products & Specs</span>
-      </a>
+        if (hasFeat("PRODUCTS_SPECS"))
+        {
+          <a href="@Url.Action("Index","Product")"
+             class="sb-link @(ctrl=="Product"&&act=="Index"?"active":"")"
+             data-bs-toggle="tooltip" data-bs-title="Products & Specs" data-bs-placement="right">
+            <i class="bi bi-box-seam sb-icon"></i>
+            <span class="sb-text">Products & Specs</span>
+          </a>
+        }
 
-      <a href="@Url.Action("Index","Category")"
-         class="sb-link @(ctrl=="Category"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Categories" data-bs-placement="right">
-        <i class="bi bi-tag sb-icon"></i>
-        <span class="sb-text">Categories</span>
-      </a>
+        if (hasFeat("CATEGORIES"))
+        {
+          <a href="@Url.Action("Index","Category")"
+             class="sb-link @(ctrl=="Category"?"active":"")"
+             data-bs-toggle="tooltip" data-bs-title="Categories" data-bs-placement="right">
+            <i class="bi bi-tag sb-icon"></i>
+            <span class="sb-text">Categories</span>
+          </a>
+        }
 
-      <a href="@Url.Action("StockIn","Stock")"
-         class="sb-link @(ctrl=="Stock"&&act=="StockIn"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Stock In Intake" data-bs-placement="right">
-        <i class="bi bi-arrow-down-circle sb-icon" style="color:var(--success)"></i>
-        <span class="sb-text">Stock In</span>
-      </a>
+        if (hasFeat("STOCK_IN"))
+        {
+          <a href="@Url.Action("StockIn","Stock")"
+             class="sb-link @(ctrl=="Stock"&&act=="StockIn"?"active":"")"
+             data-bs-toggle="tooltip" data-bs-title="Stock In Intake" data-bs-placement="right">
+            <i class="bi bi-arrow-down-circle sb-icon" style="color:var(--success)"></i>
+            <span class="sb-text">Stock In</span>
+          </a>
+        }
 
-      <a href="@Url.Action("StockOut","Stock")"
-         class="sb-link @(ctrl=="Stock"&&act=="StockOut"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Stock Out Deduction" data-bs-placement="right">
-        <i class="bi bi-arrow-up-circle sb-icon" style="color:var(--danger)"></i>
-        <span class="sb-text">Stock Out</span>
-      </a>
+        if (hasFeat("STOCK_OUT"))
+        {
+          <a href="@Url.Action("StockOut","Stock")"
+             class="sb-link @(ctrl=="Stock"&&act=="StockOut"?"active":"")"
+             data-bs-toggle="tooltip" data-bs-title="Stock Out Deduction" data-bs-placement="right">
+            <i class="bi bi-arrow-up-circle sb-icon" style="color:var(--danger)"></i>
+            <span class="sb-text">Stock Out</span>
+          </a>
+        }
 
-      <a href="@Url.Action("History","Stock")"
-         class="sb-link @(ctrl=="Stock"&&act=="History"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Stock History Audit" data-bs-placement="right">
-        <i class="bi bi-clock-history sb-icon"></i>
-        <span class="sb-text">Stock History</span>
-      </a>
+        if (hasFeat("STOCK_HISTORY"))
+        {
+          <a href="@Url.Action("History","Stock")"
+             class="sb-link @(ctrl=="Stock"&&act=="History"?"active":"")"
+             data-bs-toggle="tooltip" data-bs-title="Stock History Audit" data-bs-placement="right">
+            <i class="bi bi-clock-history sb-icon"></i>
+            <span class="sb-text">Stock History</span>
+          </a>
+        }
 
-      <a href="@Url.Action("Index","PurchaseReturn")"
-         class="sb-link @(ctrl=="PurchaseReturn"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Purchase Returns" data-bs-placement="right">
-        <i class="bi bi-box-arrow-left sb-icon" style="color:var(--danger)"></i>
-        <span class="sb-text">Purchase Returns</span>
-      </a>
+        if (hasFeat("PURCHASE_RETURNS"))
+        {
+          <a href="@Url.Action("Index","PurchaseReturn")"
+             class="sb-link @(ctrl=="PurchaseReturn"?"active":"")"
+             data-bs-toggle="tooltip" data-bs-title="Purchase Returns" data-bs-placement="right">
+            <i class="bi bi-box-arrow-left sb-icon" style="color:var(--danger)"></i>
+            <span class="sb-text">Purchase Returns</span>
+          </a>
+        }
 
-      <a href="@Url.Action("InventorySummary","Stock")"
-         class="sb-link @(ctrl=="Stock"&&act=="InventorySummary"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Inventory Summary Overview" data-bs-placement="right">
-        <i class="bi bi-file-earmark-text sb-icon"></i>
-        <span class="sb-text">Inventory Summary</span>
-      </a>
+        if (hasFeat("INVENTORY_SUMMARY"))
+        {
+          <a href="@Url.Action("InventorySummary","Stock")"
+             class="sb-link @(ctrl=="Stock"&&act=="InventorySummary"?"active":"")"
+             data-bs-toggle="tooltip" data-bs-title="Inventory Summary Overview" data-bs-placement="right">
+            <i class="bi bi-file-earmark-text sb-icon"></i>
+            <span class="sb-text">Inventory Summary</span>
+          </a>
+        }
+      }
 
       <!-- RECORDS & REPORTS -->
-      <div class="sb-label">RECORDS & REPORTS</div>
+      if (hasFeat("INVOICE_RECORDS") || hasFeat("REPORTS") || hasFeat("ORDER_MANAGEMENT"))
+      {
+        <div class="sb-label">RECORDS & REPORTS</div>
 
-      <a href="@Url.Action("Index","Sales")"
-         class="sb-link @(ctrl=="Sales"&&(act=="Index"||act=="Details"||act=="Invoice")?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Invoice Records" data-bs-placement="right">
-        <i class="bi bi-journal-text sb-icon"></i>
-        <span class="sb-text">Invoice Records</span>
-      </a>
+        if (hasFeat("INVOICE_RECORDS"))
+        {
+          <a href="@Url.Action("Index","Sales")"
+             class="sb-link @(ctrl=="Sales"&&(act=="Index"||act=="Details"||act=="Invoice")?"active":"")"
+             data-bs-toggle="tooltip" data-bs-title="Invoice Records" data-bs-placement="right">
+            <i class="bi bi-journal-text sb-icon"></i>
+            <span class="sb-text">Invoice Records</span>
+          </a>
+        }
 
-      <a href="@Url.Action("Index","Report")"
-         class="sb-link @(ctrl=="Report"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Reports & Analytics" data-bs-placement="right">
-        <i class="bi bi-bar-chart-line sb-icon"></i>
-        <span class="sb-text">Reports</span>
-      </a>
+        if (hasFeat("REPORTS"))
+        {
+          <a href="@Url.Action("Index","Report")"
+             class="sb-link @(ctrl=="Report"?"active":"")"
+             data-bs-toggle="tooltip" data-bs-title="Reports & Analytics" data-bs-placement="right">
+            <i class="bi bi-bar-chart-line sb-icon"></i>
+            <span class="sb-text">Reports</span>
+          </a>
+        }
 
-      <a href="@Url.Action("Index","SupplierOrder")"
-         class="sb-link @(ctrl=="SupplierOrder"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Order Management" data-bs-placement="right">
-        <i class="bi bi-cart-check sb-icon"></i>
-        <span class="sb-text">Order Management</span>
-      </a>
+        if (hasFeat("ORDER_MANAGEMENT"))
+        {
+          <a href="@Url.Action("Index","SupplierOrder")"
+             class="sb-link @(ctrl=="SupplierOrder"?"active":"")"
+             data-bs-toggle="tooltip" data-bs-title="Order Management" data-bs-placement="right">
+            <i class="bi bi-cart-check sb-icon"></i>
+            <span class="sb-text">Order Management</span>
+          </a>
+        }
+      }
 
-      <a href="@Url.Action("Index","Admin")"
-         class="sb-link @(ctrl=="Admin"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Administrator Management" data-bs-placement="right">
-        <i class="bi bi-shield-lock sb-icon"></i>
-        <span class="sb-text">Administrators</span>
-      </a>
+      <!-- SYSTEM / MANAGEMENT -->
+      if (hasFeat("ADMINISTRATORS") || hasFeat("EMPLOYEES") || hasFeat("MY_PROFILE") || hasFeat("SETTINGS") || hasFeat("SYSTEM_LOGS") || hasFeat("EMAIL_ALERTS"))
+      {
+        <div class="sb-label">SYSTEM / MANAGEMENT</div>
 
-      <a href="@Url.Action("Index","User")"
-         class="sb-link @(ctrl=="User"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Employee Directory" data-bs-placement="right">
-        <i class="bi bi-person-badge sb-icon"></i>
-        <span class="sb-text">Employees</span>
-      </a>
+        if (hasFeat("ADMINISTRATORS"))
+        {
+          <a href="@Url.Action("Index","Admin")"
+             class="sb-link @(ctrl=="Admin"?"active":"")"
+             data-bs-toggle="tooltip" data-bs-title="Administrator Management" data-bs-placement="right">
+            <i class="bi bi-shield-lock sb-icon"></i>
+            <span class="sb-text">Administrators</span>
+          </a>
+        }
 
-      <a href="@Url.Action("Profile","Account")"
-         class="sb-link @(ctrl=="Account"&&act=="Profile"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="My User Profile" data-bs-placement="right">
-        <i class="bi bi-person-circle sb-icon"></i>
-        <span class="sb-text">My Profile</span>
-      </a>
+        if (hasFeat("EMPLOYEES"))
+        {
+          <a href="@Url.Action("Index","User")"
+             class="sb-link @(ctrl=="User"?"active":"")"
+             data-bs-toggle="tooltip" data-bs-title="Employee Directory" data-bs-placement="right">
+            <i class="bi bi-person-badge sb-icon"></i>
+            <span class="sb-text">Employees</span>
+          </a>
+        }
 
-      <a href="@Url.Action("Index","Settings")"
-         class="sb-link @(ctrl=="Settings"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="System Settings" data-bs-placement="right">
-        <i class="bi bi-sliders sb-icon"></i>
-        <span class="sb-text">Settings</span>
-      </a>
+        if (hasFeat("MY_PROFILE"))
+        {
+          <a href="@Url.Action("Profile","Account")"
+             class="sb-link @(ctrl=="Account"&&act=="Profile"?"active":"")"
+             data-bs-toggle="tooltip" data-bs-title="My User Profile" data-bs-placement="right">
+            <i class="bi bi-person-circle sb-icon"></i>
+            <span class="sb-text">My Profile</span>
+          </a>
+        }
 
-      <a href="@Url.Action("Index","SystemLog")"
-         class="sb-link @(ctrl=="SystemLog"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="System Activity Logs" data-bs-placement="right">
-        <i class="bi bi-terminal sb-icon"></i>
-        <span class="sb-text">System Logs</span>
-      </a>
+        if (hasFeat("SETTINGS"))
+        {
+          <a href="@Url.Action("Index","Settings")"
+             class="sb-link @(ctrl=="Settings"?"active":"")"
+             data-bs-toggle="tooltip" data-bs-title="System Settings" data-bs-placement="right">
+            <i class="bi bi-sliders sb-icon"></i>
+            <span class="sb-text">Settings</span>
+          </a>
+        }
 
-      <a href="@Url.Action("Index","InventoryAlert")"
-         class="sb-link @(ctrl=="InventoryAlert"?"active":"")"
-         data-bs-toggle="tooltip" data-bs-title="Email & Stock Alerts" data-bs-placement="right">
-        <i class="bi bi-bell sb-icon"></i>
-        <span class="sb-text">Email Alerts</span>
-      </a>
+        if (hasFeat("SYSTEM_LOGS"))
+        {
+          <a href="@Url.Action("Index","SystemLog")"
+             class="sb-link @(ctrl=="SystemLog"?"active":"")"
+             data-bs-toggle="tooltip" data-bs-title="System Activity Logs" data-bs-placement="right">
+            <i class="bi bi-terminal sb-icon"></i>
+            <span class="sb-text">System Logs</span>
+          </a>
+        }
+
+        if (hasFeat("EMAIL_ALERTS"))
+        {
+          <a href="@Url.Action("Index","InventoryAlert")"
+             class="sb-link @(ctrl=="InventoryAlert"?"active":"")"
+             data-bs-toggle="tooltip" data-bs-title="Email & Stock Alerts" data-bs-placement="right">
+            <i class="bi bi-bell sb-icon"></i>
+            <span class="sb-text">Email Alerts</span>
+          </a>
+        }
+      }
     }
     </div><!-- /sb-scroll -->
 

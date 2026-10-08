@@ -1,52 +1,311 @@
 @model IEnumerable<InventoryManagementSystem.Models.SubscriptionPackage>
 @{
     ViewData["Title"] = "Pricing Plans — SIMS Mobile Shop SaaS";
+    var groupedFeatures = ViewBag.GroupedFeatures as Dictionary<string, List<FeatureDefinition>> ?? new Dictionary<string, List<FeatureDefinition>>();
+    var allFeatures = ViewBag.AllFeatures as List<FeatureDefinition> ?? new List<FeatureDefinition>();
 }
 
-<div class="container py-5">
-    <div class="text-center mb-5">
+<div class="container-fluid px-1 px-md-3 py-3">
+    <!-- Header -->
+    <div class="text-center mb-4">
         <span class="badge bg-primary px-3 py-2 text-uppercase font-mono fw-bold fs-7 rounded-pill mb-2">Transparent Pricing</span>
-        <h1 class="display-4 font-display fw-bold mb-3 text-light">Simple, Predictable Subscription Plans</h1>
-        <p class="lead text-muted mx-auto" style="max-width: 650px;">Choose the right package for your single or multi-branch mobile shop. Upgrade or cancel anytime.</p>
+        <h1 class="display-4 font-display fw-bold mb-3 text-light">Simple, Predictable SaaS Subscription Plans</h1>
+        <p class="lead text-muted mx-auto" style="max-width: 650px;">Select the ideal plan for your mobile shop business. Upgrade or cancel anytime with zero hidden fees.</p>
     </div>
 
-    <div class="row g-4 justify-content-center">
+    <!-- Monthly / Yearly Billing Toggle Switch -->
+    <div class="d-flex justify-content-center align-items-center mb-4">
+        <div class="bg-dark bg-opacity-75 p-2 rounded-pill border border-secondary d-flex align-items-center gap-3">
+            <span class="text-light fw-bold fs-7 ps-2" id="labelMonthly">Monthly Billing</span>
+            <div class="form-check form-switch mb-0">
+                <input class="form-check-input cursor-pointer" type="checkbox" id="billingToggle" style="width:50px;height:26px" onchange="toggleBillingCycle(this)">
+            </div>
+            <span class="text-muted fs-7 pe-2" id="labelYearly">
+                Yearly Billing <span class="badge bg-success text-dark font-mono">SAVE 20%</span>
+            </span>
+        </div>
+    </div>
+
+    <!-- Responsive Package Cards Grid -->
+    <div class="row g-2 g-md-3 mb-4 justify-content-center">
         @if (Model != null && Model.Any())
         {
-            foreach (var pkg in Model)
+            var count = Model.Count();
+            var colClass = count == 1 ? "col-lg-6 col-md-8 col-12" : count == 2 ? "col-lg-6 col-md-6 col-12" : count == 3 ? "col-xl-4 col-lg-4 col-md-6 col-12" : "col-xl-3 col-lg-4 col-md-6 col-12";
+            foreach (var pkg in Model.OrderBy(p => p.DisplayOrder))
             {
-                <div class="col-lg-4 col-md-6">
-                    <div class="glass-card p-4 h-100 d-flex flex-column justify-content-between border-top border-primary border-4 position-relative">
+                var pkgFeatures = allFeatures.Where(f => pkg.EnabledFeatures != null && pkg.EnabledFeatures.Contains(f.FeatureKey, StringComparer.OrdinalIgnoreCase)).ToList();
+
+                <div class="@colClass">
+                    <div class="glass-card h-100 p-3 p-md-4 d-flex flex-column justify-content-between position-relative border-secondary transition-all @(pkg.IsFeatured ? "border-warning shadow-lg scale-102" : "")">
+                        @if (pkg.IsFeatured)
+                        {
+                            <span class="position-absolute top-0 end-0 bg-warning text-dark font-mono fw-bold px-3 py-1 rounded-bottom-start fs-8">
+                                MOST POPULAR
+                            </span>
+                        }
+
                         <div>
-                            <div class="text-uppercase font-mono text-info fw-bold fs-7 mb-1">@pkg.Name</div>
-                            <div class="mb-3">
-                                <span class="fs-1 font-display fw-bold text-light">₹@pkg.MonthlyPrice.ToString("N0")</span>
-                                <span class="text-muted">/ month</span>
+                            <h3 class="font-display fw-bold text-light mb-2">@pkg.Name</h3>
+                            <p class="text-muted fs-7 mb-3 min-h-40">@pkg.Description</p>
+
+                            <!-- Price Display -->
+                            <div class="mb-4">
+                                <div class="price-monthly-block">
+                                    <span class="fs-1 fw-bold text-success font-mono">₹@pkg.MonthlyPrice.ToString("N0")</span>
+                                    <span class="text-muted fs-7">/ month</span>
+                                </div>
+                                <div class="price-yearly-block d-none">
+                                    <span class="fs-1 fw-bold text-success font-mono">₹@(pkg.YearlyPrice > 0 ? pkg.YearlyPrice.ToString("N0") : (pkg.MonthlyPrice * 10).ToString("N0"))</span>
+                                    <span class="text-muted fs-7">/ year</span>
+                                </div>
                             </div>
-                            <p class="text-muted fs-7 mb-4">@pkg.Description</p>
 
-                            <hr class="border-secondary my-3" />
+                            <h6 class="font-display fw-bold text-info fs-7 mb-3 uppercase font-mono">Highlighted Features</h6>
 
-                            <ul class="list-unstyled fs-7 text-light mb-4">
-                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Up to <strong>@pkg.MaxEmployees Employees</strong></li>
-                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Up to <strong>@pkg.MaxProducts Products</strong></li>
-                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Up to <strong>@pkg.MaxSuppliers Suppliers</strong></li>
-                                @if (pkg.EnabledModules != null)
+                            <!-- Highlighted Feature Bullet Items -->
+                            <ul class="list-unstyled fs-7 mb-4">
+                                @if (pkgFeatures.Any())
                                 {
-                                    foreach (var mod in pkg.EnabledModules)
+                                    foreach (var feat in pkgFeatures.Take(6))
                                     {
-                                        <li class="mb-2"><i class="bi bi-check-circle-fill text-info me-2"></i> @mod Module</li>
+                                        <li class="mb-2 d-flex align-items-center text-light">
+                                            <i class="bi bi-check-circle-fill text-success me-2 fs-6"></i>
+                                            <span>@feat.FeatureName</span>
+                                        </li>
                                     }
+                                    if (pkgFeatures.Count > 6)
+                                    {
+                                        <li class="text-info fs-7 font-mono fw-bold mt-2">
+                                            + @(pkgFeatures.Count - 6) additional modules included
+                                        </li>
+                                    }
+                                }
+                                else
+                                {
+                                    <li class="text-muted fs-7">Standard shop features</li>
                                 }
                             </ul>
                         </div>
 
-                        <div>
-                            <a href="@Url.Action("Register", "Landing", new { packageId = pkg.Id })" class="btn btn-primary btn-lg w-100 shadow"><i class="bi bi-rocket-takeoff me-1"></i> Start 14-Day Trial</a>
+                        <!-- Card Action Buttons -->
+                        <div class="d-grid gap-2 pt-3 border-top border-secondary">
+                            <button type="button" class="btn btn-outline-info btn-sm" onclick="openPackageDetailsModal('@pkg.Id')">
+                                <i class="bi bi-info-circle me-1"></i> View More Details
+                            </button>
+                            <a href="@Url.Action("Register", "Landing", new { packageId = pkg.Id })" class="btn btn-warning shadow-sm fw-bold text-dark py-2">
+                                <i class="bi bi-rocket-takeoff-fill me-1"></i> Start @pkg.TrialDays-Day Free Trial
+                            </a>
                         </div>
                     </div>
                 </div>
             }
         }
     </div>
+
+    <!-- DYNAMIC PACKAGE COMPARISON MATRIX TABLE -->
+    <div class="glass-card p-2 p-md-4 mb-4">
+        <h3 class="font-display fw-bold text-light mb-2">
+            <i class="bi bi-table text-warning me-2"></i>Compare Package Capabilities Side-by-Side
+        </h3>
+        <p class="text-muted fs-7 mb-4">Detailed breakdown of included Shop Admin features across each subscription plan.</p>
+
+        <div class="table-responsive">
+            <table class="table table-dark table-hover align-middle border-secondary mb-0 w-100">
+                <thead>
+                    <tr class="border-secondary bg-dark">
+                        <th class="pe-3">Feature / Module Name</th>
+                        @foreach (var pkg in Model.OrderBy(p => p.DisplayOrder))
+                        {
+                            <th class="text-center font-mono py-3 px-3" style="text-wrap: nowrap;">
+                                <div class="fw-bold text-light fs-6">@pkg.Name</div>
+                                <div class="text-success fs-7">₹@pkg.MonthlyPrice/mo</div>
+                            </th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var group in groupedFeatures)
+                    {
+                        <tr class="bg-black bg-opacity-50">
+                            <td colspan="@(Model.Count() + 1)" class="fw-bold text-warning font-mono fs-7 uppercase tracking-wider py-2">
+                                <i class="bi bi-folder2-open me-2"></i>@group.Key
+                            </td>
+                        </tr>
+                        foreach (var feat in group.Value)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center py-1">
+                                        <i class="bi @feat.Icon text-info me-2 fs-5"></i>
+                                        <div>
+                                            <strong class="text-light fs-6">@feat.FeatureName</strong>
+                                            <div class="text-muted fs-7 mt-1">@feat.Description</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                @foreach (var pkg in Model.OrderBy(p => p.DisplayOrder))
+                                {
+                                    var isInc = pkg.EnabledFeatures != null && pkg.EnabledFeatures.Contains(feat.FeatureKey, StringComparer.OrdinalIgnoreCase);
+                                    <td class="text-center">
+                                        @if (isInc)
+                                        {
+                                            <span class="badge bg-success bg-opacity-25 text-success rounded-circle p-2" title="Included">
+                                                <i class="bi bi-check-lg fs-6"></i>
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger bg-opacity-25 text-danger rounded-circle p-2" title="Not Included">
+                                                <i class="bi bi-x-lg fs-6"></i>
+                                            </span>
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
+
+<!-- DYNAMIC VIEW MORE DETAILS MODAL -->
+<div class="modal fade" id="packageDetailsModal" tabindex="-1" aria-modal="true" role="dialog">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content bg-dark text-light border-warning shadow-lg">
+            <div class="modal-header border-secondary bg-warning bg-opacity-10 text-warning">
+                <h5 class="modal-title font-display fw-bold mb-0" id="detModalTitle">
+                    <i class="bi bi-shield-check me-2"></i>Package Feature Breakdown
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4" id="detModalBody">
+                <!-- JS Dynamic Feature Categories -->
+            </div>
+            <div class="modal-footer border-secondary justify-content-between">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <a id="detRegisterBtn" href="@Url.Action("Register", "Landing")" class="btn btn-warning shadow-sm fw-bold text-dark">
+                    <i class="bi bi-rocket-takeoff-fill me-1"></i> Start Free Trial
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const rawPackages = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(p => new {
+            id = p.Id,
+            name = p.Name,
+            desc = p.Description,
+            monthly = p.MonthlyPrice,
+            yearly = p.YearlyPrice,
+            features = p.EnabledFeatures ?? p.EnabledModules ?? new List<string>()
+        })));
+
+        const rawAllFeatures = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(allFeatures.Select(f => new {
+            key = f.FeatureKey,
+            name = f.FeatureName,
+            cat = f.Category,
+            desc = f.Description,
+            icon = f.Icon
+        })));
+
+        function toggleBillingCycle(toggleEl) {
+            const isYearly = toggleEl.checked;
+            const lblM = document.getElementById('labelMonthly');
+            const lblY = document.getElementById('labelYearly');
+            if (lblM) lblM.className = isYearly ? 'text-muted fs-7 ps-2' : 'text-light fw-bold fs-7 ps-2';
+            if (lblY) lblY.className = isYearly ? 'text-light fw-bold fs-7 pe-2' : 'text-muted fs-7 pe-2';
+
+            document.querySelectorAll('.price-monthly-block').forEach(b => b.classList.toggle('d-none', isYearly));
+            document.querySelectorAll('.price-yearly-block').forEach(b => b.classList.toggle('d-none', !isYearly));
+        }
+
+        window.openPackageDetailsModal = function(pkgId) {
+            const pkg = (rawPackages || []).find(p => String(p.id || p.Id || '').toLowerCase() === String(pkgId || '').toLowerCase());
+            if (!pkg) {
+                console.warn('Package details not found for ID:', pkgId);
+                return;
+            }
+
+            const pName = pkg.name || pkg.Name || 'Package Details';
+            const pDesc = pkg.desc || pkg.Description || '';
+            const pMonthly = pkg.monthly ?? pkg.MonthlyPrice ?? 0;
+            const pFeatures = pkg.features || pkg.EnabledFeatures || pkg.EnabledModules || [];
+
+            const titleEl = document.getElementById('detModalTitle');
+            if (titleEl) titleEl.innerText = `${pName} — Included Features`;
+
+            const regBtn = document.getElementById('detRegisterBtn');
+            if (regBtn) regBtn.href = `@Url.Action("Register", "Landing")?packageId=${pkg.id || pkgId}`;
+
+            let html = `
+                <div class="mb-4 pb-3 border-bottom border-secondary">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <h4 class="text-light font-display fw-bold mb-0">${pName}</h4>
+                        <span class="fs-3 fw-bold text-success font-mono">₹${Number(pMonthly).toLocaleString('en-IN')}/mo</span>
+                    </div>
+                    <p class="text-muted fs-7 mb-0">${pDesc}</p>
+                </div>
+                <h6 class="font-display fw-bold text-warning mb-3 uppercase font-mono">What's Included</h6>
+            `;
+
+            // Group features by Category
+            const cats = {};
+            (rawAllFeatures || []).forEach(f => {
+                const fCat = f.cat || f.Category || 'General';
+                const fKey = f.key || f.FeatureKey || '';
+                const fName = f.name || f.FeatureName || '';
+                const fDesc = f.desc || f.Description || '';
+                const fIcon = f.icon || f.Icon || 'bi-check2-circle';
+
+                if (!cats[fCat]) cats[fCat] = [];
+                const isIncluded = pFeatures.some(k => String(k || '').toLowerCase() === String(fKey || '').toLowerCase());
+                if (isIncluded) {
+                    cats[fCat].push({ key: fKey, name: fName, cat: fCat, desc: fDesc, icon: fIcon });
+                }
+            });
+
+            let featCount = 0;
+            for (const [catName, featList] of Object.entries(cats)) {
+                if (!featList || featList.length === 0) continue;
+                featCount += featList.length;
+                html += `
+                    <div class="mb-3">
+                        <h6 class="text-info font-mono fs-7 fw-bold mb-2 uppercase"><i class="bi bi-folder2-open me-2"></i>${catName} (${featList.length})</h6>
+                        <div class="row g-2">
+                `;
+                featList.forEach(f => {
+                    html += `
+                        <div class="col-md-6">
+                            <div class="p-2 border border-secondary rounded bg-dark bg-opacity-50 d-flex align-items-center">
+                                <i class="bi ${f.icon} text-success me-2 fs-6"></i>
+                                <div>
+                                    <strong class="text-light fs-7 d-block">${f.name}</strong>
+                                    <small class="text-muted fs-8">${f.desc}</small>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += `</div></div>`;
+            }
+
+            if (featCount === 0) {
+                html += `<div class="alert alert-info border-info text-info bg-dark"><i class="bi bi-info-circle me-2"></i>Includes all standard shop management modules.</div>`;
+            }
+
+            const modalBody = document.getElementById('detModalBody');
+            if (modalBody) modalBody.innerHTML = html;
+
+            const modalEl = document.getElementById('packageDetailsModal');
+            if (modalEl) {
+                const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                bsModal.show();
+            }
+        };
+    </script>
+}

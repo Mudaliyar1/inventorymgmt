@@ -1,0 +1,374 @@
+@model SubscriptionPackage
+@{
+    ViewData["Title"] = "Create SaaS Package";
+    var groupedFeatures = ViewBag.GroupedFeatures as Dictionary<string, List<FeatureDefinition>> ?? new Dictionary<string, List<FeatureDefinition>>();
+    var totalFeatureCount = groupedFeatures.Values.Sum(list => list.Count);
+}
+
+<div class="ph">
+    <div>
+        <h1 class="ph-title"><i class="bi bi-box-seam-fill text-warning me-2"></i>Create SaaS Subscription Package</h1>
+        <p class="ph-sub">Configure pricing, limits, and select included Shop Admin dashboard modules & features.</p>
+    </div>
+    <div class="ph-actions">
+        <a href="@Url.Action("Packages", "PlatformAdmin")" class="btn-d btn-outline">
+            <i class="bi bi-arrow-left me-1"></i> Back to Packages
+        </a>
+    </div>
+</div>
+
+<form asp-action="CreatePackage" method="post" id="packageForm">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger mb-4"></div>
+
+    <div class="row g-4">
+        <!-- Left Column: Package Metadata & Pricing -->
+        <div class="col-lg-4">
+            <div class="card-d card-p-lg mb-4">
+                <h5 class="fw-bold text-light mb-3">
+                    <i class="bi bi-info-circle text-primary me-2"></i>Package Information
+                </h5>
+
+                <div class="mb-3">
+                    <label class="fg-label">Package Name <span class="text-danger">*</span></label>
+                    <input asp-for="Name" class="fg-control" placeholder="e.g. Basic, Professional, Enterprise" required id="pkgNameInput" />
+                    <span asp-validation-for="Name" class="text-danger fs-7"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label class="fg-label">Short Description</label>
+                    <textarea asp-for="Description" class="fg-control" rows="3" placeholder="Brief summary of package target audience and capability" id="pkgDescInput"></textarea>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="fg-label">Monthly Price (₹) <span class="text-danger">*</span></label>
+                        <input asp-for="MonthlyPrice" type="number" step="1" class="fg-control" placeholder="1999" required id="pkgMonthlyPriceInput" />
+                    </div>
+                    <div class="col-6">
+                        <label class="fg-label">Yearly Price (₹)</label>
+                        <input asp-for="YearlyPrice" type="number" step="1" class="fg-control" placeholder="19990" id="pkgYearlyPriceInput" />
+                    </div>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="fg-label">Trial Period (Days)</label>
+                        <input asp-for="TrialDays" type="number" class="fg-control" placeholder="14" />
+                    </div>
+                    <div class="col-6">
+                        <label class="fg-label">Display Order</label>
+                        <input asp-for="DisplayOrder" type="number" class="fg-control" placeholder="1" />
+                    </div>
+                </div>
+
+                <h6 class="fw-bold text-info fs-7 uppercase font-mono mt-4 mb-3">Resource Capacity Limits</h6>
+
+                <div class="mb-2">
+                    <label class="fg-label">Max Staff Employees <small class="text-muted">(0 for Unlimited)</small></label>
+                    <input asp-for="MaxEmployees" type="number" class="fg-control" placeholder="10" />
+                </div>
+
+                <div class="mb-2">
+                    <label class="fg-label">Max Product Catalog <small class="text-muted">(0 for Unlimited)</small></label>
+                    <input asp-for="MaxProducts" type="number" class="fg-control" placeholder="5000" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="fg-label">Max Suppliers Directory <small class="text-muted">(0 for Unlimited)</small></label>
+                    <input asp-for="MaxSuppliers" type="number" class="fg-control" placeholder="100" />
+                </div>
+
+                <div class="d-flex align-items-center gap-4 mt-4 pt-3 border-top border-secondary">
+                    <div class="form-check form-switch">
+                        <input asp-for="IsActive" class="form-check-input" type="checkbox" id="isActiveSwitch" />
+                        <label class="form-check-label text-light fs-7" for="isActiveSwitch">Active Package</label>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input asp-for="IsFeatured" class="form-check-input" type="checkbox" id="isFeaturedSwitch" />
+                        <label class="form-check-label text-warning fs-7 fw-bold" for="isFeaturedSwitch">Featured / Popular</label>
+                    </div>
+                </div>
+
+                <div class="mt-4 d-grid gap-2">
+                    <button type="button" class="btn btn-outline-info" onclick="openPackagePreviewModal()">
+                        <i class="bi bi-eye me-1"></i> Preview Package Card
+                    </button>
+                    <button type="submit" class="btn btn-primary fw-bold py-2">
+                        <i class="bi bi-check-circle me-1"></i> Save & Publish Package
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Shop Admin Feature Selection -->
+        <div class="col-lg-8">
+            <div class="card-d card-p-lg">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 pb-3 border-bottom border-secondary">
+                    <div>
+                        <h5 class="fw-bold text-light mb-1">
+                            <i class="bi bi-ui-checks text-warning me-2"></i>Features Included
+                        </h5>
+                        <p class="text-muted fs-7 mb-0">Select the actual Shop Admin dashboard navigation modules enabled for this package.</p>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <span id="featureCounterBadge" class="badge bg-primary font-mono px-3 py-2 fs-7 shadow-sm">
+                            0 of @totalFeatureCount features selected
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Feature Toolbar: Search, Select All, Category Filters -->
+                <div class="row g-2 align-items-center mb-4">
+                    <div class="col-md-5">
+                        <div class="search-pill">
+                            <i class="bi bi-search search-pill-icon"></i>
+                            <input type="text" id="featureSearchInput" class="search-pill-input" placeholder="Search feature name or description..." oninput="filterFeatures()" />
+                        </div>
+                    </div>
+                    <div class="col-md-7 d-flex align-items-center justify-content-md-end gap-2 flex-wrap">
+                        <div class="form-check me-2">
+                            <input class="form-check-input" type="checkbox" id="selectAllMasterCheckbox" onchange="toggleSelectAllFeatures(this)">
+                            <label class="form-check-label text-light fw-bold fs-7 cursor-pointer" for="selectAllMasterCheckbox">
+                                Select All Features
+                            </label>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-success" onclick="selectAllFeatures(true)">
+                            <i class="bi bi-check-all me-1"></i> Select All
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="selectAllFeatures(false)">
+                            <i class="bi bi-x-lg me-1"></i> Deselect All
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Category Pills -->
+                <div class="d-flex gap-2 mb-4 overflow-x-auto pb-2" id="categoryFilterPills">
+                    <button type="button" class="btn btn-sm btn-primary active-cat-pill" onclick="filterCategory('ALL', this)">All Categories</button>
+                    @foreach (var catKey in groupedFeatures.Keys)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" onclick="filterCategory('@catKey', this)">@catKey</button>
+                    }
+                </div>
+
+                <!-- Grouped Feature Checkbox Cards -->
+                <div id="featureCategoriesContainer">
+                    @foreach (var group in groupedFeatures)
+                    {
+                        <div class="feature-category-block mb-4" data-category="@group.Key">
+                            <div class="d-flex align-items-center justify-content-between bg-dark bg-opacity-50 p-3 rounded-top border-bottom border-secondary">
+                                <h6 class="font-display fw-bold text-warning mb-0 uppercase font-mono">
+                                    <i class="bi bi-folder2-open me-2"></i>@group.Key
+                                </h6>
+                                <span class="badge bg-secondary fs-8 category-count-badge">0 / @group.Value.Count Selected</span>
+                            </div>
+                            <div class="p-3 border border-top-0 border-secondary rounded-bottom bg-black bg-opacity-25">
+                                <div class="row g-3">
+                                    @foreach (var feat in group.Value)
+                                    {
+                                        var isSub = !string.IsNullOrEmpty(feat.ParentKey);
+                                        <div class="col-md-6 feature-item-col" data-cat="@group.Key" data-name="@feat.FeatureName.ToLower()" data-desc="@feat.Description.ToLower()">
+                                            <div class="p-3 border rounded shadow-sm position-relative transition-all @(isSub ? "ms-4 bg-dark bg-opacity-25 border-info border-opacity-25" : "bg-dark bg-opacity-75 border-secondary")" style="min-height:90px">
+                                                <div class="form-check">
+                                                    <input type="checkbox"
+                                                           name="selectedFeatures"
+                                                           value="@feat.FeatureKey"
+                                                           class="form-check-input feature-checkbox"
+                                                           id="feat_@feat.FeatureKey"
+                                                           data-category="@group.Key"
+                                                           onchange="onFeatureCheckboxChanged()" />
+                                                    <label class="form-check-label w-100 cursor-pointer" for="feat_@feat.FeatureKey">
+                                                        <div class="d-flex align-items-center justify-content-between mb-1">
+                                                            <strong class="text-light fs-7">
+                                                                <i class="bi @feat.Icon me-1 text-info"></i>@feat.FeatureName
+                                                            </strong>
+                                                            @if (isSub)
+                                                            {
+                                                                <span class="badge bg-info bg-opacity-25 text-info fs-9">Sub-Feature</span>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span class="badge bg-dark border border-secondary text-muted font-mono fs-9">@feat.FeatureKey</span>
+                                                            }
+                                                        </div>
+                                                        <p class="text-muted fs-8 mb-0 leading-tight">@feat.Description</p>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- LIVE PACKAGE PREVIEW MODAL -->
+<div class="modal fade" id="packagePreviewModal" tabindex="-1" aria-modal="true" role="dialog">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content bg-dark text-light border-warning shadow-lg">
+            <div class="modal-header border-secondary bg-warning bg-opacity-10 text-warning">
+                <h5 class="modal-title font-display fw-bold mb-0">
+                    <i class="bi bi-eye-fill me-2"></i>Package Card & Pricing Preview
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted fs-7 mb-4">This preview reflects how potential customers will view this plan on your public Pricing page.</p>
+
+                <div class="row justify-content-center">
+                    <div class="col-md-8 col-lg-7">
+                        <!-- Preview Card -->
+                        <div class="glass-card p-4 border-warning shadow-lg position-relative">
+                            <span class="position-absolute top-0 end-0 bg-warning text-dark font-mono fw-bold px-3 py-1 rounded-bottom-start fs-8 d-none" id="prevFeaturedBadge">
+                                FEATURED
+                            </span>
+                            <h4 class="font-display fw-bold text-light mb-1" id="prevName">Package Name</h4>
+                            <p class="text-muted fs-7 mb-3" id="prevDesc">Short Description</p>
+
+                            <div class="mb-4">
+                                <span class="fs-2 fw-bold text-success font-mono" id="prevPrice">₹0</span>
+                                <span class="text-muted fs-7">/ month</span>
+                            </div>
+
+                            <h6 class="font-display fw-bold text-info fs-7 mb-3 uppercase font-mono">Highlights Included</h6>
+                            <ul class="list-unstyled fs-7 mb-4" id="prevHighlights">
+                                <!-- Dynamic JS Highlights -->
+                            </ul>
+
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-outline-info btn-sm">
+                                    <i class="bi bi-info-circle me-1"></i> View More Details
+                                </button>
+                                <button type="button" class="btn btn-warning shadow-sm fw-bold">
+                                    <i class="bi bi-rocket-takeoff-fill me-1"></i> Choose Plan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close Preview</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const totalCount = @totalFeatureCount;
+
+        function updateFeatureCounter() {
+            const checkboxes = document.querySelectorAll('.feature-checkbox');
+            const checked = document.querySelectorAll('.feature-checkbox:checked');
+
+            const countBadge = document.getElementById('featureCounterBadge');
+            if (countBadge) {
+                countBadge.innerText = `${checked.length} of ${checkboxes.length} features selected`;
+            }
+
+            const masterCheck = document.getElementById('selectAllMasterCheckbox');
+            if (masterCheck) {
+                masterCheck.checked = (checked.length === checkboxes.length && checkboxes.length > 0);
+                masterCheck.indeterminate = (checked.length > 0 && checked.length < checkboxes.length);
+            }
+
+            // Update category count badges
+            document.querySelectorAll('.feature-category-block').forEach(block => {
+                const catName = block.getAttribute('data-category');
+                const catCheckboxes = block.querySelectorAll('.feature-checkbox');
+                const catChecked = block.querySelectorAll('.feature-checkbox:checked');
+                const badge = block.querySelector('.category-count-badge');
+                if (badge) {
+                    badge.innerText = `${catChecked.length} / ${catCheckboxes.length} Selected`;
+                }
+            });
+        }
+
+        function onFeatureCheckboxChanged() {
+            updateFeatureCounter();
+        }
+
+        function selectAllFeatures(select) {
+            document.querySelectorAll('.feature-checkbox').forEach(cb => {
+                cb.checked = select;
+            });
+            updateFeatureCounter();
+        }
+
+        function toggleSelectAllFeatures(masterCb) {
+            selectAllFeatures(masterCb.checked);
+        }
+
+        function filterCategory(catName, btnEl) {
+            document.querySelectorAll('#categoryFilterPills button').forEach(b => b.classList.remove('btn-primary', 'active-cat-pill'));
+            document.querySelectorAll('#categoryFilterPills button').forEach(b => b.classList.add('btn-outline-secondary'));
+            btnEl.classList.remove('btn-outline-secondary');
+            btnEl.classList.add('btn-primary', 'active-cat-pill');
+
+            document.querySelectorAll('.feature-category-block').forEach(block => {
+                if (catName === 'ALL' || block.getAttribute('data-category') === catName) {
+                    block.style.display = 'block';
+                } else {
+                    block.style.display = 'none';
+                }
+            });
+        }
+
+        function filterFeatures() {
+            const query = document.getElementById('featureSearchInput').value.toLowerCase().trim();
+            document.querySelectorAll('.feature-item-col').forEach(col => {
+                const name = col.getAttribute('data-name') || '';
+                const desc = col.getAttribute('data-desc') || '';
+                if (!query || name.includes(query) || desc.includes(query)) {
+                    col.style.display = 'block';
+                } else {
+                    col.style.display = 'none';
+                }
+            });
+        }
+
+        function openPackagePreviewModal() {
+            const name = document.getElementById('pkgNameInput').value || 'Package Name';
+            const desc = document.getElementById('pkgDescInput').value || 'Package description...';
+            const price = document.getElementById('pkgMonthlyPriceInput').value || '0';
+            const isFeatured = document.getElementById('isFeaturedSwitch').checked;
+
+            document.getElementById('prevName').innerText = name;
+            document.getElementById('prevDesc').innerText = desc;
+            document.getElementById('prevPrice').innerText = `₹${parseFloat(price).toLocaleString('en-IN')}`;
+
+            const badge = document.getElementById('prevFeaturedBadge');
+            if (isFeatured) badge.classList.remove('d-none');
+            else badge.classList.add('d-none');
+
+            const checkedBoxes = Array.from(document.querySelectorAll('.feature-checkbox:checked'));
+            const highlightsList = document.getElementById('prevHighlights');
+            highlightsList.innerHTML = '';
+
+            if (checkedBoxes.length === 0) {
+                highlightsList.innerHTML = '<li class="text-muted fs-7">No features selected yet.</li>';
+            } else {
+                checkedBoxes.slice(0, 6).forEach(cb => {
+                    const label = cb.closest('.form-check').querySelector('strong').innerText;
+                    highlightsList.innerHTML += `<li class="mb-2 d-flex align-items-center text-light"><i class="bi bi-check-circle-fill text-success me-2"></i><span>${label}</span></li>`;
+                });
+                if (checkedBoxes.length > 6) {
+                    highlightsList.innerHTML += `<li class="text-info fs-7 fw-bold">+ ${checkedBoxes.length - 6} more features included</li>`;
+                }
+            }
+
+            const modal = new bootstrap.Modal(document.getElementById('packagePreviewModal'));
+            modal.show();
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            updateFeatureCounter();
+        });
+    </script>
+}

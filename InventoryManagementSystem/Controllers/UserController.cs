@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using InventoryManagementSystem.Interfaces;
 using InventoryManagementSystem.Models;
+using InventoryManagementSystem.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,6 +22,7 @@ namespace InventoryManagementSystem.Controllers
         private readonly IPasswordPolicyService _passwordPolicyService;
         private readonly IPasswordResetService _passwordResetService;
         private readonly ILicenseService _licenseService;
+        private readonly IFeatureCatalogService _featureCatalogService;
 
         public UserController(
             IUserRepository userRepository,
@@ -31,7 +33,8 @@ namespace InventoryManagementSystem.Controllers
             IAccountValidationService accountValidationService,
             IPasswordPolicyService passwordPolicyService,
             IPasswordResetService passwordResetService,
-            ILicenseService licenseService)
+            ILicenseService licenseService,
+            IFeatureCatalogService featureCatalogService)
         {
             _userRepository = userRepository;
             _authService = authService;
@@ -42,6 +45,7 @@ namespace InventoryManagementSystem.Controllers
             _passwordPolicyService = passwordPolicyService;
             _passwordResetService = passwordResetService;
             _licenseService = licenseService;
+            _featureCatalogService = featureCatalogService;
         }
 
         [HttpGet]
@@ -57,6 +61,23 @@ namespace InventoryManagementSystem.Controllers
             return View(employees);
         }
 
+        private async Task<List<ModulePermissionsGroup>> GetPackageFilteredPermissionsAsync(string? tenantId)
+        {
+            var allGroups = _permissionDiscovery.GetGroupedPermissions();
+            if (string.IsNullOrEmpty(tenantId)) return allGroups.ToList();
+
+            var filtered = new List<ModulePermissionsGroup>();
+            foreach (var group in allGroups)
+            {
+                var isEnabled = await _featureCatalogService.IsFeatureEnabledForTenantAsync(tenantId, group.ControllerName);
+                if (isEnabled)
+                {
+                    filtered.Add(group);
+                }
+            }
+            return filtered;
+        }
+
         [HttpGet]
         public async Task<IActionResult> Create()
         {
@@ -65,7 +86,7 @@ namespace InventoryManagementSystem.Controllers
             ViewBag.LimitReached = !limitCheck.Allowed;
             ViewBag.LimitMessage = limitCheck.Message;
 
-            ViewBag.GroupedPermissions = _permissionDiscovery.GetGroupedPermissions();
+            ViewBag.GroupedPermissions = await GetPackageFilteredPermissionsAsync(tenantId);
             var nextEmpId = $"EMP-{Random.Shared.Next(1000, 9999)}";
             return View(new User { EmployeeId = nextEmpId, Role = Role.Staff });
         }
@@ -74,10 +95,10 @@ namespace InventoryManagementSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(User model, string rawPassword, string confirmPassword, List<string> selectedPermissions)
         {
-            ViewBag.GroupedPermissions = _permissionDiscovery.GetGroupedPermissions();
+            var tenantId = User.FindFirst("TenantId")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.GroupSid)?.Value;
+            ViewBag.GroupedPermissions = await GetPackageFilteredPermissionsAsync(tenantId);
 
             // Check Subscription Package Employee Limit
-            var tenantId = User.FindFirst("TenantId")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.GroupSid)?.Value;
             var limitCheck = await _licenseService.CheckPackageLimitAsync(tenantId ?? string.Empty, "Employees");
             if (!limitCheck.Allowed)
             {
@@ -143,7 +164,8 @@ namespace InventoryManagementSystem.Controllers
             var user = await _userRepository.GetByIdAsync(id);
             if (user == null) return NotFound();
 
-            ViewBag.GroupedPermissions = _permissionDiscovery.GetGroupedPermissions();
+            var tenantId = User.FindFirst("TenantId")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.GroupSid)?.Value;
+            ViewBag.GroupedPermissions = await GetPackageFilteredPermissionsAsync(tenantId);
             return View(user);
         }
 
@@ -151,7 +173,8 @@ namespace InventoryManagementSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(User model, List<string> selectedPermissions)
         {
-            ViewBag.GroupedPermissions = _permissionDiscovery.GetGroupedPermissions();
+            var tenantId = User.FindFirst("TenantId")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.GroupSid)?.Value;
+            ViewBag.GroupedPermissions = await GetPackageFilteredPermissionsAsync(tenantId);
 
             var existing = await _userRepository.GetByIdAsync(model.Id);
             if (existing == null) return NotFound();

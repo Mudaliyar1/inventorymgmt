@@ -101,8 +101,40 @@ namespace InventoryManagementSystem.Filters
                 }
             }
 
-            // 2. Super Admin or Admin -> Full access everywhere
-            if (user.IsInRole(Role.Admin) || user.IsInRole(Role.SuperAdmin))
+            // 2. SuperAdmin -> Full access everywhere
+            if (user.IsInRole(Role.SuperAdmin))
+            {
+                await next();
+                return;
+            }
+
+            // Server-Side SaaS Tenant Package Feature Enforcement
+            var tenantId = user.FindFirst("TenantId")?.Value ?? user.FindFirst(ClaimTypes.GroupSid)?.Value;
+            var featureCatalog = context.HttpContext.RequestServices.GetService<IFeatureCatalogService>();
+            if (featureCatalog != null && !string.IsNullOrEmpty(tenantId))
+            {
+                var isFeatureEnabled = await featureCatalog.IsFeatureEnabledForTenantAsync(tenantId, controllerName, actionName);
+                if (!isFeatureEnabled)
+                {
+                    var feature = featureCatalog.GetFeatureByControllerAndAction(controllerName, actionName);
+                    var licenseService = context.HttpContext.RequestServices.GetService<ILicenseService>();
+                    var pkg = licenseService != null ? await licenseService.GetTenantPackageAsync(tenantId) : null;
+
+                    context.HttpContext.Response.StatusCode = 403;
+                    var viewResult = new ViewResult
+                    {
+                        ViewName = "~/Views/Shared/FeatureNotIncluded.cshtml",
+                        StatusCode = 403
+                    };
+                    viewResult.ViewData["FeatureName"] = feature?.FeatureName ?? controllerName;
+                    viewResult.ViewData["CurrentPlanName"] = pkg?.Name ?? "Basic Plan";
+                    context.Result = viewResult;
+                    return;
+                }
+            }
+
+            // Admin Role -> Allowed if tenant package includes the module
+            if (user.IsInRole(Role.Admin))
             {
                 await next();
                 return;

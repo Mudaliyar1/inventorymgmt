@@ -23,6 +23,12 @@ namespace InventoryManagementSystem.Models
         [BsonElement("YearlyPrice")]
         public decimal YearlyPrice { get; set; }
 
+        [BsonElement("TrialDays")]
+        public int TrialDays { get; set; } = 14;
+
+        [BsonElement("BillingCycle")]
+        public string BillingCycle { get; set; } = "Monthly"; // Monthly, Yearly, Both
+
         [BsonElement("MaxEmployees")]
         public int MaxEmployees { get; set; } = 5;
 
@@ -35,8 +41,14 @@ namespace InventoryManagementSystem.Models
         [BsonElement("EnabledModules")]
         public List<string> EnabledModules { get; set; } = new List<string>();
 
+        [BsonElement("EnabledFeatures")]
+        public List<string> EnabledFeatures { get; set; } = new List<string>(); // Selected FeatureKeys (e.g., POS_BILLING, SUPPLIERS)
+
         [BsonElement("IsActive")]
         public bool IsActive { get; set; } = true;
+
+        [BsonElement("IsFeatured")]
+        public bool IsFeatured { get; set; } = false;
 
         [BsonElement("DisplayOrder")]
         public int DisplayOrder { get; set; } = 1;

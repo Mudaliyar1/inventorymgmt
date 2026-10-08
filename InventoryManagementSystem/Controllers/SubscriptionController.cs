@@ -5,6 +5,7 @@ using InventoryManagementSystem.Models;
 using System;
 using System.Threading.Tasks;
 using System.Security.Claims;
+using System.Linq;
 
 namespace InventoryManagementSystem.Controllers
 {
@@ -12,10 +13,12 @@ namespace InventoryManagementSystem.Controllers
     public class SubscriptionController : Controller
     {
         private readonly ILicenseService _licenseService;
+        private readonly IFeatureCatalogService _featureCatalogService;
 
-        public SubscriptionController(ILicenseService licenseService)
+        public SubscriptionController(ILicenseService licenseService, IFeatureCatalogService featureCatalogService)
         {
             _licenseService = licenseService;
+            _featureCatalogService = featureCatalogService;
         }
 
         [HttpGet]
@@ -25,9 +28,13 @@ namespace InventoryManagementSystem.Controllers
             var currentPackage = await _licenseService.GetTenantPackageAsync(tenantId ?? string.Empty);
             var activeLicense = await _licenseService.GetActiveLicenseAsync(tenantId ?? string.Empty);
             var allPackages = await _licenseService.GetAllPackagesAsync();
+            var groupedFeatures = await _featureCatalogService.GetGroupedFeaturesAsync();
+            var allFeatures = await _featureCatalogService.GetActiveFeaturesAsync();
 
             ViewBag.CurrentPackage = currentPackage;
             ViewBag.ActiveLicense = activeLicense;
+            ViewBag.GroupedFeatures = groupedFeatures;
+            ViewBag.AllFeatures = allFeatures;
 
             return View(allPackages);
         }

@@ -29,6 +29,7 @@ namespace InventoryManagementSystem.Data
         // Multi-Tenant SaaS Collections
         public IMongoCollection<Tenant> Tenants => GetCollection<Tenant>("Tenants");
         public IMongoCollection<SubscriptionPackage> SubscriptionPackages => GetCollection<SubscriptionPackage>("SubscriptionPackages");
+        public IMongoCollection<FeatureDefinition> FeatureDefinitions => GetCollection<FeatureDefinition>("FeatureDefinitions");
         public IMongoCollection<TenantLicense> TenantLicenses => GetCollection<TenantLicense>("TenantLicenses");
         public IMongoCollection<SaaSPaymentTransaction> SaaSPaymentTransactions => GetCollection<SaaSPaymentTransaction>("SaaSPaymentTransactions");
 

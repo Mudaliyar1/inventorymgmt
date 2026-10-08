@@ -125,10 +125,47 @@ namespace InventoryManagementSystem.Extensions
                 await context.Settings.InsertOneAsync(settings);
             }
 
+            // Seed SaaS Feature Definitions
+            try
+            {
+                var featureCatalogService = scope.ServiceProvider.GetRequiredService<InventoryManagementSystem.Interfaces.IFeatureCatalogService>();
+                await featureCatalogService.SeedDefaultFeaturesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SEEDING NOTICE] Feature catalog seeding notice: {ex.Message}");
+            }
+
             // Seed Default Subscription Packages
             var pkgCount = await context.SubscriptionPackages.CountDocumentsAsync(_ => true);
             if (pkgCount == 0)
             {
+                var basicFeatures = new System.Collections.Generic.List<string>
+                {
+                    "DASHBOARD", "POS_BILLING", "CUSTOMERS", "PRODUCTS_SPECS", "CATEGORIES",
+                    "STOCK_IN", "STOCK_OUT", "STOCK_HISTORY", "INVENTORY_SUMMARY", "INVOICE_RECORDS",
+                    "REPORTS", "MY_PROFILE", "SETTINGS"
+                };
+
+                var proFeatures = new System.Collections.Generic.List<string>
+                {
+                    "DASHBOARD", "IMEI_DEVICES", "POS_BILLING", "RETURNS_REFUNDS", "CUSTOMERS",
+                    "SUPPLIERS", "PRODUCTS_SPECS", "CATEGORIES", "STOCK_IN", "STOCK_OUT",
+                    "STOCK_HISTORY", "PURCHASE_RETURNS", "INVENTORY_SUMMARY", "INVOICE_RECORDS",
+                    "REPORTS", "ORDER_MANAGEMENT", "EMPLOYEES", "MY_PROFILE", "SETTINGS",
+                    "TRADE_IN_EXCHANGE", "SERVICE_REPAIRS", "SYSTEM_LOGS", "EMAIL_ALERTS"
+                };
+
+                var entFeatures = new System.Collections.Generic.List<string>
+                {
+                    "DASHBOARD", "IMEI_DEVICES", "POS_BILLING", "TRADE_IN_EXCHANGE", "RETURNS_REFUNDS",
+                    "SERVICE_REPAIRS", "CUSTOMERS", "SUPPLIERS", "PRODUCTS_SPECS", "CATEGORIES",
+                    "STOCK_IN", "STOCK_OUT", "STOCK_HISTORY", "PURCHASE_RETURNS", "INVENTORY_SUMMARY",
+                    "INVOICE_RECORDS", "REPORTS", "ORDER_MANAGEMENT", "ADMINISTRATORS", "EMPLOYEES",
+                    "MY_PROFILE", "SETTINGS", "SYSTEM_LOGS", "EMAIL_ALERTS", "EMAIL_ALERTS_INVOICE",
+                    "EMAIL_ALERTS_LOW_STOCK", "EMAIL_ALERTS_PURCHASE_ORDER", "EMAIL_ALERTS_REPAIR", "EMAIL_ALERTS_RETURN"
+                };
+
                 await context.SubscriptionPackages.InsertManyAsync(new[]
                 {
                     new SubscriptionPackage
@@ -137,10 +174,15 @@ namespace InventoryManagementSystem.Extensions
                         Description = "Essential tools for small mobile shops.",
                         MonthlyPrice = 999,
                         YearlyPrice = 9990,
+                        TrialDays = 14,
+                        BillingCycle = "Monthly",
                         MaxEmployees = 3,
                         MaxProducts = 500,
                         MaxSuppliers = 20,
                         EnabledModules = new System.Collections.Generic.List<string> { "Products", "Inventory", "POS", "Customers" },
+                        EnabledFeatures = basicFeatures,
+                        IsActive = true,
+                        IsFeatured = false,
                         DisplayOrder = 1
                     },
                     new SubscriptionPackage
@@ -149,10 +191,15 @@ namespace InventoryManagementSystem.Extensions
                         Description = "Advanced features including suppliers, repairs, and returns.",
                         MonthlyPrice = 1999,
                         YearlyPrice = 19990,
+                        TrialDays = 14,
+                        BillingCycle = "Monthly",
                         MaxEmployees = 10,
                         MaxProducts = 5000,
                         MaxSuppliers = 100,
                         EnabledModules = new System.Collections.Generic.List<string> { "Products", "Inventory", "POS", "Customers", "Suppliers", "Returns", "Repairs", "Reports" },
+                        EnabledFeatures = proFeatures,
+                        IsActive = true,
+                        IsFeatured = true,
                         DisplayOrder = 2
                     },
                     new SubscriptionPackage
@@ -161,10 +208,15 @@ namespace InventoryManagementSystem.Extensions
                         Description = "Full suite with unlimited scale, trade-in, and priority support.",
                         MonthlyPrice = 3999,
                         YearlyPrice = 39990,
+                        TrialDays = 30,
+                        BillingCycle = "Monthly",
                         MaxEmployees = 100,
                         MaxProducts = 100000,
                         MaxSuppliers = 1000,
                         EnabledModules = new System.Collections.Generic.List<string> { "Products", "Inventory", "POS", "Customers", "Suppliers", "Returns", "Repairs", "TradeIn", "Reports", "AdvancedAnalytics" },
+                        EnabledFeatures = entFeatures,
+                        IsActive = true,
+                        IsFeatured = false,
                         DisplayOrder = 3
                     }
                 });

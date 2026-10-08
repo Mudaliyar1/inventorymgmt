@@ -173,6 +173,7 @@ builder.Services.AddScoped<ISupplierPurchaseReturnRepository, SupplierPurchaseRe
 builder.Services.AddSingleton<IPermissionDiscoveryService, PermissionDiscoveryService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<ILicenseService, LicenseService>();
+builder.Services.AddScoped<IFeatureCatalogService, FeatureCatalogService>();
 builder.Services.AddScoped<IAccountValidationService, AccountValidationService>();
 builder.Services.AddHttpClient<IBrevoEmailService, BrevoEmailService>();
 builder.Services.AddScoped<IInventoryAlertService, InventoryAlertService>();

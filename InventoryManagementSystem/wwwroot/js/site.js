@@ -277,16 +277,29 @@ function isImeiInput(target) {
 }
 
 function isEmailInput(target) {
-    if (!target) return false;
-    return target.type === 'email' ||
-        target.classList.contains('email-input') ||
-        (target.name && /email/i.test(target.name)) ||
-        (target.id && /email/i.test(target.id));
+    if (!target || target.type === 'file' || target.type === 'checkbox' || target.type === 'radio' || target.type === 'hidden' || target.type === 'search' || target.type === 'button' || target.type === 'submit') return false;
+
+    const name = (target.name || '').toLowerCase();
+    const id = (target.id || '').toLowerCase();
+    const placeholder = (target.placeholder || '').toLowerCase();
+
+    // Ignore search and filter inputs
+    if (name.includes('search') || id.includes('search') || placeholder.includes('search') || name.includes('keyword') || id.includes('keyword') || placeholder.includes('keyword') || name.includes('filter') || id.includes('filter') || name.includes('feature') || id.includes('feat_')) {
+        return false;
+    }
+
+    if (target.classList.contains('email-input') || target.type === 'email') {
+        return true;
+    }
+
+    const emailPattern = /(customeremail|contactemail|useremail|email_address|emailaddress|supplieremail|^email$)/i;
+    return emailPattern.test(name) || emailPattern.test(id);
 }
 
 // Country Code & Feedback Initializer
 function initGlobalInputValidators() {
     document.querySelectorAll('input').forEach(input => {
+        if (!input || input.type === 'checkbox' || input.type === 'radio' || input.type === 'file' || input.type === 'hidden' || input.type === 'submit' || input.type === 'button') return;
         if (isPhoneInput(input)) {
             input.classList.add('phone-input');
             attachCountryCodeSelector(input);
@@ -506,6 +519,7 @@ async function sanitizeAndValidateImei(input, isSubmitCheck = false) {
 }
 
 function validateEmail(input, isSubmitCheck = false) {
+    if (!isEmailInput(input)) return true;
     let val = input.value.trim();
     const isRequired = input.hasAttribute('required');
 

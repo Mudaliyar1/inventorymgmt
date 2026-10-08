@@ -1,0 +1,42 @@
+@{
+    ViewData["Title"] = "Feature Not Included in Plan";
+    var featureName = ViewBag.FeatureName as string ?? "Requested Feature";
+    var currentPlanName = ViewBag.CurrentPlanName as string ?? "Current Subscription Plan";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-7 col-md-9 text-center">
+            <div class="card-d p-5 shadow-lg border-warning position-relative overflow-hidden">
+                <div class="mb-4">
+                    <span class="badge-d badge-yellow p-4 rounded-circle d-inline-flex align-items-center justify-content-center shadow" style="width:90px;height:90px;font-size:42px">
+                        <i class="bi bi-shield-lock-fill text-warning"></i>
+                    </span>
+                </div>
+
+                <h2 class="font-display fw-bold text-light mb-2">Feature Not Included in Plan</h2>
+                <h5 class="text-warning font-mono mb-4">Module: @featureName</h5>
+
+                <div class="alert alert-dark border-secondary p-3 mb-4 text-start">
+                    <div class="d-flex align-items-center text-light mb-2">
+                        <i class="bi bi-exclamation-octagon-fill text-warning fs-5 me-2"></i>
+                        <strong class="fs-6">Access Restricted by Subscription Package</strong>
+                    </div>
+                    <p class="text-muted fs-7 mb-0">
+                        Your shop's active subscription plan (<strong class="text-info font-mono">@currentPlanName</strong>) does not include access to the <strong>@featureName</strong> module.
+                        To access this module and unlock higher capabilities, please upgrade your SaaS plan.
+                    </p>
+                </div>
+
+                <div class="d-flex justify-content-center gap-3 flex-wrap">
+                    <a href="@Url.Action("Index", "Home")" class="btn btn-outline-secondary px-4 py-2">
+                        <i class="bi bi-arrow-left me-1"></i> Return to Dashboard
+                    </a>
+                    <a href="@Url.Action("Plans", "Subscription")" class="btn btn-warning shadow-sm fw-bold px-4 py-2">
+                        <i class="bi bi-rocket-takeoff-fill me-1"></i> View Subscription Plans & Upgrade
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
