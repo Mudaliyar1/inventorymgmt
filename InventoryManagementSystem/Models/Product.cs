@@ -4,11 +4,14 @@ using System;
 
 namespace InventoryManagementSystem.Models
 {
-    public class Product
+    public class Product : ITenantEntity
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; } = string.Empty;
+
+        [BsonElement("TenantId")]
+        public string? TenantId { get; set; }
 
         [BsonElement("Name")]
         public string Name { get; set; } = string.Empty;

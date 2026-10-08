@@ -4,19 +4,20 @@ using InventoryManagementSystem.Interfaces;
 using InventoryManagementSystem.Models;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace InventoryManagementSystem.Repositories
 {
     public class SaleRepository : BaseRepository<Sale>, ISaleRepository
     {
-        public SaleRepository(MongoDbContext context) : base(context, "Sales")
+        public SaleRepository(MongoDbContext context, ITenantContext tenantContext) : base(context, "Sales", tenantContext)
         {
         }
 
         public async Task<IEnumerable<Sale>> GetRecentSalesAsync(int count)
         {
-            return await _collection.Find(FilterDefinition<Sale>.Empty)
+            return await _collection.Find(GetTenantFilter())
                 .SortByDescending(s => s.Date)
                 .Limit(count)
                 .ToListAsync();
@@ -24,13 +25,16 @@ namespace InventoryManagementSystem.Repositories
 
         public async Task<Sale?> GetByInvoiceNumberAsync(string invoiceNumber)
         {
-            var filter = Builders<Sale>.Filter.Eq(s => s.InvoiceNumber, invoiceNumber);
+            var filter = Builders<Sale>.Filter.And(
+                Builders<Sale>.Filter.Eq(s => s.InvoiceNumber, invoiceNumber),
+                GetTenantFilter()
+            );
             return await _collection.Find(filter).FirstOrDefaultAsync();
         }
 
         public async Task<IEnumerable<Sale>> GetPagedSalesAsync(int page, int pageSize)
         {
-            return await _collection.Find(FilterDefinition<Sale>.Empty)
+            return await _collection.Find(GetTenantFilter())
                 .SortByDescending(s => s.Date)
                 .Skip((page - 1) * pageSize)
                 .Limit(pageSize)
@@ -39,15 +43,16 @@ namespace InventoryManagementSystem.Repositories
 
         public async Task<long> GetTotalSalesCountAsync()
         {
-            return await _collection.CountDocumentsAsync(FilterDefinition<Sale>.Empty);
+            return await _collection.CountDocumentsAsync(GetTenantFilter());
         }
 
         public async Task<long> GetNextInvoiceSequenceAsync()
         {
-            var count = await _collection.CountDocumentsAsync(FilterDefinition<Sale>.Empty);
+            var filter = GetTenantFilter();
+            var count = await _collection.CountDocumentsAsync(filter);
             long nextSeq = count + 1;
 
-            var allSales = await _collection.Find(FilterDefinition<Sale>.Empty)
+            var allSales = await _collection.Find(filter)
                 .Project(s => s.InvoiceNumber)
                 .ToListAsync();
 
@@ -72,7 +77,8 @@ namespace InventoryManagementSystem.Repositories
         {
             var filter = Builders<Sale>.Filter.And(
                 Builders<Sale>.Filter.Gte(s => s.Date, start),
-                Builders<Sale>.Filter.Lte(s => s.Date, end)
+                Builders<Sale>.Filter.Lte(s => s.Date, end),
+                GetTenantFilter()
             );
             return await _collection.Find(filter)
                 .SortByDescending(s => s.Date)
@@ -153,7 +159,8 @@ namespace InventoryManagementSystem.Repositories
                 filters.Add(builder.Lte(s => s.GrandTotal, maxAmount.Value));
             }
 
-            var combinedFilter = filters.Any() ? builder.And(filters) : builder.Empty;
+            var baseFilter = filters.Any() ? builder.And(filters) : builder.Empty;
+            var combinedFilter = builder.And(baseFilter, GetTenantFilter());
 
             var totalCount = await _collection.CountDocumentsAsync(combinedFilter);
 
@@ -182,7 +189,10 @@ namespace InventoryManagementSystem.Repositories
         public async Task<long> DeleteManyAsync(IEnumerable<string> ids)
         {
             if (ids == null || !ids.Any()) return 0;
-            var filter = Builders<Sale>.Filter.In(s => s.Id, ids);
+            var filter = Builders<Sale>.Filter.And(
+                Builders<Sale>.Filter.In(s => s.Id, ids),
+                GetTenantFilter()
+            );
             var result = await _collection.DeleteManyAsync(filter);
             return result.DeletedCount;
         }
@@ -192,7 +202,10 @@ namespace InventoryManagementSystem.Repositories
             DateTime firstOfMonth,
             IDictionary<string, decimal> productPurchasePrices)
         {
-            var filter = Builders<Sale>.Filter.Gte(s => s.Date, firstOfMonth);
+            var filter = Builders<Sale>.Filter.And(
+                Builders<Sale>.Filter.Gte(s => s.Date, firstOfMonth),
+                GetTenantFilter()
+            );
             var projection = Builders<Sale>.Projection
                 .Include(s => s.Date)
                 .Include(s => s.GrandTotal)

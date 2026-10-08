@@ -4140,4 +4140,48 @@ body:not(.auth-page-body) input[type="search"]::-webkit-search-decoration {
     cursor: pointer;
 }
 
+/* 7. PUBLIC SAAS WEBSITE NAVBAR & FOOTER DESIGN */
+.public-navbar {
+    background: var(--topbar-bg) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border-bottom: 1px solid var(--glass-border) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    transition: all 0.25s ease;
+    z-index: 1050;
+}
+
+.public-navbar .nav-link {
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    color: var(--text-secondary) !important;
+}
+
+.public-navbar .nav-link:hover,
+.public-navbar .nav-link.active {
+    color: var(--primary) !important;
+    background: var(--primary-dim);
+}
+
+.public-footer {
+    background: var(--topbar-bg) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+}
+
+@media (max-width: 991.98px) {
+    .public-navbar .navbar-collapse {
+        background: var(--glass-bg-elevated);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 16px;
+        padding: 1rem;
+        margin-top: 0.75rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+}
+
+
 

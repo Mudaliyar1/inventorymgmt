@@ -18,6 +18,59 @@
 <form asp-action="Create" method="post" enctype="multipart/form-data" id="productCreateForm">
     @Html.AntiForgeryToken()
     
+    @if (ViewBag.LimitReached == true)
+    {
+        <!-- Package Limit Warning Banner -->
+        <div class="alert alert-danger d-flex align-items-center justify-content-between mb-4 p-3 border-danger bg-opacity-10 bg-danger text-danger rounded-3 shadow-sm">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-slash-circle-fill fs-3 me-3"></i>
+                <div>
+                    <h5 class="fw-bold mb-1"><i class="bi bi-shield-lock-fill me-2"></i>Not Applicable in Current Plan</h5>
+                    <div>@ViewBag.LimitMessage</div>
+                    <small class="d-block mt-1 text-muted">Upgrade your plan to unlock higher product catalog limits.</small>
+                </div>
+            </div>
+            <a href="@Url.Action("Plans", "Subscription")" class="btn btn-warning shadow-sm fw-bold">
+                <i class="bi bi-rocket-takeoff-fill me-1"></i> View Other Plans
+            </a>
+        </div>
+
+        <!-- Package Limit Modal Popup -->
+        <div class="modal fade show d-block" id="packageLimitModal" tabindex="-1" style="background: rgba(0,0,0,0.85); isolation: isolate; z-index: 1055;" data-bs-backdrop="static" data-bs-keyboard="false" aria-modal="true" role="dialog">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content bg-dark text-light border-warning shadow-lg">
+                    <div class="modal-header border-secondary bg-warning bg-opacity-10 text-warning">
+                        <h5 class="modal-title font-display fw-bold mb-0">
+                            <i class="bi bi-shield-slash-fill me-2"></i>Not Applicable in Current Plan
+                        </h5>
+                    </div>
+                    <div class="modal-body p-4 text-center">
+                        <div class="mb-3">
+                            <span class="badge-d badge-yellow p-3 rounded-circle d-inline-flex align-items-center justify-content-center" style="width:70px;height:70px;font-size:32px">
+                                <i class="bi bi-lock-fill text-warning"></i>
+                            </span>
+                        </div>
+                        <h5 class="fw-bold text-light mb-2">Package Limit Reached</h5>
+                        <p class="text-light fs-6 mb-4 fw-semibold">
+                            @ViewBag.LimitMessage
+                        </p>
+                        <div class="alert alert-warning text-dark border-warning fs-7 mb-0 fw-bold shadow-sm">
+                            <i class="bi bi-info-circle-fill me-1"></i> Upgrade to a higher plan to unlock additional product listings, inventory items, and advanced SaaS features.
+                        </div>
+                    </div>
+                    <div class="modal-footer border-secondary justify-content-center gap-2">
+                        <a href="@Url.Action("Index", "Product")" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Go Back
+                        </a>
+                        <a href="@Url.Action("Plans", "Subscription")" class="btn btn-warning shadow-sm fw-bold">
+                            <i class="bi bi-rocket-takeoff-fill me-1"></i> View Other Plans & Upgrade
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    
     <!-- Automatic Mobile Specification Finder Banner -->
     <div class="card-d mb-4 border-primary shadow-sm" style="background: linear-gradient(135deg, rgba(25, 135, 84, 0.05), rgba(13, 202, 240, 0.05)); border: 1px solid rgba(25, 135, 84, 0.3);">
         <div class="card-body p-3">

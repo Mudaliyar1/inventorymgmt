@@ -1,0 +1,269 @@
+@model InventoryManagementSystem.Models.Tenant
+@{
+    ViewData["Title"] = $"Shop Details — {Model.ShopName}";
+    var license = (InventoryManagementSystem.Models.TenantLicense)ViewBag.License;
+    var package = (InventoryManagementSystem.Models.SubscriptionPackage)ViewBag.Package;
+    var packages = (List<InventoryManagementSystem.Models.SubscriptionPackage>)ViewBag.Packages ?? new List<InventoryManagementSystem.Models.SubscriptionPackage>();
+    var suppliers = (List<InventoryManagementSystem.Models.Supplier>)ViewBag.Suppliers ?? new List<InventoryManagementSystem.Models.Supplier>();
+    var users = (List<InventoryManagementSystem.Models.User>)ViewBag.Users ?? new List<InventoryManagementSystem.Models.User>();
+    var staffCount = (int)(ViewBag.StaffCount ?? 0);
+    var productsCount = (int)(ViewBag.ProductsCount ?? 0);
+    var customersCount = (int)(ViewBag.CustomersCount ?? 0);
+    var salesCount = (int)(ViewBag.SalesCount ?? 0);
+}
+
+<div class="container-fluid px-4 py-3">
+    <!-- Navigation Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="@Url.Action("Tenants", "PlatformAdmin")" class="btn btn-outline-secondary btn-sm mb-2"><i class="bi bi-arrow-left me-1"></i> Back to All Shops</a>
+            <h1 class="h3 font-display fw-bold mb-0">
+                <i class="bi bi-shop me-2 text-info"></i>@Model.ShopName
+                <span class="badge bg-primary font-mono ms-2 fs-7">@Model.TenantCode</span>
+                <span class="badge @(Model.Status == "Active" ? "bg-success" : Model.Status == "Trial" ? "bg-warning" : "bg-danger") ms-2 fs-7">@Model.Status</span>
+            </h1>
+            <p class="text-muted fs-7 mb-0">Registered on @(Model.CreatedAt != default ? Model.CreatedAt.ToString("MMMM dd, yyyy — hh:mm tt") : "N/A")</p>
+        </div>
+        <div class="d-flex gap-2">
+            <form method="post" action="@Url.Action("ToggleTenantStatus", "PlatformAdmin")">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="tenantId" value="@Model.Id" />
+                <input type="hidden" name="status" value="@(Model.Status == "Active" ? "Suspended" : "Active")" />
+                <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
+                <button type="submit" class="btn @(Model.Status == "Active" ? "btn-outline-danger" : "btn-outline-success") shadow-sm">
+                    <i class="bi @(Model.Status == "Active" ? "bi-pause-circle" : "bi-play-circle") me-1"></i>
+                    @(Model.Status == "Active" ? "Suspend Shop" : "Activate Shop")
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Live Stat Cards Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-2-4 col-sm-6">
+            <div class="glass-card p-3 text-center border-secondary">
+                <div class="fs-3 fw-bold text-info"><i class="bi bi-truck me-2"></i>@suppliers.Count</div>
+                <div class="fs-7 text-muted uppercase font-mono">Suppliers Added</div>
+            </div>
+        </div>
+        <div class="col-md-2-4 col-sm-6">
+            <div class="glass-card p-3 text-center border-secondary">
+                <div class="fs-3 fw-bold text-primary"><i class="bi bi-people me-2"></i>@staffCount</div>
+                <div class="fs-7 text-muted uppercase font-mono">Employees (Staff)</div>
+            </div>
+        </div>
+        <div class="col-md-2-4 col-sm-6">
+            <div class="glass-card p-3 text-center border-secondary">
+                <div class="fs-3 fw-bold text-success"><i class="bi bi-box-seam me-2"></i>@productsCount</div>
+                <div class="fs-7 text-muted uppercase font-mono">Products</div>
+            </div>
+        </div>
+        <div class="col-md-2-4 col-sm-6">
+            <div class="glass-card p-3 text-center border-secondary">
+                <div class="fs-3 fw-bold text-warning"><i class="bi bi-person-check me-2"></i>@customersCount</div>
+                <div class="fs-7 text-muted uppercase font-mono">Customers</div>
+            </div>
+        </div>
+        <div class="col-md-2-4 col-sm-6">
+            <div class="glass-card p-3 text-center border-secondary">
+                <div class="fs-3 fw-bold text-purple"><i class="bi bi-receipt me-2"></i>@salesCount</div>
+                <div class="fs-7 text-muted uppercase font-mono">Sales Invoices</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Layout -->
+    <div class="row g-4">
+        <!-- Left Column: Profile, Employees & Suppliers -->
+        <div class="col-lg-7">
+            <!-- Owner & Shop Contact Profile -->
+            <div class="glass-card p-4 mb-4">
+                <h5 class="font-display fw-bold text-info mb-3"><i class="bi bi-person-vcard me-2"></i>Owner & Shop Profile</h5>
+                <div class="row g-3 fs-7">
+                    <div class="col-md-6">
+                        <label class="text-muted d-block">Owner Name</label>
+                        <span class="fw-bold fs-6 text-light">@Model.OwnerName</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted d-block">Contact Email</label>
+                        <span class="text-light">@Model.ContactEmail</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted d-block">Phone Number</label>
+                        <span class="text-light">@(string.IsNullOrEmpty(Model.Phone) ? "N/A" : Model.Phone)</span>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="text-muted d-block">GSTIN / Tax ID</label>
+                        <span class="font-mono text-light">@(string.IsNullOrEmpty(Model.GSTIN) ? "N/A" : Model.GSTIN)</span>
+                    </div>
+                    <div class="col-12">
+                        <label class="text-muted d-block">Physical Address</label>
+                        <span class="text-light">@(string.IsNullOrEmpty(Model.Address) ? "N/A" : Model.Address)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Employees Directory Table -->
+            <div class="glass-card p-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="font-display fw-bold text-primary mb-0"><i class="bi bi-people-fill me-2"></i>Registered Users / Employees (@users.Count)</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover align-middle mb-0 fs-7">
+                        <thead>
+                            <tr class="text-muted font-mono">
+                                <th>Emp ID</th>
+                                <th>Name & Email</th>
+                                <th>Username</th>
+                                <th>Role</th>
+                                <th>Joined</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (users.Any())
+                            {
+                                foreach (var user in users)
+                                {
+                                    <tr>
+                                        <td class="font-mono text-info fw-bold">@(string.IsNullOrEmpty(user.EmployeeId) ? "ADMIN" : user.EmployeeId)</td>
+                                        <td>
+                                            <div class="fw-bold">@user.FullName</div>
+                                            <small class="text-muted">@user.Email</small>
+                                        </td>
+                                        <td class="font-mono text-muted">@@user.Username</td>
+                                        <td>
+                                            <span class="badge @(user.Role == "Admin" ? "bg-purple" : "bg-secondary")">@user.Role</span>
+                                        </td>
+                                        <td>@user.CreatedDate.ToString("MMM dd, yyyy")</td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-3">No users registered for this shop.</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Suppliers Table -->
+            <div class="glass-card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="font-display fw-bold text-success mb-0"><i class="bi bi-truck me-2"></i>Shop Suppliers (@suppliers.Count)</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover align-middle mb-0 fs-7">
+                        <thead>
+                            <tr class="text-muted font-mono">
+                                <th>Company / Vendor</th>
+                                <th>Contact Person</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (suppliers.Any())
+                            {
+                                foreach (var s in suppliers)
+                                {
+                                    <tr>
+                                        <td class="fw-bold text-success">@s.DisplayCompanyName</td>
+                                        <td>@s.DisplayContactPerson</td>
+                                        <td>@(string.IsNullOrEmpty(s.Email) ? "N/A" : s.Email)</td>
+                                        <td class="font-mono">@(string.IsNullOrEmpty(s.Phone) ? "N/A" : s.Phone)</td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-3">No suppliers registered for this shop.</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Subscription & License Management -->
+        <div class="col-lg-5">
+            <!-- Current Subscription Package & License -->
+            <div class="glass-card p-4 mb-4">
+                <h5 class="font-display fw-bold text-warning mb-3"><i class="bi bi-shield-check me-2"></i>Subscription & License Details</h5>
+                <div class="p-3 rounded border border-secondary bg-dark mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted fs-7">Package:</span>
+                        <span class="badge bg-secondary font-mono fs-7">@(package != null ? package.Name : "Basic Plan")</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted fs-7">Monthly Price:</span>
+                        <span class="fw-bold text-success fs-6">₹@(package != null ? package.MonthlyPrice : 0)/mo</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted fs-7">License Status:</span>
+                        <span class="badge @(Model.Status == "Active" ? "bg-success" : Model.Status == "Trial" ? "bg-warning" : "bg-danger")">@Model.Status</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-muted fs-7">Expiry Date:</span>
+                        <span class="font-mono text-light fs-7">@(license != null ? license.ExpiryDate.ToString("MMMM dd, yyyy") : "N/A")</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted fs-7">Days Remaining:</span>
+                        @if (license != null)
+                        {
+                            var days = (int)(license.ExpiryDate - DateTime.UtcNow).TotalDays;
+                            <span class="badge @(days > 7 ? "bg-success" : days > 0 ? "bg-warning" : "bg-danger") fs-7">@days Days</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted fs-7">N/A</span>
+                        }
+                    </div>
+                </div>
+
+                @if (package != null)
+                {
+                    <div class="p-3 rounded border border-secondary bg-dark fs-7">
+                        <h6 class="font-display fw-bold text-muted mb-2">Package Limits & Features</h6>
+                        <div class="mb-1"><strong class="text-muted">Max Products:</strong> @(package.MaxProducts > 0 ? package.MaxProducts.ToString() : "Unlimited")</div>
+                        <div class="mb-1"><strong class="text-muted">Max Employees:</strong> @(package.MaxEmployees > 0 ? package.MaxEmployees.ToString() : "Unlimited")</div>
+                        <div><strong class="text-muted">Enabled Modules:</strong> @(package.EnabledModules.Any() ? string.Join(", ", package.EnabledModules) : "All Standard Modules")</div>
+                    </div>
+                }
+            </div>
+
+            <!-- Extend License / Change Package Form -->
+            <div class="glass-card p-4">
+                <h5 class="font-display fw-bold text-light mb-3"><i class="bi bi-clock-history me-2"></i>Extend License / Change Package</h5>
+                <form method="post" action="@Url.Action("ExtendLicense", "PlatformAdmin")">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="tenantId" value="@Model.Id" />
+                    <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
+
+                    <div class="mb-3">
+                        <label class="form-label fs-7 text-muted">Subscription Package</label>
+                        <select name="packageId" class="form-select bg-dark border-secondary text-light">
+                            @foreach (var p in packages)
+                            {
+                                <option value="@p.Id" selected="@(p.Id == Model.PackageId)">@p.Name (₹@p.MonthlyPrice/mo)</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fs-7 text-muted">Extend Duration (Days)</label>
+                        <input type="number" name="extraDays" class="form-control bg-dark border-secondary text-light" value="30" min="1" max="365" required />
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 shadow-sm">
+                        <i class="bi bi-check2-circle me-1"></i> Submit License Extension
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

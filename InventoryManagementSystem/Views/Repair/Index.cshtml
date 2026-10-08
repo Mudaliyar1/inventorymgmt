@@ -478,5 +478,13 @@ async function openEditRepairModal(id) {
         alert('Error loading repair record for editing.');
     }
 }
+
+document.addEventListener("DOMContentLoaded", function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('openModal') === 'true') {
+        const modal = new bootstrap.Modal(document.getElementById('createRepairModal'));
+        modal.show();
+    }
+});
 </script>
 }

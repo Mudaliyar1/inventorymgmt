@@ -23,6 +23,8 @@ namespace InventoryManagementSystem.Controllers
         private readonly IDeviceRepository _deviceRepository;
         private readonly IDeviceService _deviceService;
         private readonly ISupplierService _supplierService;
+        private readonly ILicenseService _licenseService;
+        private readonly IAuthService _authService;
 
         public ProductController(
             IProductService productService,
@@ -33,7 +35,9 @@ namespace InventoryManagementSystem.Controllers
             IMobileSpecSearchService specSearchService,
             IDeviceRepository deviceRepository,
             IDeviceService deviceService,
-            ISupplierService supplierService)
+            ISupplierService supplierService,
+            ILicenseService licenseService,
+            IAuthService authService)
         {
             _productService = productService;
             _categoryService = categoryService;
@@ -44,6 +48,8 @@ namespace InventoryManagementSystem.Controllers
             _deviceRepository = deviceRepository;
             _deviceService = deviceService;
             _supplierService = supplierService;
+            _licenseService = licenseService;
+            _authService = authService;
         }
 
 
@@ -86,6 +92,11 @@ namespace InventoryManagementSystem.Controllers
                 TotalPages = (int)System.Math.Ceiling((double)totalItems / pageSize)
             };
 
+            var tenantId = User.FindFirst("TenantId")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.GroupSid)?.Value;
+            var limitCheck = await _licenseService.CheckPackageLimitAsync(tenantId ?? string.Empty, "Products");
+            ViewBag.LimitReached = !limitCheck.Allowed;
+            ViewBag.LimitMessage = limitCheck.Message;
+
             return View(viewModel);
         }
 
@@ -115,6 +126,11 @@ namespace InventoryManagementSystem.Controllers
         [HttpGet]
         public async Task<IActionResult> Create()
         {
+            var tenantId = User.FindFirst("TenantId")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.GroupSid)?.Value;
+            var limitCheck = await _licenseService.CheckPackageLimitAsync(tenantId ?? string.Empty, "Products");
+            ViewBag.LimitReached = !limitCheck.Allowed;
+            ViewBag.LimitMessage = limitCheck.Message;
+
             var model = new ProductCreateViewModel();
             await PopulateCategoriesList(model);
             return View(model);
@@ -124,6 +140,16 @@ namespace InventoryManagementSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(ProductCreateViewModel model)
         {
+            // Check Subscription Package Product Limit
+            var tenantId = User.FindFirst("TenantId")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.GroupSid)?.Value;
+            var limitCheck = await _licenseService.CheckPackageLimitAsync(tenantId ?? string.Empty, "Products");
+            if (!limitCheck.Allowed)
+            {
+                ModelState.AddModelError(string.Empty, limitCheck.Message);
+                await PopulateCategoriesList(model);
+                return View(model);
+            }
+
             // Validate SKU Code uniqueness
             var existingByCode = await _productService.GetProductByCodeAsync(model.Code);
             if (existingByCode != null)

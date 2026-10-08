@@ -1,0 +1,159 @@
+@model IEnumerable<InventoryManagementSystem.Models.SubscriptionPackage>
+@{
+    ViewData["Title"] = "Subscription Plans & Upgrades";
+    var currentPackage = ViewBag.CurrentPackage as InventoryManagementSystem.Models.SubscriptionPackage;
+    var activeLicense = ViewBag.ActiveLicense as InventoryManagementSystem.Models.TenantLicense;
+}
+
+<div class="container-fluid px-4 py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 font-display fw-bold mb-1">
+                <i class="bi bi-shield-check text-warning me-2"></i>Subscription Packages & Plan Upgrades
+            </h1>
+            <p class="text-muted fs-7 mb-0">View available SaaS plans, package limits, and upgrade your shop subscription.</p>
+        </div>
+        <a href="@Url.Action("Index", "Home")" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i> Dashboard
+        </a>
+    </div>
+
+    <!-- Active License Status Card -->
+    @if (currentPackage != null || activeLicense != null)
+    {
+        <div class="glass-card p-4 mb-4 border-primary">
+            <div class="row align-items-center g-3">
+                <div class="col-md-7">
+                    <h5 class="fw-bold text-light mb-1">
+                        Active Shop Plan: <span class="text-primary font-mono fw-bold">@(currentPackage?.Name ?? "Basic Plan")</span>
+                        <span class="badge @(activeLicense?.Status == "Active" ? "bg-success" : "bg-warning") ms-2 fs-7">@(activeLicense?.Status ?? "Active")</span>
+                    </h5>
+                    <div class="text-muted fs-7">
+                        Price: <strong class="text-success">₹@(currentPackage?.MonthlyPrice ?? 0)/mo</strong> |
+                        Expiry Date: <strong class="text-light">@(activeLicense != null ? activeLicense.ExpiryDate.ToString("MMMM dd, yyyy") : "N/A")</strong>
+                        @if (activeLicense != null)
+                        {
+                            var days = (int)(activeLicense.ExpiryDate - DateTime.UtcNow).TotalDays;
+                            <span class="badge @(days > 7 ? "bg-success" : "bg-danger") ms-1">@days Days Remaining</span>
+                        }
+                    </div>
+                </div>
+                <div class="col-md-5 text-md-end">
+                    <button type="button" class="btn btn-warning shadow-sm" data-bs-toggle="modal" data-bs-target="#upgradeRequestModal">
+                        <i class="bi bi-rocket-takeoff me-1"></i> Request Plan Upgrade
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Packages Pricing Grid -->
+    <div class="row g-4 mb-4">
+        @if (Model != null && Model.Any())
+        {
+            foreach (var pkg in Model.OrderBy(p => p.DisplayOrder))
+            {
+                var isCurrent = currentPackage != null && currentPackage.Id == pkg.Id;
+
+                <div class="col-lg-4 col-md-6">
+                    <div class="glass-card h-100 p-4 d-flex flex-column justify-content-between position-relative border-secondary @(isCurrent ? "border-primary shadow-lg" : "")">
+                        @if (isCurrent)
+                        {
+                            <span class="position-absolute top-0 end-0 bg-primary text-dark font-mono fw-bold px-3 py-1 rounded-bottom-start fs-7">
+                                CURRENT PLAN
+                            </span>
+                        }
+                        <div>
+                            <h4 class="font-display fw-bold text-light mb-2">@pkg.Name</h4>
+                            <p class="text-muted fs-7 mb-3">@pkg.Description</p>
+                            
+                            <div class="mb-4">
+                                <span class="fs-2 fw-bold text-success">₹@pkg.MonthlyPrice</span>
+                                <span class="text-muted fs-7">/ month</span>
+                            </div>
+
+                            <h6 class="font-display fw-bold text-info fs-7 mb-3 uppercase font-mono">Plan Limits & Capabilities</h6>
+                            <ul class="list-unstyled fs-7 mb-4">
+                                <li class="mb-2 d-flex align-items-center">
+                                    <i class="bi bi-box-seam text-primary me-2 fs-6"></i>
+                                    <span>Products Limit: <strong>@(pkg.MaxProducts > 0 ? pkg.MaxProducts.ToString() : "Unlimited")</strong></span>
+                                </li>
+                                <li class="mb-2 d-flex align-items-center">
+                                    <i class="bi bi-people text-primary me-2 fs-6"></i>
+                                    <span>Employees Limit: <strong>@(pkg.MaxEmployees > 0 ? pkg.MaxEmployees.ToString() : "Unlimited")</strong></span>
+                                </li>
+                                <li class="mb-2 d-flex align-items-center">
+                                    <i class="bi bi-truck text-primary me-2 fs-6"></i>
+                                    <span>Suppliers Limit: <strong>@(pkg.MaxSuppliers > 0 ? pkg.MaxSuppliers.ToString() : "Unlimited")</strong></span>
+                                </li>
+                                <li class="mb-2 d-flex align-items-center">
+                                    <i class="bi bi-grid-fill text-primary me-2 fs-6"></i>
+                                    <span>Modules: <strong>@(pkg.EnabledModules.Any() ? string.Join(", ", pkg.EnabledModules) : "All Standard Modules")</strong></span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div>
+                            @if (isCurrent)
+                            {
+                                <button type="button" class="btn btn-outline-success w-100 disabled" disabled>
+                                    <i class="bi bi-check-circle me-1"></i> Active Plan
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#upgradeRequestModal" onclick="setUpgradePackage('@pkg.Name')">
+                                    <i class="bi bi-arrow-up-circle me-1"></i> Upgrade to @pkg.Name
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+<!-- Upgrade Request Modal -->
+<div class="modal fade" id="upgradeRequestModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-light border-secondary">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title font-display fw-bold">
+                    <i class="bi bi-rocket-takeoff text-warning me-2"></i>Request Plan Upgrade
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <p class="text-muted fs-7 mb-3">
+                    To upgrade your shop plan or adjust resource limits, submit your request below or contact System Administrator.
+                </p>
+                <div class="mb-3">
+                    <label class="form-label text-muted fs-7">Target Plan</label>
+                    <input type="text" id="targetPlanName" class="form-control bg-dark border-secondary text-light fw-bold" value="Professional Plan" readonly />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-muted fs-7">Contact Email / Phone</label>
+                    <input type="text" class="form-control bg-dark border-secondary text-light" value="@User.Identity?.Name" placeholder="Your contact details..." />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label text-muted fs-7">Additional Notes</label>
+                    <textarea class="form-control bg-dark border-secondary text-light" rows="3" placeholder="Specify requested duration or extra employee/product requirements..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="alert('Upgrade request submitted successfully! SuperAdmin will update your shop subscription shortly.'); location.reload();">
+                    <i class="bi bi-send me-1"></i> Submit Upgrade Request
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function setUpgradePackage(name) {
+        document.getElementById('targetPlanName').value = name;
+    }
+</script>

@@ -10,7 +10,7 @@ namespace InventoryManagementSystem.Repositories
 {
     public class ExchangeRepository : BaseRepository<ExchangeRecord>, IExchangeRepository
     {
-        public ExchangeRepository(MongoDbContext context) : base(context, "ExchangeRecords")
+        public ExchangeRepository(MongoDbContext context, ITenantContext tenantContext) : base(context, "ExchangeRecords", tenantContext)
         {
         }
 
@@ -18,9 +18,12 @@ namespace InventoryManagementSystem.Repositories
         {
             if (string.IsNullOrWhiteSpace(imei)) return null;
             var clean = imei.Trim();
-            var filter = Builders<ExchangeRecord>.Filter.Or(
-                Builders<ExchangeRecord>.Filter.Eq(e => e.OldImei1, clean),
-                Builders<ExchangeRecord>.Filter.Eq(e => e.OldImei2, clean)
+            var filter = Builders<ExchangeRecord>.Filter.And(
+                Builders<ExchangeRecord>.Filter.Or(
+                    Builders<ExchangeRecord>.Filter.Eq(e => e.OldImei1, clean),
+                    Builders<ExchangeRecord>.Filter.Eq(e => e.OldImei2, clean)
+                ),
+                GetTenantFilter()
             );
             return await _collection.Find(filter).FirstOrDefaultAsync();
         }
@@ -93,7 +96,7 @@ namespace InventoryManagementSystem.Repositories
                 filter = Builders<ExchangeRecord>.Filter.And(filter, searchFilter);
             }
 
-            return filter;
+            return Builders<ExchangeRecord>.Filter.And(filter, GetTenantFilter());
         }
     }
 }

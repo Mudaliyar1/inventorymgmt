@@ -4,11 +4,14 @@ using System;
 
 namespace InventoryManagementSystem.Models
 {
-    public class InventoryEmailLog
+    public class InventoryEmailLog : ITenantEntity
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; } = string.Empty;
+
+        [BsonElement("TenantId")]
+        public string? TenantId { get; set; }
 
         [BsonElement("ProductId")]
         public string ProductId { get; set; } = string.Empty;

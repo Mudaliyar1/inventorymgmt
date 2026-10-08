@@ -6,11 +6,14 @@ using InventoryManagementSystem.Extensions;
 namespace InventoryManagementSystem.Models
 {
     [BsonIgnoreExtraElements]
-    public class AuditLog
+    public class AuditLog : ITenantEntity
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; } = string.Empty;
+
+        [BsonElement("TenantId")]
+        public string? TenantId { get; set; }
 
         [BsonElement("EmployeeId")]
         [BsonIgnoreIfNull]

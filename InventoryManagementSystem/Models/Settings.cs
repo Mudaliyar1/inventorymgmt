@@ -4,11 +4,14 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace InventoryManagementSystem.Models
 {
-    public class Settings
+    public class Settings : ITenantEntity
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; } = string.Empty;
+
+        [BsonElement("TenantId")]
+        public string? TenantId { get; set; }
 
         [BsonElement("CompanyName")]
         public string CompanyName { get; set; } = "Smart Inventory Management System";

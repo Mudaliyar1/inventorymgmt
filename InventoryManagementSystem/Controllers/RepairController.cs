@@ -37,6 +37,12 @@ namespace InventoryManagementSystem.Controllers
             return View(tickets);
         }
 
+        [HttpGet]
+        public IActionResult Create()
+        {
+            return RedirectToAction("Index", new { openModal = true });
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([FromForm] RepairTicket ticket)

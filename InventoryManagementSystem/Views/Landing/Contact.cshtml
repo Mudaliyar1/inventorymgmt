@@ -1,0 +1,68 @@
+@{
+    ViewData["Title"] = "Contact Us — SIMS SaaS";
+}
+
+<div class="container py-5" style="max-width: 850px;">
+    <div class="text-center mb-5">
+        <span class="badge bg-primary px-3 py-2 text-uppercase font-mono fw-bold fs-7 rounded-pill mb-2">Get In Touch</span>
+        <h1 class="display-4 font-display fw-bold mb-3 text-light">We're Here to Help Your Shop Grow</h1>
+        <p class="lead text-muted mx-auto" style="max-width: 600px;">Have questions about subscription packages, multi-branch setups, or custom enterprise solutions? Contact our support team.</p>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-5">
+            <div class="glass-card p-4 h-100">
+                <h3 class="h5 font-display fw-bold text-light mb-4">Contact Information</h3>
+
+                <div class="d-flex align-items-start gap-3 mb-4">
+                    <div class="fs-4 text-primary"><i class="bi bi-geo-alt"></i></div>
+                    <div>
+                        <div class="fw-semibold text-light fs-7">Headquarters</div>
+                        <div class="text-muted fs-7">SIMS Tech Park, Suite 402, Technology Corridor</div>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-start gap-3 mb-4">
+                    <div class="fs-4 text-success"><i class="bi bi-envelope"></i></div>
+                    <div>
+                        <div class="fw-semibold text-light fs-7">Email Support</div>
+                        <div class="text-muted fs-7">support@simssaas.com</div>
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-start gap-3">
+                    <div class="fs-4 text-info"><i class="bi bi-telephone"></i></div>
+                    <div>
+                        <div class="fw-semibold text-light fs-7">Phone / WhatsApp</div>
+                        <div class="text-muted fs-7">+91 (800) 555-SIMS</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-7">
+            <div class="glass-card p-4 p-md-5">
+                <h3 class="h5 font-display fw-bold text-light mb-4">Send Us a Message</h3>
+                <form onsubmit="alert('Thank you for contacting SIMS SaaS! Our support team will get back to you shortly.'); return false;">
+                    <div class="mb-3">
+                        <label class="form-label text-light fs-7">Your Full Name</label>
+                        <input type="text" class="form-control bg-dark border-secondary text-light" placeholder="e.g. Rahul Sharma" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-light fs-7">Email Address</label>
+                        <input type="email" class="form-control bg-dark border-secondary text-light" placeholder="rahul@mobileshop.com" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-light fs-7">Shop Name (Optional)</label>
+                        <input type="text" class="form-control bg-dark border-secondary text-light" placeholder="Paramount Mobiles" />
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label text-light fs-7">Message</label>
+                        <textarea class="form-control bg-dark border-secondary text-light" rows="4" placeholder="How can we assist your business?" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg w-100 shadow fw-bold"><i class="bi bi-send me-2"></i> Send Message</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

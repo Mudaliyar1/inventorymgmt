@@ -42,54 +42,62 @@ namespace InventoryManagementSystem.Services
                 return cachedState;
             }
 
-            var user = await _userRepository.GetByIdAsync(userId);
-            if (user == null)
+            try
             {
-                var supplier = await _supplierService.GetSupplierByIdAsync(userId);
-                if (supplier != null)
+                var user = await _userRepository.GetByIdAsync(userId);
+                if (user == null)
                 {
-                    var supplierState = new LiveUserState
+                    var supplier = await _supplierService.GetSupplierByIdAsync(userId);
+                    if (supplier != null)
                     {
-                        IsValid = supplier.Status == "Active",
-                        IsLocked = supplier.Status == "Inactive",
-                        PermissionVersion = 1,
-                        Role = Role.Supplier,
-                        Permissions = new List<string> { "SupplierDashboard.Index", "SupplierDashboard.Products", "SupplierDashboard.Orders", "SupplierDashboard.Inventory", "SupplierDashboard.Stats", "SupplierDashboard.PurchaseReturns", "SupplierDashboard.Profile", "Category.Index" }
-                    };
-                    _cache.Set(cacheKey, supplierState, CacheDuration);
-                    return supplierState;
+                        var supplierState = new LiveUserState
+                        {
+                            IsValid = supplier.Status == "Active",
+                            IsLocked = supplier.Status == "Inactive",
+                            PermissionVersion = 1,
+                            Role = Role.Supplier,
+                            Permissions = new List<string> { "SupplierDashboard.Index", "SupplierDashboard.Products", "SupplierDashboard.Orders", "SupplierDashboard.Inventory", "SupplierDashboard.Stats", "SupplierDashboard.PurchaseReturns", "SupplierDashboard.Profile", "Category.Index" }
+                        };
+                        _cache.Set(cacheKey, supplierState, CacheDuration);
+                        return supplierState;
+                    }
+
+                    var invalidState = new LiveUserState { IsValid = false };
+                    _cache.Set(cacheKey, invalidState, TimeSpan.FromSeconds(30));
+                    return invalidState;
                 }
 
-                var invalidState = new LiveUserState { IsValid = false };
-                _cache.Set(cacheKey, invalidState, TimeSpan.FromSeconds(30));
-                return invalidState;
-            }
+                List<string> permissions;
+                if (user.Role.Equals(Role.Admin, StringComparison.OrdinalIgnoreCase))
+                {
+                    permissions = _permissionDiscovery.DiscoverAllPermissions().Select(p => p.PermissionKey).ToList();
+                }
+                else
+                {
+                    // Strip any legacy Admin.* or User.* permission keys for employee accounts
+                    permissions = (user.Permissions ?? new List<string>())
+                        .Where(p => !p.StartsWith("Admin.", StringComparison.OrdinalIgnoreCase) &&
+                                    !p.StartsWith("User.", StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+                }
 
-            List<string> permissions;
-            if (user.Role.Equals(Role.Admin, StringComparison.OrdinalIgnoreCase))
-            {
-                permissions = _permissionDiscovery.DiscoverAllPermissions().Select(p => p.PermissionKey).ToList();
-            }
-            else
-            {
-                // Strip any legacy Admin.* or User.* permission keys for employee accounts
-                permissions = (user.Permissions ?? new List<string>())
-                    .Where(p => !p.StartsWith("Admin.", StringComparison.OrdinalIgnoreCase) &&
-                                !p.StartsWith("User.", StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-            }
+                var state = new LiveUserState
+                {
+                    IsValid = true,
+                    IsLocked = user.IsLocked,
+                    PermissionVersion = user.PermissionVersion,
+                    Role = user.Role,
+                    Permissions = permissions
+                };
 
-            var liveState = new LiveUserState
+                _cache.Set(cacheKey, state, CacheDuration);
+                return state;
+            }
+            catch (Exception ex)
             {
-                IsValid = true,
-                IsLocked = user.IsLocked,
-                PermissionVersion = user.PermissionVersion > 0 ? user.PermissionVersion : 1,
-                Role = user.Role,
-                Permissions = permissions
-            };
-
-            _cache.Set(cacheKey, liveState, CacheDuration);
-            return liveState;
+                Console.WriteLine($"[PermissionService] Database lookup notice: {ex.Message}");
+                return new LiveUserState { IsValid = true, IsLocked = false, PermissionVersion = 1, Permissions = new List<string>() };
+            }
         }
 
         public void InvalidateUserCache(string userId)

@@ -5,11 +5,14 @@ using System.Collections.Generic;
 
 namespace InventoryManagementSystem.Models
 {
-    public class SupplierOrder
+    public class SupplierOrder : ITenantEntity
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; } = string.Empty;
+
+        [BsonElement("TenantId")]
+        public string? TenantId { get; set; }
 
         [BsonElement("OrderNumber")]
         public string OrderNumber { get; set; } = string.Empty; // e.g. PO-20260819-0001

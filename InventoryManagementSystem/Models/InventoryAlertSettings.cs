@@ -5,11 +5,14 @@ using System.Collections.Generic;
 
 namespace InventoryManagementSystem.Models
 {
-    public class InventoryAlertSettings
+    public class InventoryAlertSettings : ITenantEntity
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; } = string.Empty;
+
+        [BsonElement("TenantId")]
+        public string? TenantId { get; set; }
 
         [BsonElement("AdminEmail")]
         public string AdminEmail { get; set; } = "admin@sims.com";

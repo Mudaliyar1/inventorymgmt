@@ -17,6 +17,59 @@
 </div>
 
 <form asp-action="Create" method="post">
+    @if (ViewBag.LimitReached == true)
+    {
+        <!-- Package Limit Warning Banner -->
+        <div class="alert alert-danger d-flex align-items-center justify-content-between mb-4 p-3 border-danger bg-opacity-10 bg-danger text-danger rounded-3 shadow-sm">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-slash-circle-fill fs-3 me-3"></i>
+                <div>
+                    <h5 class="fw-bold mb-1"><i class="bi bi-shield-lock-fill me-2"></i>Not Applicable in Current Plan</h5>
+                    <div>@ViewBag.LimitMessage</div>
+                    <small class="d-block mt-1 text-muted">Upgrade your plan to unlock more staff employee accounts.</small>
+                </div>
+            </div>
+            <a href="@Url.Action("Plans", "Subscription")" class="btn btn-warning shadow-sm">
+                <i class="bi bi-rocket-takeoff me-1"></i> View Other Plans
+            </a>
+        </div>
+
+        <!-- Package Limit Modal Popup -->
+        <div class="modal fade show d-block" id="packageLimitModal" tabindex="-1" style="background: rgba(0,0,0,0.8); isolation: isolate; z-index: 1055;" data-bs-backdrop="static" data-bs-keyboard="false" aria-modal="true" role="dialog">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content bg-dark text-light border-warning shadow-lg">
+                    <div class="modal-header border-secondary bg-warning bg-opacity-10 text-warning">
+                        <h5 class="modal-title font-display fw-bold mb-0">
+                            <i class="bi bi-shield-slash-fill me-2"></i>Not Applicable in Current Plan
+                        </h5>
+                    </div>
+                    <div class="modal-body p-4 text-center">
+                        <div class="mb-3">
+                            <span class="badge-d badge-yellow p-3 rounded-circle d-inline-flex align-items-center justify-content-center" style="width:70px;height:70px;font-size:32px">
+                                <i class="bi bi-lock-fill text-warning"></i>
+                            </span>
+                        </div>
+                        <h5 class="fw-bold text-light mb-2">Package Limit Reached</h5>
+                        <p class="text-light fs-6 mb-4 fw-semibold">
+                            @ViewBag.LimitMessage
+                        </p>
+                        <div class="alert alert-warning text-dark border-warning fs-7 mb-0 fw-bold shadow-sm">
+                            <i class="bi bi-info-circle-fill me-1"></i> Upgrade to a higher plan to unlock additional staff accounts, inventory items, and advanced SaaS features.
+                        </div>
+                    </div>
+                    <div class="modal-footer border-secondary justify-content-center gap-2">
+                        <a href="@Url.Action("Index", "User")" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Go Back
+                        </a>
+                        <a href="@Url.Action("Plans", "Subscription")" class="btn btn-warning shadow-sm">
+                            <i class="bi bi-rocket-takeoff me-1"></i> View Other Plans & Upgrade
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
     <div asp-validation-summary="ModelOnly" class="alert-d alert-danger mb-4"></div>
 
     <div class="row g-4">
@@ -126,7 +179,7 @@
                                 <span class="badge-d badge-gray" style="font-size:11px">@group.Permissions.Count Actions</span>
                             </div>
                             <label class="d-flex align-items-center gap-2" style="cursor:pointer;font-size:12px;font-weight:600;color:var(--text-muted);user-select:none">
-                                <input type="checkbox" onchange="toggleModuleGroup(this, '@group.ControllerName')" />
+                                <input type="checkbox" onchange="toggleModuleGroup(this, '@group.ControllerName')" checked />
                                 Toggle Module
                             </label>
                         </div>
@@ -138,7 +191,7 @@
                                     <div class="col-md-6">
                                         <label class="d-flex align-items-start gap-2 p-2 rounded perm-checkbox-item" style="cursor:pointer;user-select:none;background:var(--card-bg);border:1px solid var(--border);transition:all 0.15s ease">
                                             <input type="checkbox" name="selectedPermissions" value="@perm.PermissionKey"
-                                                   class="perm-check perm-check-@group.ControllerName mt-1" />
+                                                   class="perm-check perm-check-@group.ControllerName mt-1" checked />
                                             <div>
                                                 <div style="font-size:12px;font-weight:600;color:var(--text-primary)">@perm.DisplayName</div>
                                                 <div style="font-size:10px;color:var(--text-muted)">
@@ -156,9 +209,18 @@
                 <hr class="s-divider" />
                 <div class="d-flex align-items-center justify-content-end gap-2">
                     <a href="@Url.Action("Index","User")" class="btn-d btn-outline">Cancel</a>
-                    <button type="submit" class="btn-d btn-primary">
-                        <i class="bi bi-check2-circle"></i> Create Employee Account
-                    </button>
+                    @if (ViewBag.LimitReached == true)
+                    {
+                        <button type="button" class="btn-d btn-secondary" disabled title="@ViewBag.LimitMessage">
+                            <i class="bi bi-lock-fill"></i> Creation Disabled (Limit Reached)
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="submit" class="btn-d btn-primary">
+                            <i class="bi bi-check2-circle"></i> Create Employee Account
+                        </button>
+                    }
                 </div>
             </div>
         </div>

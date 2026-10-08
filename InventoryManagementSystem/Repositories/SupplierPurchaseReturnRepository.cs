@@ -12,14 +12,17 @@ namespace InventoryManagementSystem.Repositories
 {
     public class SupplierPurchaseReturnRepository : BaseRepository<SupplierPurchaseReturn>, ISupplierPurchaseReturnRepository
     {
-        public SupplierPurchaseReturnRepository(MongoDbContext context) : base(context, "SupplierPurchaseReturns")
+        public SupplierPurchaseReturnRepository(MongoDbContext context, ITenantContext tenantContext) : base(context, "SupplierPurchaseReturns", tenantContext)
         {
         }
 
         public async Task<SupplierPurchaseReturn?> GetByReturnNumberAsync(string returnNumber)
         {
             if (string.IsNullOrWhiteSpace(returnNumber)) return null;
-            var filter = Builders<SupplierPurchaseReturn>.Filter.Eq(r => r.ReturnNumber, returnNumber.Trim());
+            var filter = Builders<SupplierPurchaseReturn>.Filter.And(
+                Builders<SupplierPurchaseReturn>.Filter.Eq(r => r.ReturnNumber, returnNumber.Trim()),
+                GetTenantFilter()
+            );
             return await _collection.Find(filter).FirstOrDefaultAsync();
         }
 
@@ -52,7 +55,10 @@ namespace InventoryManagementSystem.Repositories
         public async Task<IEnumerable<SupplierPurchaseReturn>> GetReturnsForOrderAsync(string purchaseOrderId)
         {
             if (string.IsNullOrWhiteSpace(purchaseOrderId)) return new List<SupplierPurchaseReturn>();
-            var filter = Builders<SupplierPurchaseReturn>.Filter.Eq(r => r.PurchaseOrderId, purchaseOrderId);
+            var filter = Builders<SupplierPurchaseReturn>.Filter.And(
+                Builders<SupplierPurchaseReturn>.Filter.Eq(r => r.PurchaseOrderId, purchaseOrderId),
+                GetTenantFilter()
+            );
             return await _collection.Find(filter).ToListAsync();
         }
 
@@ -63,7 +69,8 @@ namespace InventoryManagementSystem.Repositories
                 ? builder.Eq(r => r.SupplierId, supplierId)
                 : builder.Empty;
 
-            var list = await _collection.Find(filter).ToListAsync();
+            var combinedFilter = builder.And(filter, GetTenantFilter());
+            var list = await _collection.Find(combinedFilter).ToListAsync();
             var result = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var st in PurchaseReturnStatus.AllStatuses)
@@ -111,7 +118,8 @@ namespace InventoryManagementSystem.Repositories
                 filters.Add(builder.Eq(r => r.Reason, reason.Trim()));
             }
 
-            return filters.Any() ? builder.And(filters) : builder.Empty;
+            var baseFilter = filters.Any() ? builder.And(filters) : builder.Empty;
+            return builder.And(baseFilter, GetTenantFilter());
         }
     }
 }

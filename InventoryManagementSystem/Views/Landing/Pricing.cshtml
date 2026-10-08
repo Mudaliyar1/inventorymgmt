@@ -1,0 +1,52 @@
+@model IEnumerable<InventoryManagementSystem.Models.SubscriptionPackage>
+@{
+    ViewData["Title"] = "Pricing Plans — SIMS Mobile Shop SaaS";
+}
+
+<div class="container py-5">
+    <div class="text-center mb-5">
+        <span class="badge bg-primary px-3 py-2 text-uppercase font-mono fw-bold fs-7 rounded-pill mb-2">Transparent Pricing</span>
+        <h1 class="display-4 font-display fw-bold mb-3 text-light">Simple, Predictable Subscription Plans</h1>
+        <p class="lead text-muted mx-auto" style="max-width: 650px;">Choose the right package for your single or multi-branch mobile shop. Upgrade or cancel anytime.</p>
+    </div>
+
+    <div class="row g-4 justify-content-center">
+        @if (Model != null && Model.Any())
+        {
+            foreach (var pkg in Model)
+            {
+                <div class="col-lg-4 col-md-6">
+                    <div class="glass-card p-4 h-100 d-flex flex-column justify-content-between border-top border-primary border-4 position-relative">
+                        <div>
+                            <div class="text-uppercase font-mono text-info fw-bold fs-7 mb-1">@pkg.Name</div>
+                            <div class="mb-3">
+                                <span class="fs-1 font-display fw-bold text-light">₹@pkg.MonthlyPrice.ToString("N0")</span>
+                                <span class="text-muted">/ month</span>
+                            </div>
+                            <p class="text-muted fs-7 mb-4">@pkg.Description</p>
+
+                            <hr class="border-secondary my-3" />
+
+                            <ul class="list-unstyled fs-7 text-light mb-4">
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Up to <strong>@pkg.MaxEmployees Employees</strong></li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Up to <strong>@pkg.MaxProducts Products</strong></li>
+                                <li class="mb-2"><i class="bi bi-check-circle-fill text-success me-2"></i> Up to <strong>@pkg.MaxSuppliers Suppliers</strong></li>
+                                @if (pkg.EnabledModules != null)
+                                {
+                                    foreach (var mod in pkg.EnabledModules)
+                                    {
+                                        <li class="mb-2"><i class="bi bi-check-circle-fill text-info me-2"></i> @mod Module</li>
+                                    }
+                                }
+                            </ul>
+                        </div>
+
+                        <div>
+                            <a href="@Url.Action("Register", "Landing", new { packageId = pkg.Id })" class="btn btn-primary btn-lg w-100 shadow"><i class="bi bi-rocket-takeoff me-1"></i> Start 14-Day Trial</a>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>

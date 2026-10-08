@@ -63,10 +63,15 @@
   /* ── Dropdowns (Custom Single-Click Event Delegation) ─ */
   function initDropdowns() {
     document.addEventListener('click', function (e) {
-      const toggleBtn = e.target.closest('[data-dd-toggle="dropdown"]');
+      const toggleBtn = e.target.closest('[data-dd-toggle="dropdown"], [data-bs-toggle="dropdown"]');
 
       if (toggleBtn) {
-        e.preventDefault();
+        // If it's a modal trigger inside a dropdown item, let modal handling take over
+        if (e.target.closest('[data-bs-toggle="modal"]')) {
+          // allow modal toggle
+        } else {
+          e.preventDefault();
+        }
         e.stopPropagation();
 
         const parent = toggleBtn.closest('.dropdown') || toggleBtn.parentElement;
@@ -81,7 +86,7 @@
         document.querySelectorAll('.dropdown-menu.show').forEach(m => {
           if (m !== menu) m.classList.remove('show');
         });
-        document.querySelectorAll('[data-dd-toggle="dropdown"]').forEach(b => {
+        document.querySelectorAll('[data-dd-toggle="dropdown"], [data-bs-toggle="dropdown"]').forEach(b => {
           if (b !== toggleBtn) b.setAttribute('aria-expanded', 'false');
         });
 
@@ -96,7 +101,7 @@
       } else if (!e.target.closest('.dropdown-menu')) {
         // Dismiss dropdowns when clicking anywhere outside
         document.querySelectorAll('.dropdown-menu.show').forEach(m => m.classList.remove('show'));
-        document.querySelectorAll('[data-dd-toggle="dropdown"]').forEach(b => b.setAttribute('aria-expanded', 'false'));
+        document.querySelectorAll('[data-dd-toggle="dropdown"], [data-bs-toggle="dropdown"]').forEach(b => b.setAttribute('aria-expanded', 'false'));
       }
     });
   }

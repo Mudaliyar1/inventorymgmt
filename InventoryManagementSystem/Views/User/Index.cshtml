@@ -13,11 +13,30 @@
         <p class="ph-sub">Manage system employees, assign page permissions, reset credentials, and track activity.</p>
     </div>
     <div class="ph-actions">
-        <a href="@Url.Action("Create","User")" class="btn-d btn-primary">
-            <i class="bi bi-person-plus"></i> Add New Employee
-        </a>
+        @if (ViewBag.LimitReached == true)
+        {
+            <a href="@Url.Action("Create","User")" class="btn-d btn-secondary border-warning text-warning" title="@ViewBag.LimitMessage">
+                <i class="bi bi-lock-fill me-1"></i> Add New Employee (Limit Reached)
+            </a>
+        }
+        else
+        {
+            <a href="@Url.Action("Create","User")" class="btn-d btn-primary">
+                <i class="bi bi-person-plus"></i> Add New Employee
+            </a>
+        }
     </div>
 </div>
+
+@if (ViewBag.LimitReached == true)
+{
+    <div class="alert alert-warning d-flex align-items-center mb-4 p-3 border-warning bg-opacity-10 bg-warning text-warning rounded-3 shadow-sm">
+        <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+        <div>
+            <strong class="fw-bold">Package Limit Reached:</strong> @ViewBag.LimitMessage
+        </div>
+    </div>
+}
 
 <!-- Collapsible Detailed Filter Panel -->
 <div class="card-d mb-4">

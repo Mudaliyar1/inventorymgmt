@@ -20,15 +20,18 @@ namespace InventoryManagementSystem.Services
         private readonly IAuditLogRepository _auditLogRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IUserRepository _userRepository;
+        private readonly ITenantContext _tenantContext;
 
         public AuditLogService(
             IAuditLogRepository auditLogRepository,
             IHttpContextAccessor httpContextAccessor,
-            IUserRepository userRepository)
+            IUserRepository userRepository,
+            ITenantContext tenantContext)
         {
             _auditLogRepository = auditLogRepository;
             _httpContextAccessor = httpContextAccessor;
             _userRepository = userRepository;
+            _tenantContext = tenantContext;
 
             QuestPDF.Settings.License = LicenseType.Community;
         }
@@ -74,11 +77,19 @@ namespace InventoryManagementSystem.Services
             string employeeName = username;
             string userRole = "Staff";
 
+            string? tenantId = _tenantContext?.TenantId;
+
             if (httpContext?.User?.Identity?.IsAuthenticated == true)
             {
                 var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 var roleClaim = httpContext.User.FindFirst(ClaimTypes.Role)?.Value;
                 if (!string.IsNullOrEmpty(roleClaim)) userRole = roleClaim;
+
+                if (string.IsNullOrEmpty(tenantId))
+                {
+                    tenantId = httpContext.User.FindFirst("TenantId")?.Value 
+                            ?? httpContext.User.FindFirst(ClaimTypes.GroupSid)?.Value;
+                }
 
                 if (!string.IsNullOrEmpty(userId))
                 {
@@ -89,12 +100,17 @@ namespace InventoryManagementSystem.Services
                         employeeId = !string.IsNullOrEmpty(user.EmployeeId) ? user.EmployeeId : $"EMP-{(user.Id.Length > 6 ? user.Id[..6] : user.Id)}";
                         employeeName = user.FullName;
                         userRole = user.Role.ToString();
+                        if (string.IsNullOrEmpty(tenantId))
+                        {
+                            tenantId = user.TenantId;
+                        }
                     }
                 }
             }
 
             var log = new AuditLog
             {
+                TenantId = tenantId,
                 EmployeeId = employeeId,
                 EmployeeName = employeeName,
                 Username = username,

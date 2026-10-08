@@ -5,11 +5,14 @@ using System;
 namespace InventoryManagementSystem.Models
 {
     [BsonIgnoreExtraElements]
-    public class Supplier
+    public class Supplier : ITenantEntity
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; } = string.Empty;
+
+        [BsonElement("TenantId")]
+        public string? TenantId { get; set; }
 
         [BsonElement("CompanyName")]
         public string CompanyName { get; set; } = string.Empty;

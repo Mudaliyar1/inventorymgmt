@@ -5,11 +5,14 @@ using System.Collections.Generic;
 
 namespace InventoryManagementSystem.Models
 {
-    public class Sale
+    public class Sale : ITenantEntity
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; } = string.Empty;
+
+        [BsonElement("TenantId")]
+        public string? TenantId { get; set; }
 
         [BsonElement("InvoiceNumber")]
         public string InvoiceNumber { get; set; } = string.Empty;

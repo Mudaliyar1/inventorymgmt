@@ -10,7 +10,7 @@ namespace InventoryManagementSystem.Repositories
 {
     public class ProductRepository : BaseRepository<Product>, IProductRepository
     {
-        public ProductRepository(MongoDbContext context) : base(context, "Products")
+        public ProductRepository(MongoDbContext context, ITenantContext tenantContext) : base(context, "Products", tenantContext)
         {
         }
 
@@ -29,7 +29,8 @@ namespace InventoryManagementSystem.Repositories
             {
                 filter = Builders<Product>.Filter.And(filter, Builders<Product>.Filter.Eq(p => p.SupplierId, supplierId));
             }
-            return await _collection.Find(filter).FirstOrDefaultAsync();
+            var combinedFilter = Builders<Product>.Filter.And(filter, GetTenantFilter());
+            return await _collection.Find(combinedFilter).FirstOrDefaultAsync();
         }
 
         public async Task<Product?> GetByBarcodeAsync(string barcode, string? supplierId = null)
@@ -47,7 +48,8 @@ namespace InventoryManagementSystem.Repositories
             {
                 filter = Builders<Product>.Filter.And(filter, Builders<Product>.Filter.Eq(p => p.SupplierId, supplierId));
             }
-            return await _collection.Find(filter).FirstOrDefaultAsync();
+            var combinedFilter = Builders<Product>.Filter.And(filter, GetTenantFilter());
+            return await _collection.Find(combinedFilter).FirstOrDefaultAsync();
         }
 
         public async Task<IEnumerable<Product>> GetPagedProductsAsync(
@@ -87,7 +89,8 @@ namespace InventoryManagementSystem.Repositories
                 Builders<Product>.Filter.Eq(p => p.SupplierId, null),
                 Builders<Product>.Filter.Exists(p => p.SupplierId, false)
             );
-            var products = await _collection.Find(shopFilter).ToListAsync();
+            var combinedFilter = Builders<Product>.Filter.And(shopFilter, GetTenantFilter());
+            var products = await _collection.Find(combinedFilter).ToListAsync();
             int totalProducts = products.Count;
             int currentStockSum = 0;
             int lowStockCount = 0;
@@ -222,7 +225,7 @@ namespace InventoryManagementSystem.Repositories
                 filter = Builders<Product>.Filter.And(filter, searchFilter);
             }
 
-            return filter;
+            return Builders<Product>.Filter.And(filter, GetTenantFilter());
         }
     }
 }

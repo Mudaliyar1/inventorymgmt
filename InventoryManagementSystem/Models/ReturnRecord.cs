@@ -4,11 +4,14 @@ using System;
 
 namespace InventoryManagementSystem.Models
 {
-    public class ReturnRecord
+    public class ReturnRecord : ITenantEntity
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; } = string.Empty;
+
+        [BsonElement("TenantId")]
+        public string? TenantId { get; set; }
 
         [BsonElement("ReturnNumber")]
         public string ReturnNumber { get; set; } = string.Empty;

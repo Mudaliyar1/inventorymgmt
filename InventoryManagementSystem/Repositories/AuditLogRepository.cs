@@ -11,7 +11,7 @@ namespace InventoryManagementSystem.Repositories
 {
     public class AuditLogRepository : BaseRepository<AuditLog>, IAuditLogRepository
     {
-        public AuditLogRepository(MongoDbContext context) : base(context, "AuditLogs")
+        public AuditLogRepository(MongoDbContext context, ITenantContext tenantContext) : base(context, "AuditLogs", tenantContext)
         {
             Task.Run(async () => await EnsureIndexesCreatedAsync());
         }
@@ -40,7 +40,7 @@ namespace InventoryManagementSystem.Repositories
 
         public async Task<IEnumerable<AuditLog>> GetRecentLogsAsync(int count)
         {
-            return await _collection.Find(_ => true)
+            return await _collection.Find(GetTenantFilter())
                 .SortByDescending(l => l.Timestamp)
                 .Limit(count)
                 .ToListAsync();
@@ -69,7 +69,6 @@ namespace InventoryManagementSystem.Repositories
                 if (!string.IsNullOrWhiteSpace(keyword))
                 {
                     var k = keyword.Trim();
-                    Console.WriteLine($"[FILTER DIAGNOSTIC] Added Keyword Filter: '{k}'");
                     filters.Add(builder.Or(
                         builder.Regex(x => x.EmployeeName, new MongoDB.Bson.BsonRegularExpression(k, "i")),
                         builder.Regex(x => x.Username, new MongoDB.Bson.BsonRegularExpression(k, "i")),
@@ -87,21 +86,18 @@ namespace InventoryManagementSystem.Repositories
                 {
                     var m = module.Trim();
                     var modSearch = GetModuleSearchPattern(m);
-                    Console.WriteLine($"[FILTER DIAGNOSTIC] Added Module Filter: '{m}' -> Pattern '{modSearch}'");
                     filters.Add(builder.Regex(x => x.Module, new MongoDB.Bson.BsonRegularExpression(modSearch, "i")));
                 }
 
                 if (!string.IsNullOrWhiteSpace(action))
                 {
                     var a = action.Trim();
-                    Console.WriteLine($"[FILTER DIAGNOSTIC] Added Action Filter: '{a}'");
                     filters.Add(builder.Regex(x => x.Action, new MongoDB.Bson.BsonRegularExpression(a, "i")));
                 }
 
                 if (!string.IsNullOrWhiteSpace(status))
                 {
                     var st = status.Trim();
-                    Console.WriteLine($"[FILTER DIAGNOSTIC] Added Status Filter: '{st}'");
                     filters.Add(builder.Or(
                         builder.Eq(x => x.Status, st),
                         builder.Eq(x => x.LogLevel, st),
@@ -112,7 +108,6 @@ namespace InventoryManagementSystem.Repositories
                 if (!string.IsNullOrWhiteSpace(logLevel))
                 {
                     var ll = logLevel.Trim();
-                    Console.WriteLine($"[FILTER DIAGNOSTIC] Added LogLevel Filter: '{ll}'");
                     filters.Add(builder.Or(
                         builder.Eq(x => x.LogLevel, ll),
                         builder.Eq(x => x.Status, ll),
@@ -123,7 +118,6 @@ namespace InventoryManagementSystem.Repositories
                 if (!string.IsNullOrWhiteSpace(employee))
                 {
                     var emp = employee.Trim();
-                    Console.WriteLine($"[FILTER DIAGNOSTIC] Added Employee Filter: '{emp}'");
                     filters.Add(builder.Or(
                         builder.Eq(x => x.Username, emp),
                         builder.Eq(x => x.EmployeeId, emp),
@@ -134,52 +128,47 @@ namespace InventoryManagementSystem.Repositories
 
                 if (startDate.HasValue && startDate.Value.Year >= 2000)
                 {
-                    Console.WriteLine($"[FILTER DIAGNOSTIC] Added StartDate Filter: '{startDate.Value:yyyy-MM-dd}'");
                     filters.Add(builder.Gte(x => x.Timestamp, startDate.Value.Date));
                 }
 
                 if (endDate.HasValue && endDate.Value.Year >= 2000)
                 {
-                    Console.WriteLine($"[FILTER DIAGNOSTIC] Added EndDate Filter: '{endDate.Value:yyyy-MM-dd}'");
                     filters.Add(builder.Lte(x => x.Timestamp, endDate.Value.Date.AddDays(1).AddTicks(-1)));
                 }
 
                 if (!string.IsNullOrWhiteSpace(ipAddress))
                 {
-                    Console.WriteLine($"[FILTER DIAGNOSTIC] Added IpAddress Filter: '{ipAddress}'");
                     filters.Add(builder.Eq(x => x.IpAddress, ipAddress.Trim()));
                 }
 
-                FilterDefinition<AuditLog> filter = filters.Count switch
+                var baseFilter = filters.Count switch
                 {
                     0 => builder.Empty,
                     1 => filters[0],
                     _ => builder.And(filters)
                 };
 
-                var renderedFilter = filter.ToString();
-                Console.WriteLine($"[AUDIT REPOSITORY DIAGNOSTIC] filters.Count={filters.Count}, RenderedFilter={renderedFilter}");
+                var combinedFilter = builder.And(baseFilter, GetTenantFilter());
 
-                var totalCount = await _collection.CountDocumentsAsync(filter);
-                var items = await _collection.Find(filter)
+                var totalCount = await _collection.CountDocumentsAsync(combinedFilter);
+                var items = await _collection.Find(combinedFilter)
                     .SortByDescending(x => x.Timestamp)
                     .Skip((page - 1) * pageSize)
                     .Limit(pageSize)
                     .ToListAsync();
-
-                Console.WriteLine($"[AUDIT REPOSITORY DIAGNOSTIC] Query executed successfully. totalCount={totalCount}, items.Count={items.Count}");
 
                 return (items, totalCount);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[AUDIT REPOSITORY ERROR] {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
-                var fallbackItems = await _collection.Find(FilterDefinition<AuditLog>.Empty)
+                var fallbackFilter = GetTenantFilter();
+                var fallbackItems = await _collection.Find(fallbackFilter)
                     .SortByDescending(x => x.Timestamp)
                     .Skip((page - 1) * pageSize)
                     .Limit(pageSize)
                     .ToListAsync();
-                var fallbackCount = await _collection.CountDocumentsAsync(FilterDefinition<AuditLog>.Empty);
+                var fallbackCount = await _collection.CountDocumentsAsync(fallbackFilter);
                 return (fallbackItems, fallbackCount);
             }
         }
@@ -188,29 +177,33 @@ namespace InventoryManagementSystem.Repositories
         {
             var today = DateTime.UtcNow.Date;
             var builder = Builders<AuditLog>.Filter;
+            var tenantFilter = GetTenantFilter();
 
-            var totalLogs = await _collection.CountDocumentsAsync(builder.Empty);
-            var todayLogs = await _collection.CountDocumentsAsync(builder.Gte(x => x.Timestamp, today));
+            var totalLogs = await _collection.CountDocumentsAsync(tenantFilter);
+            var todayLogs = await _collection.CountDocumentsAsync(builder.And(builder.Gte(x => x.Timestamp, today), tenantFilter));
 
             var successLogs = await _collection.CountDocumentsAsync(
-                builder.Or(
-                    builder.Eq(x => x.Status, "Success"),
-                    builder.Eq(x => x.LogLevel, "Success"),
-                    builder.Eq(x => x.Status, null),
-                    builder.Exists(x => x.Status, false)
+                builder.And(
+                    builder.Or(
+                        builder.Eq(x => x.Status, "Success"),
+                        builder.Eq(x => x.LogLevel, "Success"),
+                        builder.Eq(x => x.Status, null),
+                        builder.Exists(x => x.Status, false)
+                    ),
+                    tenantFilter
                 )
             );
-            var warningLogs = await _collection.CountDocumentsAsync(builder.Or(builder.Eq(x => x.Status, "Warning"), builder.Eq(x => x.LogLevel, "Warning")));
-            var errorLogs = await _collection.CountDocumentsAsync(builder.Or(builder.Eq(x => x.Status, "Error"), builder.Eq(x => x.LogLevel, "Error"), builder.Eq(x => x.Status, "Failed")));
-            var criticalLogs = await _collection.CountDocumentsAsync(builder.Or(builder.Eq(x => x.Status, "Critical"), builder.Eq(x => x.LogLevel, "Critical")));
+            var warningLogs = await _collection.CountDocumentsAsync(builder.And(builder.Or(builder.Eq(x => x.Status, "Warning"), builder.Eq(x => x.LogLevel, "Warning")), tenantFilter));
+            var errorLogs = await _collection.CountDocumentsAsync(builder.And(builder.Or(builder.Eq(x => x.Status, "Error"), builder.Eq(x => x.LogLevel, "Error"), builder.Eq(x => x.Status, "Failed")), tenantFilter));
+            var criticalLogs = await _collection.CountDocumentsAsync(builder.And(builder.Or(builder.Eq(x => x.Status, "Critical"), builder.Eq(x => x.LogLevel, "Critical")), tenantFilter));
 
-            var todayLoginsFilter = builder.Gte(x => x.Timestamp, today) & builder.Regex(x => x.Action, new MongoDB.Bson.BsonRegularExpression("login", "i"));
+            var todayLoginsFilter = builder.And(builder.Gte(x => x.Timestamp, today), builder.Regex(x => x.Action, new MongoDB.Bson.BsonRegularExpression("login", "i")), tenantFilter);
             var todayLogins = await _collection.CountDocumentsAsync(todayLoginsFilter);
 
-            var todayStockFilter = builder.Gte(x => x.Timestamp, today) & (builder.Regex(x => x.Module, new MongoDB.Bson.BsonRegularExpression("stock", "i")) | builder.Regex(x => x.Action, new MongoDB.Bson.BsonRegularExpression("stock", "i")));
+            var todayStockFilter = builder.And(builder.Gte(x => x.Timestamp, today), (builder.Regex(x => x.Module, new MongoDB.Bson.BsonRegularExpression("stock", "i")) | builder.Regex(x => x.Action, new MongoDB.Bson.BsonRegularExpression("stock", "i"))), tenantFilter);
             var todayStockChanges = await _collection.CountDocumentsAsync(todayStockFilter);
 
-            var todaySalesFilter = builder.Gte(x => x.Timestamp, today) & (builder.Regex(x => x.Module, new MongoDB.Bson.BsonRegularExpression("sale|pos|invoice", "i")) | builder.Regex(x => x.Action, new MongoDB.Bson.BsonRegularExpression("sale|invoice", "i")));
+            var todaySalesFilter = builder.And(builder.Gte(x => x.Timestamp, today), (builder.Regex(x => x.Module, new MongoDB.Bson.BsonRegularExpression("sale|pos|invoice", "i")) | builder.Regex(x => x.Action, new MongoDB.Bson.BsonRegularExpression("sale|invoice", "i"))), tenantFilter);
             var todaySales = await _collection.CountDocumentsAsync(todaySalesFilter);
 
             return new AuditLogStats
@@ -235,21 +228,27 @@ namespace InventoryManagementSystem.Repositories
             }
 
             var cutoff = DateTime.UtcNow.AddDays(-days);
-            var filter = Builders<AuditLog>.Filter.Lt(x => x.Timestamp, cutoff);
+            var filter = Builders<AuditLog>.Filter.And(
+                Builders<AuditLog>.Filter.Lt(x => x.Timestamp, cutoff),
+                GetTenantFilter()
+            );
             var result = await _collection.DeleteManyAsync(filter);
             return result.DeletedCount;
         }
 
         public async Task<long> ClearAllLogsAsync()
         {
-            var result = await _collection.DeleteManyAsync(FilterDefinition<AuditLog>.Empty);
+            var result = await _collection.DeleteManyAsync(GetTenantFilter());
             return result.DeletedCount;
         }
 
         public async Task<long> DeleteLogsByIdsAsync(IEnumerable<string> ids)
         {
             if (ids == null || !ids.Any()) return 0;
-            var filter = Builders<AuditLog>.Filter.In(x => x.Id, ids);
+            var filter = Builders<AuditLog>.Filter.And(
+                Builders<AuditLog>.Filter.In(x => x.Id, ids),
+                GetTenantFilter()
+            );
             var result = await _collection.DeleteManyAsync(filter);
             return result.DeletedCount;
         }

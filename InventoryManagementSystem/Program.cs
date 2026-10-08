@@ -149,6 +149,7 @@ builder.Services.AddSingleton<MongoDbContext>();
 
 // Register HttpContextAccessor
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ITenantContext, TenantContext>();
 
 // Register Repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -171,6 +172,7 @@ builder.Services.AddScoped<ISupplierPurchaseReturnRepository, SupplierPurchaseRe
 // Register Services
 builder.Services.AddSingleton<IPermissionDiscoveryService, PermissionDiscoveryService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddScoped<ILicenseService, LicenseService>();
 builder.Services.AddScoped<IAccountValidationService, AccountValidationService>();
 builder.Services.AddHttpClient<IBrevoEmailService, BrevoEmailService>();
 builder.Services.AddScoped<IInventoryAlertService, InventoryAlertService>();
@@ -315,7 +317,7 @@ app.MapGet("/health", () => Results.Ok(new
 
 app.MapControllerRoute(
     name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}");
+    pattern: "{controller=Landing}/{action=Index}/{id?}");
 
 // Initialize MongoDB Indexes & Seed Database on Startup
 try

@@ -6,7 +6,7 @@ namespace InventoryManagementSystem.Repositories
 {
     public class CategoryRepository : BaseRepository<Category>, ICategoryRepository
     {
-        public CategoryRepository(MongoDbContext context) : base(context, "Categories")
+        public CategoryRepository(MongoDbContext context, ITenantContext tenantContext) : base(context, "Categories", tenantContext)
         {
         }
     }

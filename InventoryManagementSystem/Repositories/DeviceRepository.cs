@@ -11,16 +11,19 @@ namespace InventoryManagementSystem.Repositories
 {
     public class DeviceRepository : BaseRepository<Device>, IDeviceRepository
     {
-        public DeviceRepository(MongoDbContext context) : base(context, "Devices")
+        public DeviceRepository(MongoDbContext context, ITenantContext tenantContext) : base(context, "Devices", tenantContext)
         {
         }
 
         public async Task<Device?> GetByImeiAsync(string imei)
         {
             if (string.IsNullOrWhiteSpace(imei)) return null;
-            var filter = Builders<Device>.Filter.Or(
-                Builders<Device>.Filter.Eq(d => d.IMEI1, imei.Trim()),
-                Builders<Device>.Filter.Eq(d => d.IMEI2, imei.Trim())
+            var filter = Builders<Device>.Filter.And(
+                Builders<Device>.Filter.Or(
+                    Builders<Device>.Filter.Eq(d => d.IMEI1, imei.Trim()),
+                    Builders<Device>.Filter.Eq(d => d.IMEI2, imei.Trim())
+                ),
+                GetTenantFilter()
             );
             return await _collection.Find(filter).FirstOrDefaultAsync();
         }
@@ -28,7 +31,10 @@ namespace InventoryManagementSystem.Repositories
         public async Task<Device?> GetBySerialAsync(string serialNumber)
         {
             if (string.IsNullOrWhiteSpace(serialNumber)) return null;
-            var filter = Builders<Device>.Filter.Eq(d => d.SerialNumber, serialNumber.Trim());
+            var filter = Builders<Device>.Filter.And(
+                Builders<Device>.Filter.Eq(d => d.SerialNumber, serialNumber.Trim()),
+                GetTenantFilter()
+            );
             return await _collection.Find(filter).FirstOrDefaultAsync();
         }
 
@@ -36,7 +42,8 @@ namespace InventoryManagementSystem.Repositories
         {
             var filter = Builders<Device>.Filter.And(
                 Builders<Device>.Filter.Eq(d => d.ProductId, productId),
-                Builders<Device>.Filter.Eq(d => d.Status, "InStock")
+                Builders<Device>.Filter.Eq(d => d.Status, "InStock"),
+                GetTenantFilter()
             );
             return await _collection.Find(filter).SortBy(d => d.CreatedDate).ToListAsync();
         }
@@ -63,13 +70,18 @@ namespace InventoryManagementSystem.Repositories
                 filterList.Add(builder.Regex(d => d.Color, new BsonRegularExpression($"^{color.Trim()}$", "i")));
             }
 
+            filterList.Add(GetTenantFilter());
+
             var filter = builder.And(filterList);
             return await _collection.Find(filter).SortBy(d => d.CreatedDate).ToListAsync();
         }
 
         public async Task<IEnumerable<Device>> GetDevicesByStatusAsync(string status)
         {
-            var filter = Builders<Device>.Filter.Eq(d => d.Status, status);
+            var filter = Builders<Device>.Filter.And(
+                Builders<Device>.Filter.Eq(d => d.Status, status),
+                GetTenantFilter()
+            );
             return await _collection.Find(filter).SortByDescending(d => d.UpdatedDate).ToListAsync();
         }
 
@@ -98,7 +110,8 @@ namespace InventoryManagementSystem.Repositories
                     Builders<Device>.Filter.Eq(d => d.IMEI1, cleanImei),
                     Builders<Device>.Filter.Eq(d => d.IMEI2, cleanImei)
                 ),
-                Builders<Device>.Filter.Ne(d => d.Status, "Deleted")
+                Builders<Device>.Filter.Ne(d => d.Status, "Deleted"),
+                GetTenantFilter()
             );
 
             if (!string.IsNullOrEmpty(excludeId))
@@ -124,7 +137,12 @@ namespace InventoryManagementSystem.Repositories
             if (!string.IsNullOrEmpty(customerPhone)) update = update.Set(d => d.CustomerPhone, customerPhone);
             if (status == "Sold") update = update.Set(d => d.SoldDate, DateTime.UtcNow);
 
-            var res = await _collection.UpdateOneAsync(Builders<Device>.Filter.Eq(d => d.Id, deviceId), update);
+            var filter = Builders<Device>.Filter.And(
+                Builders<Device>.Filter.Eq(d => d.Id, deviceId),
+                GetTenantFilter()
+            );
+
+            var res = await _collection.UpdateOneAsync(filter, update);
             return res.ModifiedCount > 0;
         }
 
@@ -160,15 +178,18 @@ namespace InventoryManagementSystem.Repositories
                 filter = Builders<Device>.Filter.And(filter, searchFilter);
             }
 
-            return filter;
+            return Builders<Device>.Filter.And(filter, GetTenantFilter());
         }
 
         public async Task<long> DeleteByProductIdAsync(string productId)
         {
             if (string.IsNullOrWhiteSpace(productId)) return 0;
-            var filter = Builders<Device>.Filter.Or(
-                Builders<Device>.Filter.Eq(d => d.ProductId, productId.Trim()),
-                Builders<Device>.Filter.Eq(d => d.ProductCode, productId.Trim())
+            var filter = Builders<Device>.Filter.And(
+                Builders<Device>.Filter.Or(
+                    Builders<Device>.Filter.Eq(d => d.ProductId, productId.Trim()),
+                    Builders<Device>.Filter.Eq(d => d.ProductCode, productId.Trim())
+                ),
+                GetTenantFilter()
             );
             var res = await _collection.DeleteManyAsync(filter);
             return res.DeletedCount;
@@ -196,7 +217,10 @@ namespace InventoryManagementSystem.Repositories
             }
 
             if (filters.Count == 0) return 0;
-            var filter = Builders<Device>.Filter.Or(filters);
+            var filter = Builders<Device>.Filter.And(
+                Builders<Device>.Filter.Or(filters),
+                GetTenantFilter()
+            );
             var res = await _collection.DeleteManyAsync(filter);
             return res.DeletedCount;
         }

@@ -26,7 +26,12 @@ namespace InventoryManagementSystem.Data
             return _database.GetCollection<T>(name);
         }
 
-        // Strongly-typed collections
+        // Multi-Tenant SaaS Collections
+        public IMongoCollection<Tenant> Tenants => GetCollection<Tenant>("Tenants");
+        public IMongoCollection<SubscriptionPackage> SubscriptionPackages => GetCollection<SubscriptionPackage>("SubscriptionPackages");
+        public IMongoCollection<TenantLicense> TenantLicenses => GetCollection<TenantLicense>("TenantLicenses");
+        public IMongoCollection<SaaSPaymentTransaction> SaaSPaymentTransactions => GetCollection<SaaSPaymentTransaction>("SaaSPaymentTransactions");
+
         public IMongoCollection<User> Users => GetCollection<User>("Users");
         public IMongoCollection<Role> Roles => GetCollection<Role>("Roles");
         public IMongoCollection<AuditLog> AuditLogs => GetCollection<AuditLog>("AuditLogs");

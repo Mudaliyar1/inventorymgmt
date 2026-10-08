@@ -12,14 +12,17 @@ namespace InventoryManagementSystem.Repositories
 {
     public class SupplierOrderRepository : BaseRepository<SupplierOrder>, ISupplierOrderRepository
     {
-        public SupplierOrderRepository(MongoDbContext context) : base(context, "SupplierOrders")
+        public SupplierOrderRepository(MongoDbContext context, ITenantContext tenantContext) : base(context, "SupplierOrders", tenantContext)
         {
         }
 
         public async Task<SupplierOrder?> GetByOrderNumberAsync(string orderNumber)
         {
             if (string.IsNullOrWhiteSpace(orderNumber)) return null;
-            var filter = Builders<SupplierOrder>.Filter.Eq(so => so.OrderNumber, orderNumber.Trim());
+            var filter = Builders<SupplierOrder>.Filter.And(
+                Builders<SupplierOrder>.Filter.Eq(so => so.OrderNumber, orderNumber.Trim()),
+                GetTenantFilter()
+            );
             return await _collection.Find(filter).FirstOrDefaultAsync();
         }
 
@@ -66,10 +69,12 @@ namespace InventoryManagementSystem.Repositories
         public async Task<string> GetNextOrderNumberAsync()
         {
             var todayPrefix = $"PO-{DateTime.UtcNow:yyyyMMdd}-";
-            var filter = Builders<SupplierOrder>.Filter.Regex(so => so.OrderNumber, new BsonRegularExpression($"^{todayPrefix}"));
+            var filter = Builders<SupplierOrder>.Filter.And(
+                Builders<SupplierOrder>.Filter.Regex(so => so.OrderNumber, new BsonRegularExpression($"^{todayPrefix}")),
+                GetTenantFilter()
+            );
             var count = await _collection.CountDocumentsAsync(filter);
             
-            // Loop until unique sequence number found
             int sequence = (int)count + 1;
             while (true)
             {
@@ -87,7 +92,8 @@ namespace InventoryManagementSystem.Repositories
                 ? builder.Eq(so => so.SupplierId, supplierId)
                 : builder.Empty;
 
-            var list = await _collection.Find(filter).ToListAsync();
+            var combinedFilter = builder.And(filter, GetTenantFilter());
+            var list = await _collection.Find(combinedFilter).ToListAsync();
             var result = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var st in SupplierOrderStatus.AllStatuses)
@@ -153,7 +159,8 @@ namespace InventoryManagementSystem.Repositories
                 filters.Add(builder.Lte(so => so.GrandTotal, maxAmount.Value));
             }
 
-            return filters.Any() ? builder.And(filters) : builder.Empty;
+            var baseFilter = filters.Any() ? builder.And(filters) : builder.Empty;
+            return builder.And(baseFilter, GetTenantFilter());
         }
     }
 }

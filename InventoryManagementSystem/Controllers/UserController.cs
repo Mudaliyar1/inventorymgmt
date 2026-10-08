@@ -20,6 +20,7 @@ namespace InventoryManagementSystem.Controllers
         private readonly IAccountValidationService _accountValidationService;
         private readonly IPasswordPolicyService _passwordPolicyService;
         private readonly IPasswordResetService _passwordResetService;
+        private readonly ILicenseService _licenseService;
 
         public UserController(
             IUserRepository userRepository,
@@ -29,7 +30,8 @@ namespace InventoryManagementSystem.Controllers
             IPermissionService permissionService,
             IAccountValidationService accountValidationService,
             IPasswordPolicyService passwordPolicyService,
-            IPasswordResetService passwordResetService)
+            IPasswordResetService passwordResetService,
+            ILicenseService licenseService)
         {
             _userRepository = userRepository;
             _authService = authService;
@@ -39,19 +41,30 @@ namespace InventoryManagementSystem.Controllers
             _accountValidationService = accountValidationService;
             _passwordPolicyService = passwordPolicyService;
             _passwordResetService = passwordResetService;
+            _licenseService = licenseService;
         }
 
         [HttpGet]
         public async Task<IActionResult> Index()
         {
+            var tenantId = User.FindFirst("TenantId")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.GroupSid)?.Value;
+            var limitCheck = await _licenseService.CheckPackageLimitAsync(tenantId ?? string.Empty, "Employees");
+            ViewBag.LimitReached = !limitCheck.Allowed;
+            ViewBag.LimitMessage = limitCheck.Message;
+
             var allUsers = await _userRepository.GetAllAsync();
-            var employees = allUsers.Where(u => u.Role != Role.Admin).OrderByDescending(u => u.CreatedDate);
+            var employees = allUsers.Where(u => u.Role != Role.Admin && u.Role != Role.SuperAdmin).OrderByDescending(u => u.CreatedDate);
             return View(employees);
         }
 
         [HttpGet]
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
+            var tenantId = User.FindFirst("TenantId")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.GroupSid)?.Value;
+            var limitCheck = await _licenseService.CheckPackageLimitAsync(tenantId ?? string.Empty, "Employees");
+            ViewBag.LimitReached = !limitCheck.Allowed;
+            ViewBag.LimitMessage = limitCheck.Message;
+
             ViewBag.GroupedPermissions = _permissionDiscovery.GetGroupedPermissions();
             var nextEmpId = $"EMP-{Random.Shared.Next(1000, 9999)}";
             return View(new User { EmployeeId = nextEmpId, Role = Role.Staff });
@@ -62,6 +75,15 @@ namespace InventoryManagementSystem.Controllers
         public async Task<IActionResult> Create(User model, string rawPassword, string confirmPassword, List<string> selectedPermissions)
         {
             ViewBag.GroupedPermissions = _permissionDiscovery.GetGroupedPermissions();
+
+            // Check Subscription Package Employee Limit
+            var tenantId = User.FindFirst("TenantId")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.GroupSid)?.Value;
+            var limitCheck = await _licenseService.CheckPackageLimitAsync(tenantId ?? string.Empty, "Employees");
+            if (!limitCheck.Allowed)
+            {
+                ModelState.AddModelError(string.Empty, limitCheck.Message);
+                return View(model);
+            }
 
             if (!string.IsNullOrWhiteSpace(model.Email) && await _accountValidationService.IsEmailAlreadyRegisteredAsync(model.Email))
             {

@@ -4,11 +4,14 @@ using MongoDB.Bson.Serialization.Attributes;
 
 namespace InventoryManagementSystem.Models
 {
-    public class Notification
+    public class Notification : ITenantEntity
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; } = string.Empty;
+
+        [BsonElement("TenantId")]
+        public string? TenantId { get; set; }
 
         [BsonElement("Type")]
         public string Type { get; set; } = "Info"; // Info, Warning, Danger, Success

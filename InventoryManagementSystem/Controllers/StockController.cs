@@ -41,6 +41,12 @@ namespace InventoryManagementSystem.Controllers
         }
 
         [HttpGet]
+        public IActionResult Create()
+        {
+            return RedirectToAction(nameof(StockIn));
+        }
+
+        [HttpGet]
         public async Task<IActionResult> StockIn()
         {
             var model = new StockTransactionViewModel { Type = "Stock In" };

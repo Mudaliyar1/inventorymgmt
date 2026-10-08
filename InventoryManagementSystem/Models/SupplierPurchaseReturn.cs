@@ -5,11 +5,14 @@ using System.Collections.Generic;
 
 namespace InventoryManagementSystem.Models
 {
-    public class SupplierPurchaseReturn
+    public class SupplierPurchaseReturn : ITenantEntity
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; } = string.Empty;
+
+        [BsonElement("TenantId")]
+        public string? TenantId { get; set; }
 
         [BsonElement("ReturnNumber")]
         public string ReturnNumber { get; set; } = string.Empty; // e.g. PR-20260820-0001

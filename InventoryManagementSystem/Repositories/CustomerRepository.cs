@@ -4,20 +4,24 @@ using InventoryManagementSystem.Data;
 using InventoryManagementSystem.Interfaces;
 using InventoryManagementSystem.Models;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace InventoryManagementSystem.Repositories
 {
     public class CustomerRepository : BaseRepository<Customer>, ICustomerRepository
     {
-        public CustomerRepository(MongoDbContext context) : base(context, "Customers")
+        public CustomerRepository(MongoDbContext context, ITenantContext tenantContext) : base(context, "Customers", tenantContext)
         {
         }
 
         public async Task<Customer?> GetByPhoneAsync(string phone)
         {
             if (string.IsNullOrWhiteSpace(phone)) return null;
-            var filter = Builders<Customer>.Filter.Eq(c => c.Phone, phone.Trim());
+            var filter = Builders<Customer>.Filter.And(
+                Builders<Customer>.Filter.Eq(c => c.Phone, phone.Trim()),
+                GetTenantFilter()
+            );
             return await _collection.Find(filter).FirstOrDefaultAsync();
         }
 
@@ -26,7 +30,8 @@ namespace InventoryManagementSystem.Repositories
             if (string.IsNullOrWhiteSpace(phone) || string.IsNullOrWhiteSpace(name)) return null;
             var filter = Builders<Customer>.Filter.And(
                 Builders<Customer>.Filter.Eq(c => c.Phone, phone.Trim()),
-                Builders<Customer>.Filter.Regex(c => c.Name, new BsonRegularExpression($"^{System.Text.RegularExpressions.Regex.Escape(name.Trim())}$", "i"))
+                Builders<Customer>.Filter.Regex(c => c.Name, new BsonRegularExpression($"^{System.Text.RegularExpressions.Regex.Escape(name.Trim())}$", "i")),
+                GetTenantFilter()
             );
             return await _collection.Find(filter).FirstOrDefaultAsync();
         }
@@ -52,7 +57,12 @@ namespace InventoryManagementSystem.Repositories
             var update = Builders<Customer>.Update
                 .Inc(c => c.TotalPurchases, purchaseAmount)
                 .Set(c => c.UpdatedDate, System.DateTime.UtcNow);
-            await _collection.UpdateOneAsync(Builders<Customer>.Filter.Eq(c => c.Id, customerId), update);
+
+            var filter = Builders<Customer>.Filter.And(
+                Builders<Customer>.Filter.Eq(c => c.Id, customerId),
+                GetTenantFilter()
+            );
+            await _collection.UpdateOneAsync(filter, update);
         }
 
         private FilterDefinition<Customer> BuildFilter(string? search, string? hasGstin = null, decimal? minPurchases = null, decimal? maxPurchases = null)
@@ -100,7 +110,8 @@ namespace InventoryManagementSystem.Repositories
                 filters.Add(builder.Lte(c => c.TotalPurchases, maxPurchases.Value));
             }
 
-            return filters.Any() ? builder.And(filters) : builder.Empty;
+            var baseFilter = filters.Any() ? builder.And(filters) : builder.Empty;
+            return builder.And(baseFilter, GetTenantFilter());
         }
     }
 }

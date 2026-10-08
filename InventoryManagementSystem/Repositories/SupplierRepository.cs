@@ -3,14 +3,16 @@ using MongoDB.Driver;
 using InventoryManagementSystem.Data;
 using InventoryManagementSystem.Interfaces;
 using InventoryManagementSystem.Models;
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace InventoryManagementSystem.Repositories
 {
     public class SupplierRepository : BaseRepository<Supplier>, ISupplierRepository
     {
-        public SupplierRepository(MongoDbContext context) : base(context, "Suppliers")
+        public SupplierRepository(MongoDbContext context, ITenantContext tenantContext) : base(context, "Suppliers", tenantContext)
         {
         }
 
@@ -18,9 +20,12 @@ namespace InventoryManagementSystem.Repositories
         {
             if (string.IsNullOrWhiteSpace(name)) return null;
             var clean = name.Trim();
-            var filter = Builders<Supplier>.Filter.Or(
-                Builders<Supplier>.Filter.Eq(s => s.CompanyName, clean),
-                Builders<Supplier>.Filter.Eq(s => s.VendorName, clean)
+            var filter = Builders<Supplier>.Filter.And(
+                Builders<Supplier>.Filter.Or(
+                    Builders<Supplier>.Filter.Eq(s => s.CompanyName, clean),
+                    Builders<Supplier>.Filter.Eq(s => s.VendorName, clean)
+                ),
+                GetTenantFilter()
             );
             return await _collection.Find(filter).FirstOrDefaultAsync();
         }
@@ -29,7 +34,10 @@ namespace InventoryManagementSystem.Repositories
         {
             if (string.IsNullOrWhiteSpace(email)) return null;
             var clean = email.Trim();
-            var filter = Builders<Supplier>.Filter.Regex(s => s.Email, new BsonRegularExpression($"^{System.Text.RegularExpressions.Regex.Escape(clean)}$", "i"));
+            var filter = Builders<Supplier>.Filter.And(
+                Builders<Supplier>.Filter.Regex(s => s.Email, new BsonRegularExpression($"^{System.Text.RegularExpressions.Regex.Escape(clean)}$", "i")),
+                GetTenantFilter()
+            );
             return await _collection.Find(filter).FirstOrDefaultAsync();
         }
 
@@ -86,7 +94,8 @@ namespace InventoryManagementSystem.Repositories
                 }
             }
 
-            return filters.Any() ? builder.And(filters) : builder.Empty;
+            var baseFilter = filters.Any() ? builder.And(filters) : builder.Empty;
+            return builder.And(baseFilter, GetTenantFilter());
         }
     }
 }

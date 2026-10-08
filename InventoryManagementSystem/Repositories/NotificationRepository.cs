@@ -9,13 +9,16 @@ namespace InventoryManagementSystem.Repositories
 {
     public class NotificationRepository : BaseRepository<Notification>, INotificationRepository
     {
-        public NotificationRepository(MongoDbContext context) : base(context, "Notifications")
+        public NotificationRepository(MongoDbContext context, ITenantContext tenantContext) : base(context, "Notifications", tenantContext)
         {
         }
 
         public async Task<IEnumerable<Notification>> GetUnreadNotificationsAsync()
         {
-            var filter = Builders<Notification>.Filter.Eq(n => n.IsRead, false);
+            var filter = Builders<Notification>.Filter.And(
+                Builders<Notification>.Filter.Eq(n => n.IsRead, false),
+                GetTenantFilter()
+            );
             return await _collection.Find(filter)
                 .SortByDescending(n => n.Timestamp)
                 .Limit(10)
@@ -24,7 +27,10 @@ namespace InventoryManagementSystem.Repositories
 
         public async Task MarkAllAsReadAsync()
         {
-            var filter = Builders<Notification>.Filter.Eq(n => n.IsRead, false);
+            var filter = Builders<Notification>.Filter.And(
+                Builders<Notification>.Filter.Eq(n => n.IsRead, false),
+                GetTenantFilter()
+            );
             var update = Builders<Notification>.Update.Set(n => n.IsRead, true);
             await _collection.UpdateManyAsync(filter, update);
         }

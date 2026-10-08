@@ -11,13 +11,25 @@ namespace InventoryManagementSystem.Controllers
     {
         private readonly ISupplierService _supplierService;
         private readonly IPasswordResetService _passwordResetService;
+        private readonly ILicenseService _licenseService;
+        private readonly IAuthService _authService;
 
         public SupplierController(
             ISupplierService supplierService,
-            IPasswordResetService passwordResetService)
+            IPasswordResetService passwordResetService,
+            ILicenseService licenseService,
+            IAuthService authService)
         {
             _supplierService = supplierService;
             _passwordResetService = passwordResetService;
+            _licenseService = licenseService;
+            _authService = authService;
+        }
+
+        [HttpGet]
+        public IActionResult Create()
+        {
+            return RedirectToAction("Index", new { openModal = true });
         }
 
         [HttpGet]
@@ -33,6 +45,11 @@ namespace InventoryManagementSystem.Controllers
             ViewBag.CurrentPage = page;
             ViewBag.TotalPages = (int)System.Math.Ceiling((double)totalCount / pageSize);
             ViewBag.TotalCount = totalCount;
+
+            var tenantId = User.FindFirst("TenantId")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.GroupSid)?.Value;
+            var limitCheck = await _licenseService.CheckPackageLimitAsync(tenantId ?? string.Empty, "Suppliers");
+            ViewBag.LimitReached = !limitCheck.Allowed;
+            ViewBag.LimitMessage = limitCheck.Message;
 
             return View(suppliers);
         }
@@ -55,6 +72,19 @@ namespace InventoryManagementSystem.Controllers
 
             if (isCreating)
             {
+                // Check Subscription Package Supplier Limit
+                var tenantId = User.FindFirst("TenantId")?.Value ?? User.FindFirst(System.Security.Claims.ClaimTypes.GroupSid)?.Value;
+                var limitCheck = await _licenseService.CheckPackageLimitAsync(tenantId ?? string.Empty, "Suppliers");
+                if (!limitCheck.Allowed)
+                {
+                    if (Request.Headers["X-Requested-With"] == "XMLHttpRequest" || Request.Headers["Accept"].ToString().Contains("application/json"))
+                        return Json(new { success = false, message = limitCheck.Message });
+
+                    TempData["ToastMessage"] = limitCheck.Message;
+                    TempData["ToastType"] = "danger";
+                    return RedirectToAction("Index");
+                }
+
                 if (string.IsNullOrWhiteSpace(supplier.PasswordHash))
                 {
                     var msg = "Portal account password is required.";

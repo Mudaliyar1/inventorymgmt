@@ -51,6 +51,10 @@ namespace InventoryManagementSystem.Controllers
         {
             if (User.Identity?.IsAuthenticated == true)
             {
+                if (User.IsInRole(Role.SuperAdmin))
+                {
+                    return RedirectToAction("Dashboard", "PlatformAdmin");
+                }
                 if (User.IsInRole(Role.Supplier))
                 {
                     return RedirectToAction("Index", "SupplierDashboard");
@@ -81,6 +85,8 @@ namespace InventoryManagementSystem.Controllers
                     new Claim(ClaimTypes.Name, user.Username),
                     new Claim(ClaimTypes.Email, user.Email),
                     new Claim(ClaimTypes.Role, user.Role),
+                    new Claim("TenantId", user.TenantId ?? ""),
+                    new Claim(ClaimTypes.GroupSid, user.TenantId ?? ""),
                     new Claim("FullName", user.FullName),
                     new Claim("EmployeeId", !string.IsNullOrEmpty(user.EmployeeId) ? user.EmployeeId : "EMP-0000"),
                     new Claim("ProfilePictureUrl", string.IsNullOrEmpty(user.ProfilePictureUrl) ? "/images/default-avatar.png" : user.ProfilePictureUrl)
@@ -108,6 +114,10 @@ namespace InventoryManagementSystem.Controllers
                 TempData["ToastType"] = "success";
 
                 if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl)) return Redirect(returnUrl);
+                if (user.Role == Role.SuperAdmin)
+                {
+                    return RedirectToAction("Dashboard", "PlatformAdmin");
+                }
                 return RedirectToAction("Index", "Home");
             }
 
@@ -121,6 +131,8 @@ namespace InventoryManagementSystem.Controllers
                     new Claim(ClaimTypes.Name, supplier.CompanyName),
                     new Claim(ClaimTypes.Email, supplier.Email),
                     new Claim(ClaimTypes.Role, Role.Supplier),
+                    new Claim("TenantId", supplier.TenantId ?? ""),
+                    new Claim(ClaimTypes.GroupSid, supplier.TenantId ?? ""),
                     new Claim("FullName", string.IsNullOrEmpty(supplier.ContactPerson) ? supplier.CompanyName : supplier.ContactPerson),
                     new Claim("CompanyName", supplier.CompanyName),
                     new Claim("SupplierId", supplier.Id)

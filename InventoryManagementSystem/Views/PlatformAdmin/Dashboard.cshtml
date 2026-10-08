@@ -1,0 +1,105 @@
+@{
+    ViewData["Title"] = "SaaS Platform Control Center";
+}
+
+<div class="container-fluid px-4 py-3">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <span class="badge bg-primary px-3 py-2 text-uppercase font-mono fw-bold fs-7 rounded-pill mb-2">Super Admin Platform</span>
+            <h1 class="h3 font-display fw-bold mb-0">SaaS Multi-Tenant Management</h1>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="@Url.Action("CreateTenant", "PlatformAdmin")" class="btn btn-primary shadow-sm"><i class="bi bi-plus-lg me-1"></i> Provision New Shop</a>
+            <a href="@Url.Action("Packages", "PlatformAdmin")" class="btn btn-outline-light"><i class="bi bi-box-seam me-1"></i> Subscription Packages</a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="glass-card p-4 h-100 border-start border-primary border-4">
+                <div class="text-muted text-uppercase fs-7 font-mono fw-bold mb-1">Total Registered Shops</div>
+                <div class="fs-2 font-display fw-bold text-light">@ViewBag.TotalTenants</div>
+                <div class="text-success fs-7 mt-1"><i class="bi bi-shop me-1"></i> @ViewBag.ActiveTenants Active Tenants</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="glass-card p-4 h-100 border-start border-success border-4">
+                <div class="text-muted text-uppercase fs-7 font-mono fw-bold mb-1">Monthly Recurring Revenue (MRR)</div>
+                <div class="fs-2 font-display fw-bold text-success">₹@(((decimal)ViewBag.MRR).ToString("N2"))</div>
+                <div class="text-muted fs-7 mt-1">Based on active plan subscriptions</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="glass-card p-4 h-100 border-start border-warning border-4">
+                <div class="text-muted text-uppercase fs-7 font-mono fw-bold mb-1">Active Trial Accounts</div>
+                <div class="fs-2 font-display fw-bold text-warning">@ViewBag.TrialTenants</div>
+                <div class="text-muted fs-7 mt-1">14-Day Trial Subscriptions</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="glass-card p-4 h-100 border-start border-danger border-4">
+                <div class="text-muted text-uppercase fs-7 font-mono fw-bold mb-1">Expired Licenses</div>
+                <div class="fs-2 font-display fw-bold text-danger">@ViewBag.ExpiredTenants</div>
+                <div class="text-muted fs-7 mt-1">Require License Extension</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content Sections -->
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="glass-card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 class="h5 font-display fw-bold mb-0">Recently Provisioned Shops</h2>
+                    <a href="@Url.Action("Tenants", "PlatformAdmin")" class="btn btn-sm btn-link text-decoration-none">View All Shops &rarr;</a>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover align-middle mb-0">
+                        <thead>
+                            <tr class="text-muted font-mono fs-7">
+                                <th>Code</th>
+                                <th>Shop Name</th>
+                                <th>Owner</th>
+                                <th>Status</th>
+                                <th>Provisioned</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (ViewBag.RecentTenants != null)
+                            {
+                                foreach (var tenant in (List<InventoryManagementSystem.Models.Tenant>)ViewBag.RecentTenants)
+                                {
+                                    <tr>
+                                        <td class="font-mono text-info fw-bold">@tenant.TenantCode</td>
+                                        <td class="fw-bold">@tenant.ShopName</td>
+                                        <td>@tenant.OwnerName <br><small class="text-muted">@tenant.ContactEmail</small></td>
+                                        <td>
+                                            <span class="badge @(tenant.Status == "Active" ? "bg-success" : tenant.Status == "Trial" ? "bg-warning" : "bg-danger")">@tenant.Status</span>
+                                        </td>
+                                        <td class="fs-7 text-muted">@tenant.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                        <td class="text-end">
+                                            <a href="@Url.Action("Tenants", "PlatformAdmin", new { search = tenant.TenantCode })" class="btn btn-sm btn-outline-info"><i class="bi bi-eye"></i></a>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="glass-card p-4">
+                <h2 class="h5 font-display fw-bold mb-3">Quick Platform Actions</h2>
+                <div class="d-grid gap-2">
+                    <a href="@Url.Action("CreateTenant", "PlatformAdmin")" class="btn btn-primary py-2 text-start px-3"><i class="bi bi-building-add me-2"></i> Register New Mobile Shop</a>
+                    <a href="@Url.Action("Packages", "PlatformAdmin")" class="btn btn-outline-light py-2 text-start px-3"><i class="bi bi-tags me-2"></i> Manage SaaS Packages</a>
+                    <a href="@Url.Action("Payments", "PlatformAdmin")" class="btn btn-outline-light py-2 text-start px-3"><i class="bi bi-receipt-cutoff me-2"></i> SaaS Payment Transactions</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

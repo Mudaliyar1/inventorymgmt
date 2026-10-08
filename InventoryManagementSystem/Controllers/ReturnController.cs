@@ -28,6 +28,12 @@ namespace InventoryManagementSystem.Controllers
         }
 
         [HttpGet]
+        public IActionResult Create()
+        {
+            return RedirectToAction("Index", new { openModal = true });
+        }
+
+        [HttpGet]
         public async Task<IActionResult> Index(string? search, string? reason, string? condition, string? target, decimal? minRefund, decimal? maxRefund, int page = 1)
         {
             int pageSize = 20;

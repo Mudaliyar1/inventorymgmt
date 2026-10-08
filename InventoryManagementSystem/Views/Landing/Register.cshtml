@@ -1,0 +1,72 @@
+@{
+    ViewData["Title"] = "Register Your Mobile Shop — SIMS SaaS";
+    var packages = (IEnumerable<InventoryManagementSystem.Models.SubscriptionPackage>)ViewBag.Packages;
+    var selectedPackageId = (string)ViewBag.SelectedPackageId;
+}
+
+<div class="container py-5" style="max-width: 750px;">
+    <div class="text-center mb-4">
+        <span class="badge bg-primary px-3 py-2 text-uppercase font-mono fw-bold fs-7 rounded-pill mb-2">Get Started in 2 Minutes</span>
+        <h1 class="h2 font-display fw-bold mb-2 text-light">Create Your Shop SaaS Account</h1>
+        <p class="text-muted fs-7">Start your 14-day free trial. No credit card required.</p>
+    </div>
+
+    <div class="glass-card p-4 p-md-5">
+        <form method="post" action="@Url.Action("RegisterShop", "Landing")">
+            @Html.AntiForgeryToken()
+
+            <h5 class="text-primary font-mono fw-bold mb-3">1. Select Subscription Package</h5>
+            <div class="mb-4">
+                <select name="packageId" class="form-select form-select-lg bg-dark border-secondary text-light" required>
+                    @if (packages != null)
+                    {
+                        foreach (var p in packages)
+                        {
+                            <option value="@p.Id" selected="@(p.Id == selectedPackageId)">@p.Name — ₹@p.MonthlyPrice/month (@p.Description)</option>
+                        }
+                    }
+                </select>
+            </div>
+
+            <h5 class="text-primary font-mono fw-bold mb-3">2. Mobile Shop Details</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="form-label">Shop Name <span class="text-danger">*</span></label>
+                    <input type="text" name="shopName" class="form-control bg-dark border-secondary text-light" placeholder="e.g. Paramount Mobiles" required />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">GSTIN (Optional)</label>
+                    <input type="text" name="gstin" class="form-control bg-dark border-secondary text-light" placeholder="22AAAAA0000A1Z5" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Shop Address</label>
+                    <input type="text" name="address" class="form-control bg-dark border-secondary text-light" placeholder="Shop #12, Market Complex, City" />
+                </div>
+            </div>
+
+            <h5 class="text-primary font-mono fw-bold mb-3">3. Owner Account Credentials</h5>
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <label class="form-label">Owner Full Name <span class="text-danger">*</span></label>
+                    <input type="text" name="ownerName" class="form-control bg-dark border-secondary text-light" placeholder="Alex Morgan" required />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Phone Number</label>
+                    <input type="text" name="phone" class="form-control bg-dark border-secondary text-light" placeholder="+91 9876543210" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Email Address (Login Username) <span class="text-danger">*</span></label>
+                    <input type="email" name="contactEmail" class="form-control bg-dark border-secondary text-light" placeholder="owner@paramount.com" required />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Password <span class="text-danger">*</span></label>
+                    <input type="password" name="password" class="form-control bg-dark border-secondary text-light" placeholder="Choose a strong password" required />
+                </div>
+            </div>
+
+            <div class="d-grid mt-4">
+                <button type="submit" class="btn btn-primary btn-lg py-3 shadow"><i class="bi bi-rocket-takeoff me-2"></i> Register Shop & Launch System</button>
+            </div>
+        </form>
+    </div>
+</div>

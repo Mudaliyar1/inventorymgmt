@@ -10,7 +10,7 @@ namespace InventoryManagementSystem.Repositories
 {
     public class RepairRepository : BaseRepository<RepairTicket>, IRepairRepository
     {
-        public RepairRepository(MongoDbContext context) : base(context, "RepairTickets")
+        public RepairRepository(MongoDbContext context, ITenantContext tenantContext) : base(context, "RepairTickets", tenantContext)
         {
         }
 
@@ -54,7 +54,7 @@ namespace InventoryManagementSystem.Repositories
                 filter = Builders<RepairTicket>.Filter.And(filter, searchFilter);
             }
 
-            return filter;
+            return Builders<RepairTicket>.Filter.And(filter, GetTenantFilter());
         }
     }
 }

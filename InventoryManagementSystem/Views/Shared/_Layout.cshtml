@@ -44,6 +44,7 @@
   var uname    = User.Identity.Name;
   var profPic  = User.FindFirst("ProfilePictureUrl")?.Value ?? "";
   var isAdmin    = User.IsInRole("Admin");
+  var isSuperAdmin = User.IsInRole("SuperAdmin");
   var isSupplier = User.IsInRole("Supplier");
 
   <!-- Sidebar overlay (mobile) -->
@@ -55,7 +56,7 @@
   <aside id="sidebar" aria-label="Main Navigation">
 
     <!-- Brand -->
-    <a class="sb-brand" href="@(isSupplier ? Url.Action("Index","SupplierDashboard") : Url.Action("Index","Home"))">
+    <a class="sb-brand" href="@(isSuperAdmin ? Url.Action("Dashboard","PlatformAdmin") : isSupplier ? Url.Action("Index","SupplierDashboard") : Url.Action("Index","Home"))">
       <img src="~/images/logo-dark.png" alt="SIMS Logo" class="sb-brand-logo logo-dark-mode" style="height:32px;width:auto;object-fit:contain;flex-shrink:0" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
       <img src="~/images/logo-light.png" alt="SIMS Logo" class="sb-brand-logo logo-light-mode" style="height:32px;width:auto;object-fit:contain;flex-shrink:0" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
       <div class="sb-brand-icon" style="display:none"><i class="bi bi-box-seam-fill"></i></div>
@@ -65,7 +66,67 @@
     <!-- Nav scroll area -->
     <div class="sb-scroll">
 
-    @if (isSupplier)
+    @if (isSuperAdmin)
+    {
+      <!-- SAAS PLATFORM MANAGEMENT -->
+      <div class="sb-label">SAAS PLATFORM</div>
+
+      <a href="@Url.Action("Dashboard","PlatformAdmin")"
+         class="sb-link @(ctrl=="PlatformAdmin"&&act=="Dashboard"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Platform Overview" data-bs-placement="right">
+        <i class="bi bi-speedometer2 sb-icon" style="color:var(--primary)"></i>
+        <span class="sb-text">SaaS Dashboard</span>
+      </a>
+
+      <a href="@Url.Action("Tenants","PlatformAdmin")"
+         class="sb-link @(ctrl=="PlatformAdmin"&&act=="Tenants"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Mobile Shop Tenants" data-bs-placement="right">
+        <i class="bi bi-shop sb-icon" style="color:var(--success)"></i>
+        <span class="sb-text">Registered Shops</span>
+      </a>
+
+      <a href="@Url.Action("CreateTenant","PlatformAdmin")"
+         class="sb-link @(ctrl=="PlatformAdmin"&&act=="CreateTenant"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Add New Shop" data-bs-placement="right">
+        <i class="bi bi-plus-circle sb-icon" style="color:var(--info)"></i>
+        <span class="sb-text">Provision New Shop</span>
+      </a>
+
+      <!-- SUBSCRIPTION & BILLING -->
+      <div class="sb-label">BILLING & PACKAGES</div>
+
+      <a href="@Url.Action("Packages","PlatformAdmin")"
+         class="sb-link @(ctrl=="PlatformAdmin"&&act=="Packages"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Subscription Plans" data-bs-placement="right">
+        <i class="bi bi-tags sb-icon" style="color:var(--warning)"></i>
+        <span class="sb-text">SaaS Packages</span>
+      </a>
+
+      <a href="@Url.Action("Payments","PlatformAdmin")"
+         class="sb-link @(ctrl=="PlatformAdmin"&&act=="Payments"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Revenue & Payments" data-bs-placement="right">
+        <i class="bi bi-currency-dollar sb-icon" style="color:var(--success)"></i>
+        <span class="sb-text">Payment Transactions</span>
+      </a>
+
+      <!-- SYSTEM & SECURITY -->
+      <div class="sb-label">SYSTEM & AUDIT</div>
+
+      <a href="@Url.Action("Index","SystemLog")"
+         class="sb-link @(ctrl=="SystemLog"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Platform Logs" data-bs-placement="right">
+        <i class="bi bi-terminal sb-icon"></i>
+        <span class="sb-text">System Audit Logs</span>
+      </a>
+
+      <a href="@Url.Action("Profile","Account")"
+         class="sb-link @(ctrl=="Account"&&act=="Profile"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="SuperAdmin Profile" data-bs-placement="right">
+        <i class="bi bi-person-circle sb-icon"></i>
+        <span class="sb-text">My Profile</span>
+      </a>
+    }
+    else if (isSupplier)
     {
       <div class="sb-label">Supplier Portal</div>
 
@@ -419,6 +480,10 @@
             </li>
             <li><hr class="dd-divider mx-1"></li>
             <li><a class="dd-item" href="@Url.Action("Profile","Account")"><i class="bi bi-person"></i> My Profile</a></li>
+            @if (isSuperAdmin)
+            {
+              <li><a class="dd-item text-primary fw-bold" href="@Url.Action("Dashboard","PlatformAdmin")"><i class="bi bi-speedometer2"></i> Platform Dashboard</a></li>
+            }
             @if (isAdmin)
             {
               <li><a class="dd-item" href="@Url.Action("Index","Settings")"><i class="bi bi-sliders"></i> Settings</a></li>
@@ -439,7 +504,95 @@
 }
 else
 {
-  @RenderBody()
+  var pubCtrl = ViewContext.RouteData.Values["controller"]?.ToString();
+  var pubAct  = ViewContext.RouteData.Values["action"]?.ToString();
+
+  <div class="public-saas-wrapper min-vh-100 d-flex flex-column">
+    <!-- Public Header Navbar -->
+    <nav class="navbar navbar-expand-lg public-navbar sticky-top py-3">
+      <div class="container">
+        <!-- Brand Logo -->
+        <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-white fs-4" href="@Url.Action("Index", "Landing")">
+          <img src="~/images/logo-dark.png" alt="SIMS Logo" style="height:34px; width:auto;" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <div class="sb-brand-icon" style="display:none; width:34px; height:34px; border-radius:8px; background:var(--primary); color:#fff; align-items:center; justify-content:center;">
+            <i class="bi bi-box-seam-fill fs-5"></i>
+          </div>
+          <span class="font-display tracking-tight text-light">SIMS <span class="badge bg-primary-subtle text-primary border border-primary-subtle fs-8 font-mono fw-semibold rounded-pill ms-1">SaaS</span></span>
+        </a>
+
+        <!-- Mobile Hamburger Toggle Button -->
+        <button class="navbar-toggler border-0 shadow-none text-light p-2" type="button" data-bs-toggle="collapse" data-bs-target="#publicSaaSNavbar" aria-controls="publicSaaSNavbar" aria-expanded="false" aria-label="Toggle navigation">
+          <i class="bi bi-list fs-2"></i>
+        </button>
+
+        <!-- Navbar Links & Actions -->
+        <div class="collapse navbar-collapse" id="publicSaaSNavbar">
+          <ul class="navbar-nav mx-auto mb-2 mb-lg-0 gap-lg-2 py-2 py-lg-0">
+            <li class="nav-item">
+              <a class="nav-link px-3 rounded-3 @(pubCtrl == "Landing" && pubAct == "Index" ? "active text-primary fw-bold" : "text-light")" href="@Url.Action("Index", "Landing")">
+                <i class="bi bi-house-door me-1 opacity-75"></i> Home
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link px-3 rounded-3 @(pubCtrl == "Landing" && pubAct == "Features" ? "active text-primary fw-bold" : "text-light")" href="@Url.Action("Features", "Landing")">
+                <i class="bi bi-cpu me-1 opacity-75"></i> Features
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link px-3 rounded-3 @(pubCtrl == "Landing" && pubAct == "Pricing" ? "active text-primary fw-bold" : "text-light")" href="@Url.Action("Pricing", "Landing")">
+                <i class="bi bi-tags me-1 opacity-75"></i> Pricing
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link px-3 rounded-3 @(pubCtrl == "Landing" && pubAct == "Contact" ? "active text-primary fw-bold" : "text-light")" href="@Url.Action("Contact", "Landing")">
+                <i class="bi bi-envelope me-1 opacity-75"></i> Contact
+              </a>
+            </li>
+          </ul>
+
+          <div class="d-flex align-items-center gap-2 pt-2 pt-lg-0 flex-wrap">
+            <!-- Theme Toggle -->
+            <button class="btn btn-outline-secondary text-light rounded-circle p-2 d-flex align-items-center justify-content-center me-1" style="width:38px;height:38px;" type="button" onclick="toggleSIMSTheme()" title="Toggle Theme">
+              <i class="bi bi-sun-fill"></i>
+            </button>
+
+            <!-- Sign In -->
+            <a href="@Url.Action("Login", "Account")" class="btn btn-outline-light rounded-pill px-4 fw-semibold">
+              <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
+            </a>
+
+            <!-- Register Shop -->
+            <a href="@Url.Action("Register", "Landing")" class="btn btn-primary rounded-pill px-4 fw-bold shadow">
+              <i class="bi bi-rocket-takeoff me-1"></i> Register Shop
+            </a>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow-1" role="main">
+      @RenderBody()
+    </main>
+
+    <!-- Public Footer -->
+    <footer class="public-footer py-4 mt-auto border-top border-secondary border-opacity-25">
+      <div class="container text-center text-md-start">
+        <div class="row align-items-center gy-3">
+          <div class="col-md-6">
+            <span class="text-muted fs-7">&copy; @DateTime.Now.Year SIMS Mobile Shop Multi-Tenant SaaS. All rights reserved.</span>
+          </div>
+          <div class="col-md-6 text-md-end fs-7">
+            <a href="@Url.Action("Index", "Landing")" class="text-muted text-decoration-none me-3">Home</a>
+            <a href="@Url.Action("Features", "Landing")" class="text-muted text-decoration-none me-3">Features</a>
+            <a href="@Url.Action("Pricing", "Landing")" class="text-muted text-decoration-none me-3">Pricing</a>
+            <a href="@Url.Action("Register", "Landing")" class="text-muted text-decoration-none me-3">Register</a>
+            <a href="@Url.Action("Login", "Account")" class="text-muted text-decoration-none">Sign In</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </div>
 }
 
 <!-- Toast stack -->

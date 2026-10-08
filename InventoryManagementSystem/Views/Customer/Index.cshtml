@@ -167,3 +167,15 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('openModal') === 'true') {
+                const modal = new bootstrap.Modal(document.getElementById('addCustomerModal'));
+                modal.show();
+            }
+        });
+    </script>
+}

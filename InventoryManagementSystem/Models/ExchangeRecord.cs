@@ -5,11 +5,14 @@ using System.Collections.Generic;
 
 namespace InventoryManagementSystem.Models
 {
-    public class ExchangeRecord
+    public class ExchangeRecord : ITenantEntity
     {
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string Id { get; set; } = string.Empty;
+
+        [BsonElement("TenantId")]
+        public string? TenantId { get; set; }
 
         [BsonElement("ExchangeNumber")]
         public string ExchangeNumber { get; set; } = string.Empty;

@@ -10,7 +10,7 @@ namespace InventoryManagementSystem.Repositories
 {
     public class ReturnRepository : BaseRepository<ReturnRecord>, IReturnRepository
     {
-        public ReturnRepository(MongoDbContext context) : base(context, "ReturnRecords")
+        public ReturnRepository(MongoDbContext context, ITenantContext tenantContext) : base(context, "ReturnRecords", tenantContext)
         {
         }
 
@@ -32,15 +32,19 @@ namespace InventoryManagementSystem.Repositories
 
         private FilterDefinition<ReturnRecord> BuildFilter(string? search)
         {
-            if (string.IsNullOrWhiteSpace(search)) return Builders<ReturnRecord>.Filter.Empty;
-            var s = search.Trim();
-            return Builders<ReturnRecord>.Filter.Or(
-                Builders<ReturnRecord>.Filter.Regex(r => r.ReturnNumber, new BsonRegularExpression(s, "i")),
-                Builders<ReturnRecord>.Filter.Regex(r => r.InvoiceNumber, new BsonRegularExpression(s, "i")),
-                Builders<ReturnRecord>.Filter.Regex(r => r.IMEI, new BsonRegularExpression(s, "i")),
-                Builders<ReturnRecord>.Filter.Regex(r => r.CustomerName, new BsonRegularExpression(s, "i")),
-                Builders<ReturnRecord>.Filter.Regex(r => r.ProductName, new BsonRegularExpression(s, "i"))
-            );
+            var baseFilter = Builders<ReturnRecord>.Filter.Empty;
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var s = search.Trim();
+                baseFilter = Builders<ReturnRecord>.Filter.Or(
+                    Builders<ReturnRecord>.Filter.Regex(r => r.ReturnNumber, new BsonRegularExpression(s, "i")),
+                    Builders<ReturnRecord>.Filter.Regex(r => r.InvoiceNumber, new BsonRegularExpression(s, "i")),
+                    Builders<ReturnRecord>.Filter.Regex(r => r.IMEI, new BsonRegularExpression(s, "i")),
+                    Builders<ReturnRecord>.Filter.Regex(r => r.CustomerName, new BsonRegularExpression(s, "i")),
+                    Builders<ReturnRecord>.Filter.Regex(r => r.ProductName, new BsonRegularExpression(s, "i"))
+                );
+            }
+            return Builders<ReturnRecord>.Filter.And(baseFilter, GetTenantFilter());
         }
     }
 }

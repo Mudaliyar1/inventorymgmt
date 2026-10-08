@@ -1,0 +1,134 @@
+@model IEnumerable<InventoryManagementSystem.Models.SubscriptionPackage>
+@{
+    ViewData["Title"] = "Manage Subscription Packages";
+}
+
+<div class="container-fluid px-4 py-3">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 font-display fw-bold mb-0">Subscription Packages</h1>
+            <p class="text-muted fs-7 mb-0">Define SaaS plan tiers and module permissions for tenant shops.</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#packageModal"><i class="bi bi-plus-lg me-1"></i> Add New Package</button>
+    </div>
+
+    <div class="row g-4 mb-4">
+        @if (Model != null && Model.Any())
+        {
+            foreach (var pkg in Model)
+            {
+                <div class="col-md-4">
+                    <div class="glass-card p-4 h-100 d-flex flex-column justify-content-between border-top border-primary border-4">
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h3 class="h4 font-display fw-bold mb-0 text-light">@pkg.Name</h3>
+                                <span class="badge bg-success font-mono">₹@pkg.MonthlyPrice/mo</span>
+                            </div>
+                            <p class="text-muted fs-7 mb-3">@pkg.Description</p>
+                            
+                            <div class="mb-3">
+                                <small class="text-uppercase text-muted font-mono fw-bold">Plan Limits:</small>
+                                <ul class="list-unstyled fs-7 text-light mt-1 mb-0">
+                                    <li><i class="bi bi-people text-info me-2"></i> Max Employees: <strong>@pkg.MaxEmployees</strong></li>
+                                    <li><i class="bi bi-box-seam text-info me-2"></i> Max Products: <strong>@pkg.MaxProducts</strong></li>
+                                    <li><i class="bi bi-truck text-info me-2"></i> Max Suppliers: <strong>@pkg.MaxSuppliers</strong></li>
+                                </ul>
+                            </div>
+
+                            <div class="mb-3">
+                                <small class="text-uppercase text-muted font-mono fw-bold">Enabled Modules:</small>
+                                <div class="d-flex flex-wrap gap-1 mt-1">
+                                    @if (pkg.EnabledModules != null)
+                                    {
+                                        foreach (var mod in pkg.EnabledModules)
+                                        {
+                                            <span class="badge bg-dark border border-secondary text-info">@mod</span>
+                                        }
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="border-top border-secondary pt-3 mt-3">
+                            <button class="btn btn-sm btn-outline-light w-100" onclick="editPackage('@pkg.Id', '@pkg.Name', '@pkg.Description', '@pkg.MonthlyPrice', '@pkg.YearlyPrice', '@pkg.MaxEmployees', '@pkg.MaxProducts', '@pkg.MaxSuppliers', '@(string.Join(", ", pkg.EnabledModules ?? new List<string>()))')"><i class="bi bi-pencil me-1"></i> Edit Plan</button>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+<!-- Package Modal -->
+<div class="modal fade" id="packageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark text-light border-secondary">
+            <form method="post" action="@Url.Action("SavePackage", "PlatformAdmin")">
+                @Html.AntiForgeryToken()
+                <input type="hidden" id="pkgId" name="Id" value="" />
+                
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title font-display" id="modalTitle">Package Plan Configuration</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Package Name</label>
+                            <input type="text" id="pkgName" name="Name" class="form-control bg-dark border-secondary text-light" required />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Monthly Price (₹)</label>
+                            <input type="number" id="pkgMonthly" name="MonthlyPrice" class="form-control bg-dark border-secondary text-light" step="0.01" required />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Yearly Price (₹)</label>
+                            <input type="number" id="pkgYearly" name="YearlyPrice" class="form-control bg-dark border-secondary text-light" step="0.01" required />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Description</label>
+                            <input type="text" id="pkgDesc" name="Description" class="form-control bg-dark border-secondary text-light" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Max Employees</label>
+                            <input type="number" id="pkgEmp" name="MaxEmployees" class="form-control bg-dark border-secondary text-light" value="5" required />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Max Products</label>
+                            <input type="number" id="pkgProd" name="MaxProducts" class="form-control bg-dark border-secondary text-light" value="1000" required />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Max Suppliers</label>
+                            <input type="number" id="pkgSup" name="MaxSuppliers" class="form-control bg-dark border-secondary text-light" value="50" required />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Enabled Modules (Comma separated)</label>
+                            <input type="text" id="pkgMods" name="enabledModulesCsv" class="form-control bg-dark border-secondary text-light" placeholder="Products, Inventory, POS, Customers, Suppliers, Returns, Repairs, TradeIn, Reports" />
+                            <small class="text-muted">Available modules: Products, Inventory, POS, Customers, Suppliers, Returns, Repairs, TradeIn, Reports, AdvancedAnalytics</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Package</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function editPackage(id, name, desc, monthly, yearly, emp, prod, sup, mods) {
+        document.getElementById('pkgId').value = id;
+        document.getElementById('pkgName').value = name;
+        document.getElementById('pkgDesc').value = desc;
+        document.getElementById('pkgMonthly').value = monthly;
+        document.getElementById('pkgYearly').value = yearly;
+        document.getElementById('pkgEmp').value = emp;
+        document.getElementById('pkgProd').value = prod;
+        document.getElementById('pkgSup').value = sup;
+        document.getElementById('pkgMods').value = mods;
+        document.getElementById('modalTitle').innerText = 'Edit Package — ' + name;
+        new bootstrap.Modal(document.getElementById('packageModal')).show();
+    }
+</script>

@@ -12,13 +12,13 @@ namespace InventoryManagementSystem.Repositories
 {
     public class StockTransactionRepository : BaseRepository<StockTransaction>, IStockTransactionRepository
     {
-        public StockTransactionRepository(MongoDbContext context) : base(context, "StockTransactions")
+        public StockTransactionRepository(MongoDbContext context, ITenantContext tenantContext) : base(context, "StockTransactions", tenantContext)
         {
         }
 
         public async Task<IEnumerable<StockTransaction>> GetRecentTransactionsAsync(int count)
         {
-            return await _collection.Find(FilterDefinition<StockTransaction>.Empty)
+            return await _collection.Find(GetTenantFilter())
                 .SortByDescending(t => t.Timestamp)
                 .Limit(count)
                 .ToListAsync();
@@ -26,7 +26,10 @@ namespace InventoryManagementSystem.Repositories
 
         public async Task<IEnumerable<StockTransaction>> GetTransactionsByProductIdAsync(string productId)
         {
-            var filter = Builders<StockTransaction>.Filter.Eq(t => t.ProductId, productId);
+            var filter = Builders<StockTransaction>.Filter.And(
+                Builders<StockTransaction>.Filter.Eq(t => t.ProductId, productId),
+                GetTenantFilter()
+            );
             return await _collection.Find(filter)
                 .SortByDescending(t => t.Timestamp)
                 .ToListAsync();
@@ -34,7 +37,7 @@ namespace InventoryManagementSystem.Repositories
 
         public async Task<IEnumerable<StockTransaction>> GetPagedTransactionsAsync(int page, int pageSize)
         {
-            return await _collection.Find(FilterDefinition<StockTransaction>.Empty)
+            return await _collection.Find(GetTenantFilter())
                 .SortByDescending(t => t.Timestamp)
                 .Skip((page - 1) * pageSize)
                 .Limit(pageSize)
@@ -43,7 +46,7 @@ namespace InventoryManagementSystem.Repositories
 
         public async Task<long> GetTotalCountAsync()
         {
-            return await _collection.CountDocumentsAsync(FilterDefinition<StockTransaction>.Empty);
+            return await _collection.CountDocumentsAsync(GetTenantFilter());
         }
 
         public async Task<(IEnumerable<StockTransaction> Items, long TotalCount)> GetFilteredTransactionsAsync(
@@ -105,11 +108,11 @@ namespace InventoryManagementSystem.Repositories
             }
             else if (string.IsNullOrWhiteSpace(productId) && matchingProductIds != null)
             {
-                // Category filtering without general search term
                 filters.Add(builder.In(t => t.ProductId, matchingProductIds));
             }
 
-            var combinedFilter = filters.Any() ? builder.And(filters) : builder.Empty;
+            var baseFilter = filters.Any() ? builder.And(filters) : builder.Empty;
+            var combinedFilter = builder.And(baseFilter, GetTenantFilter());
 
             var totalCount = await _collection.CountDocumentsAsync(combinedFilter);
 
@@ -125,7 +128,10 @@ namespace InventoryManagementSystem.Repositories
         public async Task<long> DeleteManyAsync(IEnumerable<string> ids)
         {
             if (ids == null || !ids.Any()) return 0;
-            var filter = Builders<StockTransaction>.Filter.In(t => t.Id, ids);
+            var filter = Builders<StockTransaction>.Filter.And(
+                Builders<StockTransaction>.Filter.In(t => t.Id, ids),
+                GetTenantFilter()
+            );
             var result = await _collection.DeleteManyAsync(filter);
             return result.DeletedCount;
         }

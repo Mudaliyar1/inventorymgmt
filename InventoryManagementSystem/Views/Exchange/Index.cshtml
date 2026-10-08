@@ -1453,5 +1453,13 @@
             if (firstTab) bootstrap.Tab.getOrCreateInstance(firstTab).show();
             updateWizardButtons();
         });
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('openModal') === 'true') {
+                const modal = new bootstrap.Modal(document.getElementById('processExchangeModal'));
+                modal.show();
+            }
+        });
     </script>
 }

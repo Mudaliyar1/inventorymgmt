@@ -36,8 +36,9 @@ namespace InventoryManagementSystem.Filters
             var controllerName = context.RouteData.Values["controller"]?.ToString() ?? string.Empty;
             var actionName = context.RouteData.Values["action"]?.ToString() ?? string.Empty;
 
-            // Allow AccountController (Login, Logout, AccessDenied, etc.) for all users
-            if (controllerName.Equals("Account", StringComparison.OrdinalIgnoreCase))
+            // Allow AccountController and LandingController (Public SaaS website) for all users
+            if (controllerName.Equals("Account", StringComparison.OrdinalIgnoreCase) ||
+                controllerName.Equals("Landing", StringComparison.OrdinalIgnoreCase))
             {
                 await next();
                 return;
@@ -49,6 +50,13 @@ namespace InventoryManagementSystem.Filters
             if (user?.Identity == null || !user.Identity.IsAuthenticated)
             {
                 context.Result = new RedirectToActionResult("Login", "Account", null);
+                return;
+            }
+
+            // Allow NotificationsController for all active authenticated users
+            if (controllerName.Equals("Notifications", StringComparison.OrdinalIgnoreCase))
+            {
+                await next();
                 return;
             }
 
@@ -93,15 +101,8 @@ namespace InventoryManagementSystem.Filters
                 }
             }
 
-            // 2. Super Admin (Admin role) -> Full access everywhere
-            if (user.IsInRole(Role.Admin))
-            {
-                await next();
-                return;
-            }
-
-            // Allow NotificationsController for all active authenticated users
-            if (controllerName.Equals("Notifications", StringComparison.OrdinalIgnoreCase))
+            // 2. Super Admin or Admin -> Full access everywhere
+            if (user.IsInRole(Role.Admin) || user.IsInRole(Role.SuperAdmin))
             {
                 await next();
                 return;
