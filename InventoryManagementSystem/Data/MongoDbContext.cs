@@ -34,6 +34,13 @@ namespace InventoryManagementSystem.Data
         public IMongoCollection<SaaSPaymentTransaction> SaaSPaymentTransactions => GetCollection<SaaSPaymentTransaction>("SaaSPaymentTransactions");
         public IMongoCollection<PlatformSettings> PlatformSettings => GetCollection<PlatformSettings>("PlatformSettings");
         public IMongoCollection<LicenseRenewalRequest> LicenseRenewalRequests => GetCollection<LicenseRenewalRequest>("LicenseRenewalRequests");
+        public IMongoCollection<CustomPricingConfiguration> CustomPricingConfigurations => GetCollection<CustomPricingConfiguration>("CustomPricingConfigurations");
+        public IMongoCollection<CustomPackageInquiry> CustomPackageInquiries => GetCollection<CustomPackageInquiry>("CustomPackageInquiries");
+        public IMongoCollection<ContactInquiry> ContactInquiries => GetCollection<ContactInquiry>("ContactInquiries");
+        public IMongoCollection<PolicyDocument> Policies => GetCollection<PolicyDocument>("Policies");
+        public IMongoCollection<PolicyRevision> PolicyRevisions => GetCollection<PolicyRevision>("PolicyRevisions");
+        public IMongoCollection<PendingRegistration> PendingRegistrations => GetCollection<PendingRegistration>("PendingRegistrations");
+        public IMongoCollection<SubscriptionNotificationLog> SubscriptionNotificationLogs => GetCollection<SubscriptionNotificationLog>("SubscriptionNotificationLogs");
 
         public IMongoCollection<User> Users => GetCollection<User>("Users");
         public IMongoCollection<Role> Roles => GetCollection<Role>("Roles");
@@ -165,6 +172,22 @@ namespace InventoryManagementSystem.Data
                     Builders<User>.IndexKeys.Ascending(u => u.Username),
                     new CreateIndexOptions { Unique = true, Sparse = true });
                 await Users.Indexes.CreateOneAsync(userUsernameIndex);
+
+                // CustomPackageInquiries Indexes
+                var cpiNumIndex = new CreateIndexModel<CustomPackageInquiry>(
+                    Builders<CustomPackageInquiry>.IndexKeys.Ascending(i => i.InquiryNumber),
+                    new CreateIndexOptions { Unique = true, Sparse = true });
+                var cpiStatusIndex = new CreateIndexModel<CustomPackageInquiry>(
+                    Builders<CustomPackageInquiry>.IndexKeys.Ascending(i => i.Status).Descending(i => i.CreatedAt));
+                await CustomPackageInquiries.Indexes.CreateManyAsync(new[] { cpiNumIndex, cpiStatusIndex });
+
+                // ContactInquiries Indexes
+                var cntRefIndex = new CreateIndexModel<ContactInquiry>(
+                    Builders<ContactInquiry>.IndexKeys.Ascending(i => i.ReferenceNumber),
+                    new CreateIndexOptions { Unique = true, Sparse = true });
+                var cntStatusIndex = new CreateIndexModel<ContactInquiry>(
+                    Builders<ContactInquiry>.IndexKeys.Ascending(i => i.Status).Descending(i => i.CreatedAt));
+                await ContactInquiries.Indexes.CreateManyAsync(new[] { cntRefIndex, cntStatusIndex });
             }
             catch (System.Exception ex)
             {

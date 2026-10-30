@@ -137,6 +137,11 @@ document.addEventListener('submit', async function (e) {
     // B. Modal Form AJAX submission handler to PRESERVE FORM DATA on server error
     const modal = form.closest('.modal');
     if (modal) {
+        // Skip modal forms that manage their own AJAX submission lifecycle
+        if (form.getAttribute('data-ajax-handled') === 'true' || form.getAttribute('data-custom-submit') === 'true' || form.id === 'customQuoteForm') {
+            return;
+        }
+
         e.preventDefault();
         e.stopPropagation();
 
@@ -153,14 +158,18 @@ document.addEventListener('submit', async function (e) {
         if (existingAlert) existingAlert.remove();
 
         try {
-            const formData = new FormData(form);
-            const response = await fetch(form.action || window.location.href, {
-                method: form.method || 'POST',
-                body: formData,
+            const reqMethod = (form.getAttribute('method') || 'POST').toUpperCase();
+            const fetchOptions = {
+                method: reqMethod,
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest'
                 }
-            });
+            };
+            if (reqMethod !== 'GET' && reqMethod !== 'HEAD') {
+                fetchOptions.body = new FormData(form);
+            }
+
+            const response = await fetch(form.action || window.location.href, fetchOptions);
 
             const contentType = response.headers.get('content-type') || '';
             let resData = null;

@@ -161,6 +161,21 @@ namespace InventoryManagementSystem.Filters
                 {
                     var license = await _licenseService.GetActiveLicenseAsync(tenant.Id);
 
+                    // Check 0: Is Shop Registration Pending Free-Trial Approval?
+                    bool isPendingApproval = string.Equals(tenant.Status, "PendingApproval", StringComparison.OrdinalIgnoreCase);
+                    if (isPendingApproval)
+                    {
+                        var isAjax = string.Equals(context.HttpContext.Request.Headers["X-Requested-With"], "XMLHttpRequest", StringComparison.OrdinalIgnoreCase);
+                        if (isAjax)
+                        {
+                            context.Result = new JsonResult(new { success = false, pendingApproval = true, message = "Your shop registration is currently awaiting Super Admin review and approval." }) { StatusCode = 403 };
+                            return;
+                        }
+
+                        context.Result = new RedirectToActionResult("UnderReview", "Account", null);
+                        return;
+                    }
+
                     // Check A: Is Shop Suspended?
                     bool isSuspended = string.Equals(tenant.Status, "Suspended", StringComparison.OrdinalIgnoreCase)
                                     || (license != null && string.Equals(license.Status, "Suspended", StringComparison.OrdinalIgnoreCase));

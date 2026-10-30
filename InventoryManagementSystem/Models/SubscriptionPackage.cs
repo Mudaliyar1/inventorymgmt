@@ -27,6 +27,41 @@ namespace InventoryManagementSystem.Models
         [BsonElement("TrialDays")]
         public int TrialDays { get; set; } = 14;
 
+        [BsonElement("HasTrial")]
+        public bool HasTrial { get; set; } = true;
+
+        [BsonElement("TrialDuration")]
+        public int TrialDuration { get; set; } = 14;
+
+        [BsonElement("TrialDurationUnit")]
+        public string TrialDurationUnit { get; set; } = "Days"; // Seconds, Minutes, Hours, Days
+
+        [BsonElement("TrialText")]
+        public string? TrialText { get; set; } // Optional custom trial badge/text configured by SaaS Admin
+
+        public TimeSpan GetTrialTimeSpan()
+        {
+            if (!HasTrial) return TimeSpan.Zero;
+            var duration = TrialDuration > 0 ? TrialDuration : (TrialDays > 0 ? TrialDays : 14);
+            var unit = !string.IsNullOrWhiteSpace(TrialDurationUnit) ? TrialDurationUnit.Trim().ToLowerInvariant() : "days";
+            return unit switch
+            {
+                "seconds" or "second" => TimeSpan.FromSeconds(duration),
+                "minutes" or "minute" => TimeSpan.FromMinutes(duration),
+                "hours" or "hour" => TimeSpan.FromHours(duration),
+                _ => TimeSpan.FromDays(duration)
+            };
+        }
+
+        public string GetTrialDisplay()
+        {
+            if (!HasTrial) return "No Trial";
+            if (!string.IsNullOrWhiteSpace(TrialText)) return TrialText.Trim();
+            var duration = TrialDuration > 0 ? TrialDuration : (TrialDays > 0 ? TrialDays : 14);
+            var unit = !string.IsNullOrWhiteSpace(TrialDurationUnit) ? TrialDurationUnit.Trim() : "Days";
+            return $"{duration} {unit}";
+        }
+
         [BsonElement("BillingCycle")]
         public string BillingCycle { get; set; } = "Monthly"; // Monthly, Yearly, Both
 

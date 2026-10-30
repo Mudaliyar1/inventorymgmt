@@ -1,0 +1,324 @@
+@model InventoryManagementSystem.Models.PolicyDocument
+@using InventoryManagementSystem.Extensions
+@{
+    ViewData["Title"] = $"Edit Policy: {Model.Title} — Super Admin";
+}
+
+<div class="container-fluid px-4 py-3">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1 fs-8 text-uppercase font-mono">
+                    <li class="breadcrumb-item"><a href="@Url.Action("Dashboard", "PlatformAdmin")" class="text-decoration-none text-muted">Super Admin</a></li>
+                    <li class="breadcrumb-item"><a href="@Url.Action("Policies", "PlatformAdmin")" class="text-decoration-none text-muted">Policies</a></li>
+                    <li class="breadcrumb-item active text-primary" aria-current="page">Edit Policy</li>
+                </ol>
+            </nav>
+            <h1 class="h3 font-display fw-bold mb-1 text-light">Edit Policy: <span class="text-info">@Model.Title</span></h1>
+            <p class="text-muted fs-7 mb-0">
+                Revision <span class="badge bg-info bg-opacity-25 text-info font-mono">v@(Model.RevisionCount)</span> &bull; 
+                Last updated: <span class="text-light fw-bold">@Model.UpdatedAtUtc.ToPolicyIstDisplayString()</span> by <span class="text-light">@Model.LastUpdatedBy</span>
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="@Url.Action("PolicyRevisions", "PlatformAdmin", new { id = Model.Id })" class="btn btn-outline-info btn-sm">
+                <i class="bi bi-clock-history me-1"></i> Revision History (@Model.RevisionCount)
+            </a>
+            @if (Model.IsPublished && Model.IsActive)
+            {
+                <a href="@Url.Action("Policy", "Landing", new { slug = Model.Slug })" target="_blank" class="btn btn-outline-light btn-sm">
+                    <i class="bi bi-box-arrow-up-right me-1"></i> View Live
+                </a>
+            }
+            <a href="@Url.Action("Policies", "PlatformAdmin")" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Back to Policies
+            </a>
+        </div>
+    </div>
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i> Please correct the errors below before proceeding.
+            <div asp-validation-summary="All" class="text-danger fs-8 mt-2"></div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <form method="post" action="@Url.Action("EditPolicy", "PlatformAdmin", new { id = Model.Id })" id="policyForm">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="CreatedAtUtc" />
+        <input type="hidden" asp-for="CreatedBy" />
+        <input type="hidden" asp-for="RevisionCount" />
+
+        <div class="row g-4">
+            <!-- Left / Top: Metadata Configuration -->
+            <div class="col-lg-4">
+                <div class="glass-card p-4 mb-4">
+                    <h5 class="font-display fw-bold text-light mb-3 pb-2 border-bottom border-secondary border-opacity-25">
+                        <i class="bi bi-sliders text-primary me-2"></i>Document Configuration
+                    </h5>
+
+                    <!-- Policy Title -->
+                    <div class="mb-3">
+                        <label asp-for="Title" class="form-label fs-8 text-uppercase font-mono text-muted">Policy Title <span class="text-danger">*</span></label>
+                        <input asp-for="Title" class="form-control form-control-sm bg-dark text-light border-secondary border-opacity-50" id="policyTitle" placeholder="e.g. Terms and Conditions" required />
+                        <span asp-validation-for="Title" class="text-danger fs-8"></span>
+                    </div>
+
+                    <!-- Slug -->
+                    <div class="mb-3">
+                        <label asp-for="Slug" class="form-label fs-8 text-uppercase font-mono text-muted">URL Slug <span class="text-danger">*</span></label>
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text bg-dark text-muted border-secondary border-opacity-50 font-mono">/policy/</span>
+                            <input asp-for="Slug" class="form-control bg-dark text-light border-secondary border-opacity-50 font-mono" id="policySlug" placeholder="terms-and-conditions" required />
+                        </div>
+                        <span asp-validation-for="Slug" class="text-danger fs-8"></span>
+                    </div>
+
+                    <!-- Category -->
+                    <div class="mb-3">
+                        <label asp-for="Category" class="form-label fs-8 text-uppercase font-mono text-muted">Category</label>
+                        <select asp-for="Category" class="form-select form-select-sm bg-dark text-light border-secondary border-opacity-50">
+                            <option value="Terms and Conditions">Terms and Conditions</option>
+                            <option value="Privacy">Privacy</option>
+                            <option value="Refund and Cancellation">Refund and Cancellation</option>
+                            <option value="Subscription and Billing">Subscription and Billing</option>
+                            <option value="Cookies">Cookies</option>
+                            <option value="Copyright and Intellectual Property">Copyright and Intellectual Property</option>
+                            <option value="Acceptable Use">Acceptable Use</option>
+                            <option value="General Website Policy">General Website Policy</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <!-- Summary -->
+                    <div class="mb-3">
+                        <label asp-for="Summary" class="form-label fs-8 text-uppercase font-mono text-muted">Short Summary / Meta Description</label>
+                        <textarea asp-for="Summary" rows="2" class="form-control form-control-sm bg-dark text-light border-secondary border-opacity-50" placeholder="Brief summary displayed in public eyebrow and metadata..."></textarea>
+                    </div>
+
+                    <!-- Effective Date -->
+                    <div class="mb-3">
+                        <label asp-for="EffectiveDate" class="form-label fs-8 text-uppercase font-mono text-muted">Effective Date</label>
+                        <input asp-for="EffectiveDate" type="date" value="@(Model.EffectiveDate?.ToString("yyyy-MM-dd"))" class="form-control form-control-sm bg-dark text-light border-secondary border-opacity-50" />
+                    </div>
+
+                    <!-- Display Order -->
+                    <div class="mb-3">
+                        <label asp-for="DisplayOrder" class="form-label fs-8 text-uppercase font-mono text-muted">Display Order</label>
+                        <input asp-for="DisplayOrder" type="number" class="form-control form-control-sm bg-dark text-light border-secondary border-opacity-50" />
+                    </div>
+
+                    <!-- Revision Change Notes -->
+                    <div class="mb-3">
+                        <label class="form-label fs-8 text-uppercase font-mono text-info"><i class="bi bi-chat-left-dots me-1"></i> Revision Notes (Audit Log)</label>
+                        <input type="text" name="changeNotes" class="form-control form-control-sm bg-dark text-light border-secondary border-opacity-50" placeholder="e.g. Updated GST clauses and Grievance contact" />
+                        <div class="fs-9 text-muted mt-1">Briefly explain what changed in this version.</div>
+                    </div>
+
+                    <div class="border-top border-secondary border-opacity-25 pt-3">
+                        <!-- Switches -->
+                        <div class="form-check form-switch mb-2">
+                            <input asp-for="IsPublished" class="form-check-input" type="checkbox" id="isPublishedSwitch" />
+                            <label class="form-check-label text-light fs-8" for="isPublishedSwitch">
+                                <strong>Published</strong> (Live on website)
+                            </label>
+                        </div>
+                        <div class="form-check form-switch mb-2">
+                            <input asp-for="IsActive" class="form-check-input" type="checkbox" id="isActiveSwitch" />
+                            <label class="form-check-label text-light fs-8" for="isActiveSwitch">
+                                <strong>Active</strong> (Accessible at URL)
+                            </label>
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input asp-for="ShowInFooter" class="form-check-input" type="checkbox" id="showInFooterSwitch" />
+                            <label class="form-check-label text-light fs-8" for="showInFooterSwitch">
+                                <strong>Show in Footer</strong> links
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="bi bi-save me-1"></i> Save Changes &amp; Record Revision
+                        </button>
+                        <button type="button" class="btn btn-outline-warning btn-sm" onclick="saveAsDraft()">
+                            <i class="bi bi-file-earmark-lock me-1"></i> Save as Draft (Unpublish)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Audit Metadata Card -->
+                <div class="glass-card p-3 border-start border-primary border-4">
+                    <div class="fs-8 fw-bold text-light text-uppercase font-mono mb-2"><i class="bi bi-shield-lock me-1 text-primary"></i> Server Audit Record</div>
+                    <div class="fs-8 text-muted mb-1">
+                        <strong>Created:</strong> @Model.CreatedAtUtc.ToPolicyIstDisplayString() (@Model.CreatedBy)
+                    </div>
+                    <div class="fs-8 text-muted mb-1">
+                        <strong>Last Modified:</strong> @Model.UpdatedAtUtc.ToPolicyIstDisplayString() (@Model.LastUpdatedBy)
+                    </div>
+                    <div class="fs-8 text-muted mb-0">
+                        <strong>Historical Revisions:</strong> @Model.RevisionCount version(s) archived
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: README-style Markdown Editor & Live Preview -->
+            <div class="col-lg-8">
+                <div class="glass-card overflow-hidden d-flex flex-column" style="min-height: 750px;">
+                    <!-- Editor Header Toolbar -->
+                    <div class="p-2 border-bottom border-secondary border-opacity-25 bg-dark d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <!-- Formatting Controls (README Style) -->
+                        <div class="btn-toolbar" role="toolbar">
+                            <div class="btn-group btn-group-sm me-2" role="group">
+                                <button type="button" class="btn btn-outline-secondary text-light" onclick="insertMarkdown('# ', '')" title="Heading 1"><i class="bi bi-type-h1"></i></button>
+                                <button type="button" class="btn btn-outline-secondary text-light" onclick="insertMarkdown('## ', '')" title="Heading 2"><i class="bi bi-type-h2"></i></button>
+                                <button type="button" class="btn btn-outline-secondary text-light" onclick="insertMarkdown('### ', '')" title="Heading 3"><i class="bi bi-type-h3"></i></button>
+                            </div>
+                            <div class="btn-group btn-group-sm me-2" role="group">
+                                <button type="button" class="btn btn-outline-secondary text-light" onclick="insertMarkdown('**', '**')" title="Bold"><i class="bi bi-type-bold"></i></button>
+                                <button type="button" class="btn btn-outline-secondary text-light" onclick="insertMarkdown('*', '*')" title="Italic"><i class="bi bi-type-italic"></i></button>
+                                <button type="button" class="btn btn-outline-secondary text-light" onclick="insertMarkdown('> ', '')" title="Blockquote"><i class="bi bi-quote"></i></button>
+                            </div>
+                            <div class="btn-group btn-group-sm me-2" role="group">
+                                <button type="button" class="btn btn-outline-secondary text-light" onclick="insertMarkdown('- ', '')" title="Bullet List"><i class="bi bi-list-ul"></i></button>
+                                <button type="button" class="btn btn-outline-secondary text-light" onclick="insertMarkdown('1. ', '')" title="Numbered List"><i class="bi bi-list-ol"></i></button>
+                                <button type="button" class="btn btn-outline-secondary text-light" onclick="insertMarkdown('[Link Text](', 'https://)')" title="Insert Link"><i class="bi bi-link-45deg"></i></button>
+                                <button type="button" class="btn btn-outline-secondary text-light" onclick="insertMarkdown('\n---\n', '')" title="Horizontal Divider"><i class="bi bi-hr"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- Mode Switcher -->
+                        <div class="btn-group btn-group-sm" role="group">
+                            <input type="radio" class="btn-check" name="editorViewMode" id="modeSplit" autocomplete="off" checked onchange="switchView('split')">
+                            <label class="btn btn-outline-info" for="modeSplit"><i class="bi bi-layout-split me-1"></i> Split View</label>
+
+                            <input type="radio" class="btn-check" name="editorViewMode" id="modeWrite" autocomplete="off" onchange="switchView('write')">
+                            <label class="btn btn-outline-info" for="modeWrite"><i class="bi bi-pencil me-1"></i> Editor Only</label>
+
+                            <input type="radio" class="btn-check" name="editorViewMode" id="modePreview" autocomplete="off" onchange="switchView('preview')">
+                            <label class="btn btn-outline-info" for="modePreview"><i class="bi bi-eye me-1"></i> Live Preview</label>
+                        </div>
+                    </div>
+
+                    <!-- Split Container -->
+                    <div class="row g-0 flex-grow-1" id="editorContainer" style="min-height: 680px;">
+                        <!-- Markdown Textarea Panel -->
+                        <div class="col-md-6 border-end border-secondary border-opacity-25 d-flex flex-column" id="writePanel">
+                            <div class="p-2 bg-dark bg-opacity-50 border-bottom border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
+                                <span class="fs-9 font-mono text-muted text-uppercase"><i class="bi bi-markdown me-1 text-primary"></i> Markdown Source</span>
+                                <span class="fs-9 font-mono text-muted" id="charCount">@Model.ContentMarkdown.Length characters</span>
+                            </div>
+                            <textarea asp-for="ContentMarkdown" id="markdownInput" class="form-control bg-dark text-light border-0 rounded-0 flex-grow-1 font-mono fs-8 p-3" style="resize: none; outline: none; box-shadow: none; line-height: 1.6;" placeholder="# Policy Title&#10;&#10;Write policy terms here using standard Markdown..." oninput="handleMarkdownInput()"></textarea>
+                        </div>
+
+                        <!-- Rendered Preview Panel -->
+                        <div class="col-md-6 bg-dark bg-opacity-25 d-flex flex-column" id="previewPanel">
+                            <div class="p-2 bg-dark bg-opacity-50 border-bottom border-secondary border-opacity-25 d-flex justify-content-between align-items-center">
+                                <span class="fs-9 font-mono text-muted text-uppercase"><i class="bi bi-eye me-1 text-info"></i> Rendered Output</span>
+                                <span class="badge bg-success bg-opacity-25 text-success fs-9"><i class="bi bi-shield-check me-1"></i> Safe Render</span>
+                            </div>
+                            <div class="p-4 flex-grow-1 overflow-auto text-light policy-rendered-preview" id="previewContainer" style="max-height: 680px;">
+                                @Html.Raw(Model.ContentHtml)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+.policy-rendered-preview h1 { font-size: 1.6rem; font-weight: 700; color: #fff; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; }
+.policy-rendered-preview h2 { font-size: 1.25rem; font-weight: 700; color: #60a5fa; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+.policy-rendered-preview h3 { font-size: 1.05rem; font-weight: 600; color: #93c5fd; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+.policy-rendered-preview p { color: #cbd5e1; font-size: 0.88rem; line-height: 1.7; margin-bottom: 1rem; }
+.policy-rendered-preview ul, .policy-rendered-preview ol { color: #cbd5e1; font-size: 0.88rem; line-height: 1.7; margin-bottom: 1rem; padding-left: 1.5rem; }
+.policy-rendered-preview blockquote { border-left: 4px solid #3b82f6; padding-left: 1rem; color: #94a3b8; font-style: italic; margin-bottom: 1rem; }
+.policy-rendered-preview hr { border-color: rgba(255,255,255,0.15); margin: 1.5rem 0; }
+.policy-rendered-preview table { width: 100%; margin-bottom: 1rem; border-collapse: collapse; }
+.policy-rendered-preview th, .policy-rendered-preview td { border: 1px solid rgba(255,255,255,0.15); padding: 0.5rem 0.75rem; font-size: 0.85rem; }
+.policy-rendered-preview th { background-color: rgba(255,255,255,0.05); }
+</style>
+
+@section Scripts {
+<script>
+    function saveAsDraft() {
+        document.getElementById('isPublishedSwitch').checked = false;
+        document.getElementById('policyForm').submit();
+    }
+
+    function insertMarkdown(prefix, suffix) {
+        var textarea = document.getElementById('markdownInput');
+        var start = textarea.selectionStart;
+        var end = textarea.selectionEnd;
+        var text = textarea.value;
+        var selected = text.substring(start, end);
+        var replacement = prefix + selected + suffix;
+
+        textarea.value = text.substring(0, start) + replacement + text.substring(end);
+        textarea.focus();
+        textarea.selectionStart = start + prefix.length;
+        textarea.selectionEnd = start + prefix.length + selected.length;
+        handleMarkdownInput();
+    }
+
+    function switchView(mode) {
+        var write = document.getElementById('writePanel');
+        var preview = document.getElementById('previewPanel');
+
+        if (mode === 'split') {
+            write.className = 'col-md-6 border-end border-secondary border-opacity-25 d-flex flex-column';
+            preview.className = 'col-md-6 bg-dark bg-opacity-25 d-flex flex-column';
+            write.style.display = 'flex';
+            preview.style.display = 'flex';
+        } else if (mode === 'write') {
+            write.className = 'col-12 d-flex flex-column';
+            write.style.display = 'flex';
+            preview.style.display = 'none';
+        } else if (mode === 'preview') {
+            preview.className = 'col-12 bg-dark bg-opacity-25 d-flex flex-column';
+            write.style.display = 'none';
+            preview.style.display = 'flex';
+            updatePreview();
+        }
+    }
+
+    var previewTimeout = null;
+    function handleMarkdownInput() {
+        var val = document.getElementById('markdownInput').value;
+        document.getElementById('charCount').innerText = val.length + ' characters';
+
+        clearTimeout(previewTimeout);
+        previewTimeout = setTimeout(updatePreview, 300);
+    }
+
+    function updatePreview() {
+        var markdown = document.getElementById('markdownInput').value;
+        if (!markdown.trim()) {
+            document.getElementById('previewContainer').innerHTML = '<div class="text-muted text-center py-5"><i class="bi bi-markdown text-secondary fs-1 d-block mb-2"></i>Markdown preview will appear here.</div>';
+            return;
+        }
+
+        fetch('@Url.Action("PreviewPolicyMarkdown", "PlatformAdmin")', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ markdown: markdown })
+        })
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('previewContainer').innerHTML = data.html;
+        })
+        .catch(err => {
+            console.error('Error rendering preview:', err);
+        });
+    }
+</script>
+}

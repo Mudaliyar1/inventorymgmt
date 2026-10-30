@@ -117,7 +117,7 @@
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <div class="fg">
-                            <label class="fg-label">Scheduled Start Time (UTC / System)</label>
+                            <label class="fg-label">Scheduled Start Time (IST)</label>
                             <input type="datetime-local" name="WebsiteMaintenanceStartTime" class="fg-control"
                                    value="@(Model.WebsiteMaintenanceStartTime?.ToString("yyyy-MM-ddTHH:mm") ?? "")" />
                             <span class="fs-8 text-secondary">Leave blank to activate immediately upon saving</span>
@@ -125,7 +125,7 @@
                     </div>
                     <div class="col-md-6">
                         <div class="fg">
-                            <label class="fg-label">Scheduled End Time (UTC / System)</label>
+                            <label class="fg-label">Scheduled End Time (IST)</label>
                             <input type="datetime-local" name="WebsiteMaintenanceEndTime" class="fg-control"
                                    value="@(Model.WebsiteMaintenanceEndTime?.ToString("yyyy-MM-ddTHH:mm") ?? "")" />
                             <span class="fs-8 text-secondary">Website automatically goes live once time passes</span>
@@ -213,14 +213,14 @@
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <div class="fg">
-                            <label class="fg-label">Scheduled Start Time (UTC / System)</label>
+                            <label class="fg-label">Scheduled Start Time (IST)</label>
                             <input type="datetime-local" name="ShopDashboardMaintenanceStartTime" class="fg-control"
                                    value="@(Model.ShopDashboardMaintenanceStartTime?.ToString("yyyy-MM-ddTHH:mm") ?? "")" />
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="fg">
-                            <label class="fg-label">Scheduled End Time (UTC / System)</label>
+                            <label class="fg-label">Scheduled End Time (IST)</label>
                             <input type="datetime-local" name="ShopDashboardMaintenanceEndTime" class="fg-control"
                                    value="@(Model.ShopDashboardMaintenanceEndTime?.ToString("yyyy-MM-ddTHH:mm") ?? "")" />
                         </div>
@@ -301,6 +301,22 @@
                 <div class="fg mb-0">
                     <label class="fg-label" asp-for="SupportHours">Customer Support Working Hours</label>
                     <input asp-for="SupportHours" class="fg-control" placeholder="Mon - Sat: 9:00 AM - 8:00 PM IST" />
+                </div>
+            </div>
+
+            <!-- Subscription & Renewal Modes -->
+            <div class="settings-card p-4 p-md-4 mb-4">
+                <div class="s-title mb-3">
+                    <i class="bi bi-credit-card-2-front me-2" style="color:var(--info)"></i>Subscription & Renewal Configuration
+                </div>
+                <div class="p-3 rounded-3 bg-black bg-opacity-30 border border-white border-opacity-10 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div>
+                        <div class="fw-bold text-light fs-7">Enable Offline / Manual Renewal Requests</div>
+                        <div class="text-secondary fs-8">When disabled, shops renew online instantly via Razorpay. When enabled, shops can also submit manual offline requests.</div>
+                    </div>
+                    <div class="form-check form-switch fs-4 mb-0">
+                        <input asp-for="EnableManualRenewalRequests" class="form-check-input cursor-pointer" type="checkbox" id="manualRenewalSwitch" />
+                    </div>
                 </div>
             </div>
 

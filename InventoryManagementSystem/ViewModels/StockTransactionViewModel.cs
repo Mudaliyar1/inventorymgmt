@@ -19,6 +19,14 @@ namespace InventoryManagementSystem.ViewModels
 
         public string Type { get; set; } = string.Empty; // Stock In, Stock Out, Adjustment
 
+        public string? VariantId { get; set; }
+        public string? ColorId { get; set; }
+        public string? VariantName { get; set; }
+        public string? ColorName { get; set; }
+        public decimal? PurchasePrice { get; set; }
+        public decimal? SellingPrice { get; set; }
+        public string? SupplierName { get; set; }
+
         public IEnumerable<SelectListItem> Products { get; set; } = new List<SelectListItem>();
     }
 }

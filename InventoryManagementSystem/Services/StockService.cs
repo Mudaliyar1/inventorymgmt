@@ -35,14 +35,14 @@ namespace InventoryManagementSystem.Services
             _inventoryAlertService = inventoryAlertService;
         }
 
-        public async Task<bool> StockInAsync(string productId, int quantity, string reason, string executedBy)
+        public async Task<bool> StockInAsync(string productId, int quantity, string reason, string executedBy, string? variantId = null, string? colorId = null, string? variantName = null, string? colorName = null)
         {
-            return await AdjustStockAsync(productId, quantity, "Stock In", reason, executedBy);
+            return await AdjustStockAsync(productId, quantity, "Stock In", reason, executedBy, variantId, colorId, variantName, colorName);
         }
 
-        public async Task<bool> StockOutAsync(string productId, int quantity, string reason, string executedBy)
+        public async Task<bool> StockOutAsync(string productId, int quantity, string reason, string executedBy, string? variantId = null, string? colorId = null, string? variantName = null, string? colorName = null)
         {
-            return await AdjustStockAsync(productId, quantity, "Stock Out", reason, executedBy);
+            return await AdjustStockAsync(productId, quantity, "Stock Out", reason, executedBy, variantId, colorId, variantName, colorName);
         }
 
         public async Task<(bool Success, string Message)> StockInDeviceAsync(Device device, string executedBy)
@@ -108,7 +108,7 @@ namespace InventoryManagementSystem.Services
             }
 
             // Increase product stock & log transaction
-            await AdjustStockAsync(product.Id, 1, "Stock In", $"Received Physical Device (IMEI: {device.IMEI1}, Supplier: {device.SupplierName})", executedBy);
+            await AdjustStockAsync(product.Id, 1, "Stock In", $"Received Physical Device (IMEI: {device.IMEI1}, Supplier: {device.SupplierName})", executedBy, device.VariantId, device.ColorId, device.Variant, device.Color);
 
             return (true, $"Stock In completed for IMEI {device.IMEI1}.");
         }
@@ -125,13 +125,13 @@ namespace InventoryManagementSystem.Services
             var product = await _productRepository.GetByIdAsync(device.ProductId);
             if (product != null)
             {
-                await AdjustStockAsync(product.Id, 1, "Stock Out", $"Device Issued Out (IMEI: {device.IMEI1}, Status: {newStatus})", executedBy);
+                await AdjustStockAsync(product.Id, 1, "Stock Out", $"Device Issued Out (IMEI: {device.IMEI1}, Status: {newStatus})", executedBy, device.VariantId, device.ColorId, device.Variant, device.Color);
             }
 
             return (true, $"Device IMEI {device.IMEI1} issued out cleanly.");
         }
 
-        public async Task<bool> AdjustStockAsync(string productId, int quantity, string type, string reason, string executedBy)
+        public async Task<bool> AdjustStockAsync(string productId, int quantity, string type, string reason, string executedBy, string? variantId = null, string? colorId = null, string? variantName = null, string? colorName = null)
         {
             var product = await _productRepository.GetByIdAsync(productId);
             if (product == null) return false;
@@ -139,19 +139,69 @@ namespace InventoryManagementSystem.Services
             int previousStock = product.CurrentStock;
             int currentStock = previousStock;
 
-            if (type == "Stock In")
+            // Synchronize with Product Variants & Colors if configured
+            if (product.Variants != null && product.Variants.Any())
             {
-                currentStock += quantity;
+                ProductVariant? matchedVariant = null;
+                if (!string.IsNullOrWhiteSpace(variantId))
+                {
+                    matchedVariant = product.Variants.FirstOrDefault(v => v.VariantId == variantId);
+                }
+                if (matchedVariant == null && !string.IsNullOrWhiteSpace(variantName))
+                {
+                    matchedVariant = product.Variants.FirstOrDefault(v => 
+                        v.DisplayVariantName.Equals(variantName.Trim(), StringComparison.OrdinalIgnoreCase) ||
+                        v.Storage.Equals(variantName.Trim(), StringComparison.OrdinalIgnoreCase) ||
+                        $"{v.Ram} / {v.Storage}".Equals(variantName.Trim(), StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (matchedVariant != null)
+                {
+                    ProductColor? matchedColor = null;
+                    if (!string.IsNullOrWhiteSpace(colorId) && matchedVariant.Colors != null)
+                    {
+                        matchedColor = matchedVariant.Colors.FirstOrDefault(c => c.ColorId == colorId);
+                    }
+                    if (matchedColor == null && !string.IsNullOrWhiteSpace(colorName) && matchedVariant.Colors != null)
+                    {
+                        matchedColor = matchedVariant.Colors.FirstOrDefault(c => c.Name.Equals(colorName.Trim(), StringComparison.OrdinalIgnoreCase));
+                    }
+
+                    int stockDelta = (type == "Stock In") ? quantity : (type == "Stock Out" ? -quantity : quantity);
+
+                    if (matchedColor != null)
+                    {
+                        matchedColor.CurrentStock = Math.Max(0, matchedColor.CurrentStock + stockDelta);
+                    }
+
+                    if (matchedVariant.Colors != null && matchedVariant.Colors.Any())
+                    {
+                        matchedVariant.CurrentStock = matchedVariant.Colors.Sum(c => c.CurrentStock);
+                    }
+                    else
+                    {
+                        matchedVariant.CurrentStock = Math.Max(0, matchedVariant.CurrentStock + stockDelta);
+                    }
+                }
+
+                currentStock = product.Variants.Sum(v => v.CurrentStock);
             }
-            else if (type == "Stock Out")
+            else
             {
-                currentStock -= quantity;
-                if (currentStock < 0) currentStock = 0;
-            }
-            else // Adjustment
-            {
-                currentStock += quantity;
-                if (currentStock < 0) currentStock = 0;
+                if (type == "Stock In")
+                {
+                    currentStock += quantity;
+                }
+                else if (type == "Stock Out")
+                {
+                    currentStock -= quantity;
+                    if (currentStock < 0) currentStock = 0;
+                }
+                else // Adjustment
+                {
+                    currentStock += quantity;
+                    if (currentStock < 0) currentStock = 0;
+                }
             }
 
             product.CurrentStock = currentStock;

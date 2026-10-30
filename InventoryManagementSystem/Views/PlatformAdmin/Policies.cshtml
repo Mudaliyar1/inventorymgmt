@@ -1,0 +1,261 @@
+@model List<InventoryManagementSystem.Models.PolicyDocument>
+@using InventoryManagementSystem.Extensions
+@{
+    ViewData["Title"] = "Policy Management — Super Admin";
+    var publishedCount = Model.Count(p => p.IsPublished && p.IsActive && !p.IsDeleted);
+    var draftCount = Model.Count(p => !p.IsPublished && !p.IsDeleted);
+    var inactiveCount = Model.Count(p => !p.IsActive && !p.IsDeleted);
+}
+
+<div class="container-fluid px-4 py-3">
+    <!-- Breadcrumb & Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1 fs-8 text-uppercase font-mono">
+                    <li class="breadcrumb-item"><a href="@Url.Action("Dashboard", "PlatformAdmin")" class="text-decoration-none text-muted">Super Admin</a></li>
+                    <li class="breadcrumb-item text-muted">Website Management</li>
+                    <li class="breadcrumb-item active text-primary" aria-current="page">Policies</li>
+                </ol>
+            </nav>
+            <h1 class="h3 font-display fw-bold mb-1 text-light">Legal Policies &amp; Compliance CMS</h1>
+            <p class="text-muted fs-7 mb-0">Manage public SaaS legal documents, revisions, publication states, and audit tracking in Indian Standard Time (IST).</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="@Url.Action("Policy", "Landing", new { slug = "terms-and-conditions" })" target="_blank" class="btn btn-outline-light btn-sm">
+                <i class="bi bi-box-arrow-up-right me-1"></i> Public Website View
+            </a>
+            <a href="@Url.Action("CreatePolicy", "PlatformAdmin")" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-lg me-1"></i> Create New Policy
+            </a>
+        </div>
+    </div>
+
+    <!-- Alert / Toast Messages -->
+    @if (TempData["ToastMessage"] != null)
+    {
+        var toastType = TempData["ToastType"] as string ?? "info";
+        <div class="alert alert-@toastType alert-dismissible fade show d-flex align-items-center mb-4" role="alert">
+            <i class="bi @(toastType == "success" ? "bi-check-circle-fill text-success" : "bi-exclamation-triangle-fill text-warning") fs-5 me-2"></i>
+            <div>@TempData["ToastMessage"]</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <!-- Stat Highlights -->
+    <div class="row g-3 mb-4">
+        <div class="col-xl-3 col-sm-6">
+            <div class="glass-card p-3 h-100 border-start border-primary border-4">
+                <div class="text-muted text-uppercase fs-8 font-mono fw-bold mb-1">Total Policies</div>
+                <div class="fs-3 font-display fw-bold text-light">@Model.Count(p => !p.IsDeleted)</div>
+                <div class="fs-8 text-muted mt-1"><i class="bi bi-file-earmark-text me-1"></i> Configured documents</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-sm-6">
+            <div class="glass-card p-3 h-100 border-start border-success border-4">
+                <div class="text-muted text-uppercase fs-8 font-mono fw-bold mb-1">Published &amp; Active</div>
+                <div class="fs-3 font-display fw-bold text-success">@publishedCount</div>
+                <div class="fs-8 text-muted mt-1"><i class="bi bi-globe me-1"></i> Live on public portal</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-sm-6">
+            <div class="glass-card p-3 h-100 border-start border-warning border-4">
+                <div class="text-muted text-uppercase fs-8 font-mono fw-bold mb-1">Draft Documents</div>
+                <div class="fs-3 font-display fw-bold text-warning">@draftCount</div>
+                <div class="fs-8 text-muted mt-1"><i class="bi bi-pencil-square me-1"></i> Hidden from public view</div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-sm-6">
+            <div class="glass-card p-3 h-100 border-start border-secondary border-4">
+                <div class="text-muted text-uppercase fs-8 font-mono fw-bold mb-1">Inactive / Archived</div>
+                <div class="fs-3 font-display fw-bold text-muted">@inactiveCount</div>
+                <div class="fs-8 text-muted mt-1"><i class="bi bi-slash-circle me-1"></i> Deactivated documents</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Policies Table Card -->
+    <div class="glass-card overflow-hidden">
+        <div class="p-3 border-bottom border-secondary border-opacity-25 d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h5 class="font-display fw-bold mb-0 text-light"><i class="bi bi-journal-text text-primary me-2"></i>Configured Policy Documents</h5>
+                <span class="fs-8 text-muted">Click any document to edit in README-style markdown editor or inspect revision audits.</span>
+            </div>
+            <div class="badge bg-dark border border-secondary text-light font-mono px-3 py-2">
+                <i class="bi bi-clock-history me-1 text-info"></i> All Timestamps Displayed in IST
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 text-light">
+                <thead class="bg-dark bg-opacity-50 text-muted font-mono fs-8 text-uppercase">
+                    <tr>
+                        <th class="ps-3" style="width: 28%;">Policy Title &amp; Slug</th>
+                        <th style="width: 15%;">Category</th>
+                        <th style="width: 12%;">Status</th>
+                        <th style="width: 22%;">Last Updated (IST)</th>
+                        <th style="width: 8%;" class="text-center">Revisions</th>
+                        <th style="width: 15%;" class="text-end pe-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model == null || !Model.Any(p => !p.IsDeleted))
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-muted">
+                                <i class="bi bi-folder-x fs-1 d-block mb-2 text-secondary"></i>
+                                No legal policies found. Click <strong>Create New Policy</strong> to initialize policies.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var policy in Model.Where(p => !p.IsDeleted).OrderBy(p => p.DisplayOrder))
+                        {
+                            var isLive = policy.IsPublished && policy.IsActive;
+                            <tr>
+                                <td class="ps-3">
+                                    <div class="d-flex align-items-start">
+                                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-50 me-2 text-primary">
+                                            <i class="bi bi-file-earmark-ruled fs-5"></i>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold text-light">@policy.Title</div>
+                                            <div class="font-mono fs-8 text-muted d-flex align-items-center gap-2">
+                                                <span>/policy/<span class="text-info">@policy.Slug</span></span>
+                                                @if (policy.ShowInFooter)
+                                                {
+                                                    <span class="badge bg-secondary bg-opacity-25 text-light fs-9 px-1 rounded">Footer Link</span>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-dark border border-secondary text-light fs-8 px-2 py-1">
+                                        @policy.Category
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (isLive)
+                                    {
+                                        <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 px-2 py-1">
+                                            <i class="bi bi-check-circle-fill me-1"></i> Published
+                                        </span>
+                                    }
+                                    else if (!policy.IsActive)
+                                    {
+                                        <span class="badge bg-danger bg-opacity-25 text-danger border border-danger border-opacity-50 px-2 py-1">
+                                            <i class="bi bi-slash-circle me-1"></i> Inactive
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning bg-opacity-25 text-warning border border-warning border-opacity-50 px-2 py-1">
+                                            <i class="bi bi-file-earmark-lock me-1"></i> Draft
+                                        </span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="fs-7 fw-semibold text-light">
+                                        @policy.UpdatedAtUtc.ToPolicyIstDisplayString()
+                                    </div>
+                                    <div class="fs-8 text-muted font-mono">
+                                        By: <span class="text-light">@policy.LastUpdatedBy</span>
+                                    </div>
+                                </td>
+                                <td class="text-center">
+                                    <a href="@Url.Action("PolicyRevisions", "PlatformAdmin", new { id = policy.Id })" class="badge bg-info bg-opacity-25 text-info text-decoration-none border border-info border-opacity-50 px-2 py-1" title="View revision audit trail">
+                                        <i class="bi bi-clock-history me-1"></i> v@(policy.RevisionCount)
+                                    </a>
+                                </td>
+                                <td class="text-end pe-3">
+                                    <div class="d-inline-flex gap-1">
+                                        @if (isLive)
+                                        {
+                                            <a href="@Url.Action("Policy", "Landing", new { slug = policy.Slug })" target="_blank" class="btn btn-outline-info btn-sm" title="Preview public view">
+                                                <i class="bi bi-box-arrow-up-right"></i>
+                                            </a>
+                                        }
+
+                                        <a href="@Url.Action("EditPolicy", "PlatformAdmin", new { id = policy.Id })" class="btn btn-outline-primary btn-sm" title="Edit in README markdown editor">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </a>
+
+                                        <!-- Toggle Publish Dropdown / Action -->
+                                        <div class="dropdown d-inline-block">
+                                            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="bi bi-gear"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end shadow">
+                                                <li>
+                                                    <form method="post" action="@Url.Action("TogglePublishPolicy", "PlatformAdmin", new { id = policy.Id })">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="publish" value="@(policy.IsPublished ? "false" : "true")" />
+                                                        <button type="submit" class="dropdown-item fs-7 py-2">
+                                                            <i class="bi @(policy.IsPublished ? "bi-eye-slash text-warning" : "bi-eye text-success") me-2"></i>
+                                                            @(policy.IsPublished ? "Unpublish to Draft" : "Publish to Live Website")
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                                <li>
+                                                    <form method="post" action="@Url.Action("ToggleActivePolicy", "PlatformAdmin", new { id = policy.Id })">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="active" value="@(policy.IsActive ? "false" : "true")" />
+                                                        <button type="submit" class="dropdown-item fs-7 py-2">
+                                                            <i class="bi @(policy.IsActive ? "bi-slash-circle text-danger" : "bi-check-circle text-success") me-2"></i>
+                                                            @(policy.IsActive ? "Deactivate Policy" : "Activate Policy")
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                                <li><hr class="dropdown-divider border-secondary border-opacity-50"></li>
+                                                <li>
+                                                    <a class="dropdown-item fs-7 py-2" href="@Url.Action("PolicyRevisions", "PlatformAdmin", new { id = policy.Id })">
+                                                        <i class="bi bi-clock-history text-info me-2"></i> Revision History
+                                                    </a>
+                                                </li>
+                                                <li><hr class="dropdown-divider border-secondary border-opacity-50"></li>
+                                                <li>
+                                                    <button type="button" class="dropdown-item fs-7 py-2 text-danger" data-bs-toggle="modal" data-bs-target="#deletePolicyModal_@policy.Id">
+                                                        <i class="bi bi-trash3 me-2"></i> Delete / Archive
+                                                    </button>
+                                                </li>
+                                            </ul>
+                                        </div>
+
+                                        <!-- Delete Confirmation Modal -->
+                                        <div class="modal fade" id="deletePolicyModal_@policy.Id" tabindex="-1" aria-labelledby="deleteModalLabel_@policy.Id" aria-hidden="true">
+                                            <div class="modal-dialog modal-dialog-centered">
+                                                <div class="modal-content glass-card text-light border-danger">
+                                                    <div class="modal-header border-secondary border-opacity-25">
+                                                        <h5 class="modal-title font-display text-danger" id="deleteModalLabel_@policy.Id">
+                                                            <i class="bi bi-exclamation-triangle-fill me-2"></i> Confirm Policy Archival
+                                                        </h5>
+                                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body text-start">
+                                                        <p>Are you sure you want to delete / archive the policy document <strong>@policy.Title</strong> (<code>/policy/@policy.Slug</code>)?</p>
+                                                        <p class="fs-8 text-muted mb-0">This document will immediately be removed from the public website and footer. Historical revision records are preserved for compliance audit purposes.</p>
+                                                    </div>
+                                                    <div class="modal-footer border-secondary border-opacity-25">
+                                                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                                                        <form method="post" action="@Url.Action("DeletePolicy", "PlatformAdmin", new { id = policy.Id })">
+                                                            @Html.AntiForgeryToken()
+                                                            <button type="submit" class="btn btn-danger btn-sm">
+                                                                <i class="bi bi-trash3 me-1"></i> Yes, Archive Policy
+                                                            </button>
+                                                        </form>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

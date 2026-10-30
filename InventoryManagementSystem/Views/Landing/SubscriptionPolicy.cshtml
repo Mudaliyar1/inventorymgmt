@@ -1,0 +1,134 @@
+@{
+    ViewData["Title"] = "Subscription & Billing Policy — SIMS Smart Inventory Management System";
+    Layout = "_Layout";
+    var settings = ViewBag.Settings as InventoryManagementSystem.Models.PlatformSettings;
+    var platformName = settings?.PlatformName ?? "SIMS SaaS Platform";
+    var contactEmail = settings?.ContactEmail ?? "support@sims.com";
+    var contactPhone = settings?.ContactPhone ?? "+91 98765 43210";
+    var officeAddress = settings?.OfficeAddress ?? "123 Business Hub, Mumbai, India";
+}
+
+<div class="pz-page-wrap pb-5">
+    <div class="pz-container" style="max-width: 1040px;">
+
+        <!-- Header -->
+        <div class="pz-section-head mb-4 text-center">
+            <span class="pz-accent-eyebrow">BILLING &amp; SUBSCRIPTIONS</span>
+            <h1 class="pz-section-title">Subscription &amp; Billing Policy</h1>
+            <span class="pz-heading-accent" aria-hidden="true"></span>
+            <p class="pz-section-sub">
+                Comprehensive overview of subscription cycles, license activations, quota limits, renewals, plan transitions, and custom enterprise quoting.
+            </p>
+        </div>
+        <div class="row g-4">
+            <!-- Sidebar -->
+            <div class="col-lg-4 col-md-5">
+                <div class="pz-card p-4 position-sticky" style="top: 90px;">
+                    <h5 class="fw-bold fs-7 mb-3 text-uppercase text-muted" style="letter-spacing: 0.05em;">Table of Contents</h5>
+                    <nav class="nav flex-column gap-2 fs-8">
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#sb-cycles"><i class="bi bi-chevron-right me-1 text-primary"></i> 1. Billing Cycles &amp; Pricing</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#sb-activation"><i class="bi bi-chevron-right me-1 text-primary"></i> 2. License Activation</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#sb-limits"><i class="bi bi-chevron-right me-1 text-primary"></i> 3. Usage Quotas &amp; Modular Features</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#sb-upgrades"><i class="bi bi-chevron-right me-1 text-primary"></i> 4. Plan Upgrades &amp; Downgrades</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#sb-custom"><i class="bi bi-chevron-right me-1 text-primary"></i> 5. Custom Tailored Packages</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#sb-expiry"><i class="bi bi-chevron-right me-1 text-primary"></i> 6. Expiry, Grace Periods &amp; Suspension</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#sb-disputes"><i class="bi bi-chevron-right me-1 text-primary"></i> 7. Payment Failures &amp; Inquiries</a>
+                    </nav>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-lg-8 col-md-7">
+                <div class="pz-card p-4 p-lg-5">
+
+                    <!-- Section 1 -->
+                    <section id="sb-cycles" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">1. Billing Cycles &amp; Pricing Structure</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            SIMS offers subscription packages billed on either a <strong>Monthly</strong> or <strong>Annual (Yearly)</strong> cycle:
+                        </p>
+                        <ul class="fs-7 text-muted ps-3 mb-3">
+                            <li class="mb-2"><strong>Monthly Subscriptions:</strong> Provide flexibility with payments processed every 30 days.</li>
+                            <li class="mb-2"><strong>Yearly Subscriptions:</strong> Paid once annually, typically offering significant cost savings (e.g., up to 20% discount compared to monthly equivalent).</li>
+                        </ul>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            All prices on the public portal are displayed in Indian Rupees (INR ₹) and are billed in advance of service delivery.
+                        </p>
+                    </section>
+
+                    <!-- Section 2 -->
+                    <section id="sb-activation" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">2. Payment Processing &amp; License Activation</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            Upon successful payment confirmation via our integrated gateway or Super Admin provision, the tenant license is activated or extended instantly. An automated electronic receipt and invoice are delivered to the registered shop owner's email address.
+                        </p>
+                    </section>
+
+                    <!-- Section 3 -->
+                    <section id="sb-limits" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">3. Usage Quotas &amp; Modular Features</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            Every subscription plan has explicit operational capacity boundaries:
+                        </p>
+                        <ul class="fs-7 text-muted ps-3 mb-3">
+                            <li class="mb-2"><strong>Admins &amp; Staff:</strong> Number of simultaneous administrative accounts and cashier/staff logins allowed.</li>
+                            <li class="mb-2"><strong>Inventory Catalog:</strong> Maximum active SKU product records.</li>
+                            <li class="mb-2"><strong>Suppliers &amp; Vendors:</strong> Number of wholesale supplier directories and automated balance ledgers.</li>
+                            <li class="mb-2"><strong>Serialized Devices:</strong> Maximum quantity of tracked IMEI numbers and serial numbers.</li>
+                            <li class="mb-2"><strong>Modular Capabilities:</strong> Access to specialized modules such as POS Thermal Invoicing, WhatsApp Receipts, Repair Work Orders, Supplier Purchase Orders, and Exchange Tracking.</li>
+                        </ul>
+                    </section>
+
+                    <!-- Section 4 -->
+                    <section id="sb-upgrades" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">4. Plan Upgrades &amp; Downgrades</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            Store owners can initiate a package upgrade at any time. When upgrading, new resource limits and module features unlock immediately. Prorated credits for unused time in the previous lower tier are applied toward the upgrade fee where supported.
+                        </p>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            Downgrades take effect upon the expiration of the current paid billing cycle, provided the tenant's current counts (staff, products, suppliers) fit within the lower tier's limits.
+                        </p>
+                    </section>
+
+                    <!-- Section 5 -->
+                    <section id="sb-custom" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">5. Custom Tailored Packages</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            High-volume retail chains, franchises, and regional wholesalers requiring higher administrator counts, hundreds of staff logins, or inventory over 1,000,000 units can configure custom allocations using the <strong>Build Your Own SIMS Package</strong> calculator.
+                        </p>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            The calculator produces a real-time server-verified price estimate. Upon review by our Super Admin team, tailored enterprise packages are configured with custom pricing and assigned directly to the tenant.
+                        </p>
+                    </section>
+
+                    <!-- Section 6 -->
+                    <section id="sb-expiry" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">6. Renewal Reminders, Grace Periods &amp; Suspension</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            Automated renewal notifications are dispatched via email starting 7 days before license expiration. If an account expires without renewal:
+                        </p>
+                        <ul class="fs-7 text-muted ps-3 mb-3">
+                            <li class="mb-2"><strong>Grace Period:</strong> Stores are granted a grace period during which basic access and data export remain available.</li>
+                            <li class="mb-2"><strong>Shop Suspension:</strong> If unpaid after the grace period, transactional write access (e.g. creating new sales or adding stock) is locked until renewal. Data is preserved safely.</li>
+                        </ul>
+                    </section>
+
+                    <!-- Section 7 -->
+                    <section id="sb-disputes">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">7. Payment Failures &amp; Inquiries</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            If your payment fails due to bank authorization or card limits, the system provides alternative payment options. For billing clarification or custom invoicing, connect with our finance desk:
+                        </p>
+                        <div class="p-3 bg-light rounded-3 border fs-8">
+                            <div><strong>Billing Inquiries:</strong> <a href="mailto:@contactEmail" class="text-decoration-none">@contactEmail</a></div>
+                            <div><strong>Direct Support:</strong> <a href="tel:@contactPhone" class="text-decoration-none text-dark">@contactPhone</a></div>
+                            <div><strong>Office Address:</strong> @officeAddress</div>
+                        </div>
+                    </section>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

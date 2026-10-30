@@ -99,7 +99,7 @@
                 }
                 else
                 {
-                    <small class="text-muted fs-8">Trial: @Model.TrialDays Days</small>
+                    <small class="text-muted fs-8">Trial: @Model.GetTrialDisplay()</small>
                 }
             </div>
             <div class="p-3 rounded-circle bg-success bg-opacity-25 text-success">
@@ -328,7 +328,7 @@
                 </div>
                 <div class="d-flex justify-content-between mb-1">
                     <span class="text-muted">Trial Duration:</span>
-                    <span class="font-mono fw-bold">@Model.TrialDays Days</span>
+                    <span class="font-mono fw-bold">@Model.GetTrialDisplay()</span>
                 </div>
                 <div class="d-flex justify-content-between mb-1">
                     <span class="text-muted">Display Priority:</span>
@@ -345,7 +345,7 @@
                 }
                 <div class="d-flex justify-content-between border-top border-secondary pt-2 mt-2">
                     <span class="text-muted">Created Date:</span>
-                    <span class="font-mono">@Model.CreatedAt.ToString("MMM dd, yyyy")</span>
+                    <span class="font-mono">@Model.CreatedAt.ToIst().ToString("MMM dd, yyyy")</span>
                 </div>
             </div>
         </div>

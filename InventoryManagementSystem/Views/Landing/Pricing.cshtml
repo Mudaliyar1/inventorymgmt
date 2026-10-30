@@ -4,6 +4,7 @@
     Layout = "_Layout";
     var groupedFeatures = ViewBag.GroupedFeatures as Dictionary<string, List<FeatureDefinition>> ?? new Dictionary<string, List<FeatureDefinition>>();
     var allFeatures = ViewBag.AllFeatures as List<FeatureDefinition> ?? new List<FeatureDefinition>();
+    var customPricingConfig = ViewBag.CustomPricingConfig as InventoryManagementSystem.Models.CustomPricingConfiguration ?? new InventoryManagementSystem.Models.CustomPricingConfiguration();
 }
 
 <div class="pz-page-wrap">
@@ -15,7 +16,7 @@
             <h1 class="pz-section-title">Simple, transparent plans tailored for your business</h1>
             <span class="pz-heading-accent" aria-hidden="true"></span>
             <p class="pz-section-sub">
-                Select the ideal plan for your business and retail counters. Every tier includes a 14-day full feature trial with zero setup fees and seamless Excel migration.
+                Select the ideal plan for your business and retail counters. Includes risk-free onboarding on eligible tiers with zero setup fees and seamless Excel migration.
             </p>
         </div>
 
@@ -75,9 +76,24 @@
 
                                 <!-- Reference Matched CTA Button Directly Below Price -->
                                 <div class="pz-tier-cta-block">
-                                    <a href="@Url.Action("Register", "Landing", new { packageId = pkg.Id })" class="@(pkg.IsFeatured ? "pz-btn-primary" : "pz-btn-dark") text-decoration-none">
-                                        <span>Start @pkg.TrialDays-Day Free Trial</span>
-                                    </a>
+                                    @if (pkg.MonthlyPrice <= 0)
+                                    {
+                                        <a href="@Url.Action("Register", "Landing", new { packageId = pkg.Id, mode = "trial" })" class="@(pkg.IsFeatured ? "pz-btn-primary" : "pz-btn-dark") text-decoration-none text-center">
+                                            <span>@(pkg.HasTrial ? $"Start {pkg.GetTrialDisplay()} Free Trial" : "Get Started Free")</span>
+                                        </a>
+                                    }
+                                    else if (pkg.HasTrial && pkg.GetTrialTimeSpan() > TimeSpan.Zero)
+                                    {
+                                        <a href="@Url.Action("Register", "Landing", new { packageId = pkg.Id, mode = "trial" })" class="@(pkg.IsFeatured ? "pz-btn-primary" : "pz-btn-dark") text-decoration-none text-center">
+                                            <span>Start @pkg.GetTrialDisplay() Free Trial</span>
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <a href="@Url.Action("Register", "Landing", new { packageId = pkg.Id, mode = "paid" })" class="@(pkg.IsFeatured ? "pz-btn-primary" : "pz-btn-dark") text-decoration-none text-center">
+                                            <span>Subscribe &amp; Pay Online</span>
+                                        </a>
+                                    }
                                 </div>
 
                                 <!-- Feature Section Title -->
@@ -133,8 +149,348 @@
                 <span class="pz-trust-logo"><i class="bi bi-shop me-1"></i> Bharat Retailers</span>
                 <span class="pz-trust-logo"><i class="bi bi-laptop me-1"></i> DigiTech Hub</span>
                 <span class="pz-trust-logo"><i class="bi bi-cpu me-1"></i> Prime Wireless</span>
-            </div>
         </div>
+
+        <!-- B.2. Build Your Own SIMS Package Calculator Section -->
+        <section id="custom-package-calculator" class="mb-5 pb-4">
+            <div class="pz-section-head mb-4 text-center">
+                <span class="pz-accent-eyebrow">CUSTOM ENTERPRISE TAILORING</span>
+                <h2 class="pz-section-title">Build Your Own SIMS Package</h2>
+                <span class="pz-heading-accent" aria-hidden="true"></span>
+                <p class="pz-section-sub">
+                    Configure the size of your business to estimate your subscription cost.
+                </p>
+            </div>
+
+            @if (!customPricingConfig.IsEnabled)
+            {
+                <div class="alert alert-warning text-center p-4 rounded-3 border">
+                    <i class="bi bi-gear-wide-connected fs-3 d-block mb-2 text-warning"></i>
+                    <strong class="d-block mb-1 text-dark">Custom package calculations are currently undergoing scheduled maintenance.</strong>
+                    <div class="text-muted fs-8">Please reach out to our <a href="@Url.Action("Contact", "Landing")" class="text-decoration-underline fw-bold">support desk</a> to request a tailored quote.</div>
+                </div>
+            }
+            else
+            {
+                <div class="pz-card p-4 p-lg-5">
+                    <div class="row g-4 g-xl-5">
+                        <!-- Left Column: Configure Your Business -->
+                        <div class="col-lg-7 col-xl-7">
+                            
+                            <!-- Section Title -->
+                            <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-sliders fs-5 text-primary"></i>
+                                    <h4 class="fw-bold fs-6 mb-0 text-dark text-uppercase" style="letter-spacing: 0.05em;">1. Configure Your Business</h4>
+                                </div>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle fs-9 fw-semibold">
+                                    <i class="bi bi-check2-circle me-1"></i>All SIMS Modules Included
+                                </span>
+                            </div>
+
+                            <p class="fs-8 text-muted mb-3">
+                                Set your team, catalog inventory, and supplier capacity. Every custom package automatically includes all SIMS features, IMEI tracking, POS billing, and repair modules.
+                            </p>
+
+                            <div class="row g-3">
+                                <!-- 1. Administrators -->
+                                <div class="col-md-6 col-12">
+                                    <div class="p-3 bg-white rounded-3 border h-100 shadow-xs">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <label for="calcAdmins" class="fw-bold fs-7 text-dark mb-0 d-flex align-items-center">
+                                                <i class="bi bi-person-badge text-primary me-2 fs-6"></i>
+                                                <span>Administrators</span>
+                                            </label>
+                                            <div class="input-group input-group-sm" style="width: 110px;">
+                                                <input type="number" 
+                                                       id="calcAdmins" 
+                                                       class="form-control text-end font-mono fw-bold" 
+                                                       min="@customPricingConfig.MinAdmins" 
+                                                       max="@customPricingConfig.MaxAdmins" 
+                                                       value="@Math.Clamp(2, customPricingConfig.MinAdmins, customPricingConfig.MaxAdmins)" 
+                                                       oninput="syncFromNumber('Admins')" 
+                                                       onblur="validateAndClamp('Admins')" 
+                                                       aria-label="Administrators quantity" />
+                                                <span class="input-group-text bg-light text-muted fs-9">seats</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="py-2">
+                                            <input type="range" 
+                                                   class="form-range pz-calc-slider w-100" 
+                                                   id="calcAdminsRange" 
+                                                   min="@customPricingConfig.MinAdmins" 
+                                                   max="@customPricingConfig.MaxAdmins" 
+                                                   step="1" 
+                                                   value="@Math.Clamp(2, customPricingConfig.MinAdmins, customPricingConfig.MaxAdmins)" 
+                                                   oninput="syncFromRange('Admins')" 
+                                                   aria-label="Administrators range slider" />
+                                        </div>
+
+                                        <div class="d-flex justify-content-between align-items-center fs-9 text-muted font-mono">
+                                            <span>Min: @customPricingConfig.MinAdmins</span>
+                                            <span>Max: @customPricingConfig.MaxAdmins</span>
+                                        </div>
+
+                                        <div class="fs-9 text-muted mt-2 border-top pt-2">
+                                            Full management, branch configuration &amp; billing access.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 2. Employees / Staff -->
+                                <div class="col-md-6 col-12">
+                                    <div class="p-3 bg-white rounded-3 border h-100 shadow-xs">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <label for="calcEmployees" class="fw-bold fs-7 text-dark mb-0 d-flex align-items-center">
+                                                <i class="bi bi-people text-info me-2 fs-6"></i>
+                                                <span>Employees &amp; Staff</span>
+                                            </label>
+                                            <div class="input-group input-group-sm" style="width: 110px;">
+                                                <input type="number" 
+                                                       id="calcEmployees" 
+                                                       class="form-control text-end font-mono fw-bold" 
+                                                       min="@customPricingConfig.MinEmployees" 
+                                                       max="@customPricingConfig.MaxEmployees" 
+                                                       value="@Math.Clamp(5, customPricingConfig.MinEmployees, customPricingConfig.MaxEmployees)" 
+                                                       oninput="syncFromNumber('Employees')" 
+                                                       onblur="validateAndClamp('Employees')" 
+                                                       aria-label="Employees quantity" />
+                                                <span class="input-group-text bg-light text-muted fs-9">seats</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="py-2">
+                                            <input type="range" 
+                                                   class="form-range pz-calc-slider w-100" 
+                                                   id="calcEmployeesRange" 
+                                                   min="@customPricingConfig.MinEmployees" 
+                                                   max="@customPricingConfig.MaxEmployees" 
+                                                   step="1" 
+                                                   value="@Math.Clamp(5, customPricingConfig.MinEmployees, customPricingConfig.MaxEmployees)" 
+                                                   oninput="syncFromRange('Employees')" 
+                                                   aria-label="Employees range slider" />
+                                        </div>
+
+                                        <div class="d-flex justify-content-between align-items-center fs-9 text-muted font-mono">
+                                            <span>Min: @customPricingConfig.MinEmployees</span>
+                                            <span>Max: @customPricingConfig.MaxEmployees</span>
+                                        </div>
+
+                                        <div class="fs-9 text-muted mt-2 border-top pt-2">
+                                            Cashiers, technicians, store operations staff logins.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 3. Products (Large Inventory Support) -->
+                                <div class="col-md-6 col-12">
+                                    <div class="p-3 bg-white rounded-3 border h-100 shadow-xs">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <label for="calcProducts" class="fw-bold fs-7 text-dark mb-0 d-flex align-items-center">
+                                                <i class="bi bi-boxes text-warning me-2 fs-6"></i>
+                                                <span>Inventory Products</span>
+                                            </label>
+                                            <div class="input-group input-group-sm" style="width: 140px;">
+                                                <input type="number" 
+                                                       id="calcProducts" 
+                                                       class="form-control text-end font-mono fw-bold" 
+                                                       min="@customPricingConfig.MinProducts" 
+                                                       max="@customPricingConfig.MaxProducts" 
+                                                       value="@Math.Clamp(1000, customPricingConfig.MinProducts, customPricingConfig.MaxProducts)" 
+                                                       oninput="syncFromNumber('Products')" 
+                                                       onblur="validateAndClamp('Products')" 
+                                                       aria-label="Products catalog quantity" />
+                                                <span class="input-group-text bg-light text-muted fs-9">items</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="py-2">
+                                            <input type="range" 
+                                                   class="form-range pz-calc-slider w-100" 
+                                                   id="calcProductsRange" 
+                                                   min="@customPricingConfig.MinProducts" 
+                                                   max="@customPricingConfig.MaxProducts" 
+                                                   step="@(customPricingConfig.MaxProducts > 500000 ? 500 : 100)" 
+                                                   value="@Math.Clamp(1000, customPricingConfig.MinProducts, customPricingConfig.MaxProducts)" 
+                                                   oninput="syncFromRange('Products')" 
+                                                   aria-label="Products range slider" />
+                                        </div>
+
+                                        <div class="d-flex justify-content-between align-items-center fs-9 text-muted font-mono">
+                                            <span>Min: @customPricingConfig.MinProducts.ToString("N0")</span>
+                                            <span>Max: @customPricingConfig.MaxProducts.ToString("N0")</span>
+                                        </div>
+
+                                        <div class="fs-9 text-muted mt-2 border-top pt-2">
+                                            @(customPricingConfig.ProductPricingModel == "Tiered" 
+                                                ? "Volume tiered pricing ensures low cost per unit at high catalog scale." 
+                                                : $"Per-unit pricing: ₹{customPricingConfig.ProductUnitPrice}/product/mo.")
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 4. Wholesale Suppliers -->
+                                <div class="col-md-6 col-12">
+                                    <div class="p-3 bg-white rounded-3 border h-100 shadow-xs">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <label for="calcSuppliers" class="fw-bold fs-7 text-dark mb-0 d-flex align-items-center">
+                                                <i class="bi bi-truck text-success me-2 fs-6"></i>
+                                                <span>Wholesale Suppliers</span>
+                                            </label>
+                                            <div class="input-group input-group-sm" style="width: 110px;">
+                                                <input type="number" 
+                                                       id="calcSuppliers" 
+                                                       class="form-control text-end font-mono fw-bold" 
+                                                       min="@customPricingConfig.MinSuppliers" 
+                                                       max="@customPricingConfig.MaxSuppliers" 
+                                                       value="@Math.Clamp(20, customPricingConfig.MinSuppliers, customPricingConfig.MaxSuppliers)" 
+                                                       oninput="syncFromNumber('Suppliers')" 
+                                                       onblur="validateAndClamp('Suppliers')" 
+                                                       aria-label="Suppliers quantity" />
+                                                <span class="input-group-text bg-light text-muted fs-9">vendors</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="py-2">
+                                            <input type="range" 
+                                                   class="form-range pz-calc-slider w-100" 
+                                                   id="calcSuppliersRange" 
+                                                   min="@customPricingConfig.MinSuppliers" 
+                                                   max="@customPricingConfig.MaxSuppliers" 
+                                                   step="1" 
+                                                   value="@Math.Clamp(20, customPricingConfig.MinSuppliers, customPricingConfig.MaxSuppliers)" 
+                                                   oninput="syncFromRange('Suppliers')" 
+                                                   aria-label="Suppliers range slider" />
+                                        </div>
+
+                                        <div class="d-flex justify-content-between align-items-center fs-9 text-muted font-mono">
+                                            <span>Min: @customPricingConfig.MinSuppliers</span>
+                                            <span>Max: @customPricingConfig.MaxSuppliers.ToString("N0")</span>
+                                        </div>
+
+                                        <div class="fs-9 text-muted mt-2 border-top pt-2">
+                                            Distributor ledgers, purchase accounts &amp; vendor records.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Right Column: 2. Your Estimated Price -->
+                        <div class="col-lg-5 col-xl-5">
+                            <div class="pz-card p-4 p-xl-4 position-sticky" style="top: 85px; background: #FAF9F5; border: 2px solid var(--pz-coral-border);">
+                                <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                                    <h4 class="fw-bold fs-6 mb-0 text-dark text-uppercase">
+                                        <i class="bi bi-receipt-cutoff me-1 text-danger"></i> 2. Your Estimated Price
+                                    </h4>
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold fs-9">Live Estimate</span>
+                                </div>
+
+                                <!-- Configuration Summary Badges -->
+                                <div class="mb-3">
+                                    <div class="fs-8 text-muted mb-2 fw-semibold">Configured Allocation:</div>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        <span class="badge bg-white text-dark border px-2 py-1 fs-8" id="pillAdmins">2 Admins</span>
+                                        <span class="badge bg-white text-dark border px-2 py-1 fs-8" id="pillEmployees">5 Staff</span>
+                                        <span class="badge bg-white text-dark border px-2 py-1 fs-8" id="pillProducts">1,000 Products</span>
+                                        <span class="badge bg-white text-dark border px-2 py-1 fs-8" id="pillSuppliers">20 Suppliers</span>
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 fs-8" id="pillModules">
+                                            <i class="bi bi-check-all me-1"></i>All SIMS Modules Included
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Price Display -->
+                                <div class="p-3 bg-white rounded-3 border mb-3 text-center">
+                                    <div class="text-muted fs-8 text-uppercase fw-bold mb-1">Estimated Monthly Cost</div>
+                                    <div class="d-flex align-items-baseline justify-content-center gap-1 mb-1">
+                                        <span class="fs-4 fw-bold" style="color: var(--pz-coral);">₹</span>
+                                        <span class="fs-2 fw-bold font-display" style="color: #17181B;" id="calcMonthlyVal">0</span>
+                                        <span class="fs-7 text-muted">/ month</span>
+                                    </div>
+
+                                    <div class="d-flex align-items-baseline justify-content-center gap-2 pt-2 border-top">
+                                        <span class="fs-8 text-muted">Estimated Annual:</span>
+                                        <strong class="fs-7 text-dark font-mono">₹<span id="calcYearlyVal">0</span> / yr</strong>
+                                    </div>
+                                    @if (customPricingConfig.AnnualDiscountPercent > 0)
+                                    {
+                                        <div class="mt-2">
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle fs-9 font-mono fw-bold">
+                                                SAVE @customPricingConfig.AnnualDiscountPercent.ToString("N0")% ON ANNUAL BILLING
+                                            </span>
+                                        </div>
+                                    }
+                                </div>
+
+                                <!-- Breakdown Accordion -->
+                                <div class="mb-3">
+                                    <button class="btn btn-sm btn-link text-decoration-none w-100 text-start d-flex justify-content-between align-items-center p-0 fs-8 fw-semibold text-secondary" 
+                                            type="button" 
+                                            data-bs-toggle="collapse" 
+                                            data-bs-target="#calcBreakdownCollapse">
+                                        <span><i class="bi bi-info-circle me-1"></i> View Calculation Itemization</span>
+                                        <i class="bi bi-chevron-down"></i>
+                                    </button>
+                                    <div class="collapse mt-2" id="calcBreakdownCollapse">
+                                        <div class="p-3 bg-white rounded-2 border fs-8 text-muted">
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <span>Base Subscription:</span>
+                                                <span class="fw-semibold text-dark">₹@customPricingConfig.BaseMonthlyPrice.ToString("N0")</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <span>Administrators:</span>
+                                                <span class="fw-semibold text-dark" id="calcAdminCost">₹0</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <span>Staff &amp; Cashiers:</span>
+                                                <span class="fw-semibold text-dark" id="calcEmployeeCost">₹0</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <span>Product Catalog:</span>
+                                                <span class="fw-semibold text-dark" id="calcProductCost">₹0</span>
+                                            </div>
+                                            <div class="fs-9 text-muted ps-2 mb-1" id="calcTierExplanation"></div>
+                                            <div class="d-flex justify-content-between mb-1">
+                                                <span>Wholesale Suppliers:</span>
+                                                <span class="fw-semibold text-dark" id="calcSupplierCost">₹0</span>
+                                            </div>
+                                            <div class="d-flex justify-content-between">
+                                                <span>SIMS Platform Modules:</span>
+                                                <span class="fw-semibold text-success">Included Free</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Disclaimer -->
+                                <div class="alert alert-light border p-2 rounded-2 fs-9 text-muted mb-3 leading-normal">
+                                    <i class="bi bi-shield-check text-primary me-1"></i>
+                                    This calculation is an estimate for business operational planning and does not constitute a confirmed final quotation. Volume discounts and migration requirements are finalized upon review.
+                                </div>
+
+                                <!-- CTA Button -->
+                                @if (customPricingConfig.AllowCustomQuotes)
+                                {
+                                    <button type="button" class="pz-btn-primary w-100 py-3 text-center justify-content-center text-decoration-none d-flex align-items-center gap-2" onclick="openCustomQuoteModal()">
+                                        <span>Request a Custom Quote</span>
+                                        <i class="bi bi-arrow-right"></i>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <a href="@Url.Action("Contact", "Landing")" class="pz-btn-secondary w-100 py-3 text-center justify-content-center text-decoration-none">
+                                        <span>Contact Us for Enterprise Quotes</span>
+                                    </a>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </section>
 
         <!-- C. Brevo-Inspired SaaS Plan Feature Comparison Table -->
         @{
@@ -576,7 +932,7 @@
     PrimaryButtonUrl = Url.Action("Register", "Landing"),
     SecondaryButtonText = "Contact Support",
     SecondaryButtonUrl = Url.Action("Contact", "Landing"),
-    GuaranteeText = "14-Day Full Feature Trial • Zero Hidden Fees • 10-Minute Excel Data Import"
+    GuaranteeText = "Free Onboarding Trial • Zero Hidden Fees • 10-Minute Excel Data Import"
 })
 
 <!-- Dynamic Package Details Modal (High Contrast) -->
@@ -603,8 +959,299 @@
     </div>
 </div>
 
+<!-- Custom Quote Request Modal -->
+<div class="modal fade" id="customQuoteModal" tabindex="-1" aria-modal="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: var(--pz-radius-md); background: #FFFFFF;">
+            <div class="modal-header border-bottom py-3 px-4" style="background: var(--pz-surface-soft);">
+                <div>
+                    <h5 class="modal-title fw-bold mb-1 text-dark">
+                        Request a Custom SIMS Quote
+                    </h5>
+                    <p class="fs-7 text-muted mb-0">Tell us about your business, and our team will get in touch with you.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                
+                <!-- Feedback Alert Box -->
+                <div id="quoteModalAlert" class="d-none alert mb-3 fs-7 py-3 px-3 rounded-2" role="alert"></div>
+
+                <form id="customQuoteForm" method="post" action="@Url.Action("SubmitCustomQuote", "Landing")" data-ajax-handled="true" novalidate>
+                    @Html.AntiForgeryToken()
+
+                    <!-- Hidden inputs populated from calculator -->
+                    <input type="hidden" name="AdminCount" id="qAdminCount" value="2" />
+                    <input type="hidden" name="EmployeeCount" id="qEmployeeCount" value="5" />
+                    <input type="hidden" name="ProductCount" id="qProductCount" value="1000" />
+                    <input type="hidden" name="SupplierCount" id="qSupplierCount" value="20" />
+                    <input type="hidden" name="DeviceCount" id="qDeviceCount" value="0" />
+                    <div id="qHiddenFeaturesWrap"></div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="qContactName" class="pz-form-label">Contact Person's Name <span class="text-danger">*</span></label>
+                            <input type="text" id="qContactName" name="ContactName" class="pz-form-control" placeholder="e.g. Vikram Singhania" required />
+                            <div class="text-danger fs-8 mt-1 d-none" id="qContactNameErr">Please enter your name.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="qBusinessName" class="pz-form-label">Business / Shop Name <span class="text-danger">*</span></label>
+                            <input type="text" id="qBusinessName" name="BusinessName" class="pz-form-control" placeholder="e.g. Singhania Mobiles &amp; Retail" required />
+                            <div class="text-danger fs-8 mt-1 d-none" id="qBusinessNameErr">Please enter your business or trade name.</div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="qEmail" class="pz-form-label">Work Email Address <span class="text-danger">*</span></label>
+                            <input type="email" id="qEmail" name="Email" class="pz-form-control" placeholder="vikram@singhaniamobiles.com" required />
+                            <div class="text-danger fs-8 mt-1 d-none" id="qEmailErr">Please enter a valid email address.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="qPhone" class="pz-form-label">Phone / WhatsApp Number (Optional)</label>
+                            <input type="tel" id="qPhone" name="Phone" class="pz-form-control" placeholder="e.g. +91 98765 43210" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="qMessage" class="pz-form-label">Additional Message (Optional)</label>
+                        <textarea id="qMessage" name="Message" class="pz-form-control" rows="3" placeholder="Tell us about your business requirements or any questions you have..."></textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" id="qSubmitBtn" class="pz-btn-primary px-4 py-2 text-decoration-none d-flex align-items-center gap-2">
+                            <span id="qBtnText">Submit Inquiry</span>
+                            <i class="bi bi-send ms-1" id="qBtnIcon"></i>
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Dedicated Confirmation State (Replaces form upon success) -->
+                <div id="quoteModalSuccessState" class="d-none text-center py-4 px-2">
+                    <div class="mb-3">
+                        <div class="d-inline-flex align-items-center justify-content-center bg-success bg-opacity-10 text-success rounded-circle" style="width: 72px; height: 72px;">
+                            <i class="bi bi-check-circle-fill text-success" style="font-size: 2.5rem;"></i>
+                        </div>
+                    </div>
+                    <h4 class="fw-bold text-dark mb-2">We Received Your Custom SIMS Request</h4>
+                    <p class="text-secondary fs-7 mb-4 mx-auto" style="max-width: 480px; line-height: 1.6;">
+                        Thank you for your interest in SIMS! We have received your custom package inquiry. Our team will review your requirements and contact you regarding the next steps.
+                    </p>
+
+                    <div class="p-3 bg-light rounded-3 border d-inline-block text-start mb-4" style="min-width: 300px;">
+                        <div class="fs-9 text-uppercase text-muted fw-bold mb-1">Inquiry Reference Number</div>
+                        <div class="fs-4 fw-bold font-mono text-primary" id="mSuccessRef">INQ-CP-XXXXXXXX-XXXX</div>
+                        <div class="fs-9 text-muted mt-1">A confirmation email has been dispatched to your work email address.</div>
+                    </div>
+
+                    <div class="d-flex justify-content-center">
+                        <button type="button" class="btn btn-outline-secondary px-4 py-2" data-bs-dismiss="modal">
+                            <i class="bi bi-x-lg me-1"></i> Close
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
+        // ==========================================
+        // Custom Package Calculator Logic & Configuration
+        // ==========================================
+        const customPricingConfig = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(customPricingConfig));
+
+        function getNumVal(id, fallback) {
+            const el = document.getElementById(id);
+            if (!el) return fallback;
+            const parsed = parseInt(el.value, 10);
+            return isNaN(parsed) ? fallback : Math.max(0, parsed);
+        }
+
+        // Two-way synchronization between Range Slider and Numeric Input
+        function syncFromRange(key) {
+            const rangeEl = document.getElementById('calc' + key + 'Range');
+            const numEl = document.getElementById('calc' + key);
+            if (!rangeEl || !numEl) return;
+            numEl.value = rangeEl.value;
+            calculateLiveEstimate();
+        }
+
+        function syncFromNumber(key) {
+            const rangeEl = document.getElementById('calc' + key + 'Range');
+            const numEl = document.getElementById('calc' + key);
+            if (!rangeEl || !numEl) return;
+            const val = parseInt(numEl.value, 10);
+            if (!isNaN(val)) {
+                const min = parseInt(rangeEl.min, 10) || 0;
+                const max = parseInt(rangeEl.max, 10) || 1000000;
+                rangeEl.value = Math.min(Math.max(val, min), max);
+            }
+            calculateLiveEstimate();
+        }
+
+        function validateAndClamp(key) {
+            const rangeEl = document.getElementById('calc' + key + 'Range');
+            const numEl = document.getElementById('calc' + key);
+            if (!rangeEl || !numEl) return;
+            const min = parseInt(rangeEl.min, 10) || 0;
+            const max = parseInt(rangeEl.max, 10) || 1000000;
+            let val = parseInt(numEl.value, 10);
+            if (isNaN(val) || val < min) {
+                val = min;
+            } else if (val > max) {
+                val = max;
+            }
+            numEl.value = val;
+            rangeEl.value = val;
+            calculateLiveEstimate();
+        }
+
+        function calculateLiveEstimate() {
+            if (!customPricingConfig) return;
+
+            const cfg = customPricingConfig;
+            const admins = getNumVal('calcAdmins', 2);
+            const employees = getNumVal('calcEmployees', 5);
+            const products = getNumVal('calcProducts', 1000);
+            const suppliers = getNumVal('calcSuppliers', 20);
+
+            // Unit costs
+            const basePrice = Number(cfg.BaseMonthlyPrice ?? cfg.baseMonthlyPrice ?? 0);
+            const adminUnitPrice = Number(cfg.AdminUnitPrice ?? cfg.adminUnitPrice ?? 0);
+            const employeeUnitPrice = Number(cfg.EmployeeUnitPrice ?? cfg.employeeUnitPrice ?? 0);
+            const supplierUnitPrice = Number(cfg.SupplierUnitPrice ?? cfg.supplierUnitPrice ?? 0);
+
+            const adminCost = admins * adminUnitPrice;
+            const employeeCost = employees * employeeUnitPrice;
+            const supplierCost = suppliers * supplierUnitPrice;
+
+            // Product pricing (Tiered vs PerUnit)
+            let productCost = 0;
+            let appliedTierDesc = '';
+            const pricingModel = (cfg.ProductPricingModel ?? cfg.productPricingModel ?? 'Tiered').toString();
+            const tiers = cfg.ProductTiers ?? cfg.productTiers ?? [];
+
+            if (pricingModel.toLowerCase() === 'tiered' && tiers && tiers.length > 0) {
+                const sortedTiers = [...tiers].sort((a, b) => Number(a.MaxProducts ?? a.maxProducts ?? 0) - Number(b.MaxProducts ?? b.maxProducts ?? 0));
+                let matchedTier = sortedTiers.find(t => products <= Number(t.MaxProducts ?? t.maxProducts ?? 0)) || sortedTiers[sortedTiers.length - 1];
+                const flatPrice = Number(matchedTier.FlatPrice ?? matchedTier.flatPrice ?? 0);
+                const perUnitRate = Number(matchedTier.PerUnitRate ?? matchedTier.perUnitRate ?? 0);
+                productCost = flatPrice + (products * perUnitRate);
+                appliedTierDesc = `Tier: ${matchedTier.TierName ?? matchedTier.tierName ?? 'Matched Tier'}`;
+                if (perUnitRate > 0) {
+                    appliedTierDesc += ` (₹${flatPrice} flat + ₹${perUnitRate}/unit)`;
+                }
+            } else {
+                const productUnitPrice = Number(cfg.ProductUnitPrice ?? cfg.productUnitPrice ?? 0);
+                productCost = products * productUnitPrice;
+                appliedTierDesc = `₹${productUnitPrice} per product unit`;
+            }
+
+            // Monthly & Yearly total (All SIMS modules included by default)
+            const monthlyTotal = Math.max(0, basePrice + adminCost + employeeCost + productCost + supplierCost);
+            const annualDiscount = Number(cfg.AnnualDiscountPercent ?? cfg.annualDiscountPercent ?? 0);
+            const discountMult = 1 - (Math.min(Math.max(annualDiscount, 0), 100) / 100);
+            const yearlyTotal = Math.max(0, Math.round(monthlyTotal * 12 * discountMult));
+
+            // Update UI prices
+            const monthlyEl = document.getElementById('calcMonthlyVal');
+            if (monthlyEl) monthlyEl.innerText = Math.round(monthlyTotal).toLocaleString('en-IN');
+            const yearlyEl = document.getElementById('calcYearlyVal');
+            if (yearlyEl) yearlyEl.innerText = Math.round(yearlyTotal).toLocaleString('en-IN');
+
+            // Update Breakdown items
+            const adminCostEl = document.getElementById('calcAdminCost');
+            if (adminCostEl) adminCostEl.innerText = `₹${Math.round(adminCost).toLocaleString('en-IN')}`;
+            const empCostEl = document.getElementById('calcEmployeeCost');
+            if (empCostEl) empCostEl.innerText = `₹${Math.round(employeeCost).toLocaleString('en-IN')}`;
+            const prodCostEl = document.getElementById('calcProductCost');
+            if (prodCostEl) prodCostEl.innerText = `₹${Math.round(productCost).toLocaleString('en-IN')}`;
+            const tierExpEl = document.getElementById('calcTierExplanation');
+            if (tierExpEl) tierExpEl.innerText = appliedTierDesc;
+            const suppCostEl = document.getElementById('calcSupplierCost');
+            if (suppCostEl) suppCostEl.innerText = `₹${Math.round(supplierCost).toLocaleString('en-IN')}`;
+
+            // Update Badges / Pills
+            const pillAdmins = document.getElementById('pillAdmins');
+            if (pillAdmins) pillAdmins.innerText = `${admins.toLocaleString('en-IN')} Admins`;
+            const pillEmployees = document.getElementById('pillEmployees');
+            if (pillEmployees) pillEmployees.innerText = `${employees.toLocaleString('en-IN')} Staff`;
+            const pillProducts = document.getElementById('pillProducts');
+            if (pillProducts) pillProducts.innerText = `${products.toLocaleString('en-IN')} Products`;
+            const pillSuppliers = document.getElementById('pillSuppliers');
+            if (pillSuppliers) pillSuppliers.innerText = `${suppliers.toLocaleString('en-IN')} Suppliers`;
+            const pillModules = document.getElementById('pillModules');
+            if (pillModules) {
+                pillModules.innerHTML = '<i class="bi bi-check-all me-1"></i>All SIMS Modules Included';
+            }
+        }
+
+        function openCustomQuoteModal() {
+            // Transfer current quantities to hidden form inputs
+            const admins = getNumVal('calcAdmins', 2);
+            const employees = getNumVal('calcEmployees', 5);
+            const products = getNumVal('calcProducts', 1000);
+            const suppliers = getNumVal('calcSuppliers', 20);
+
+            const qAdmin = document.getElementById('qAdminCount');
+            if (qAdmin) qAdmin.value = admins;
+            const qEmp = document.getElementById('qEmployeeCount');
+            if (qEmp) qEmp.value = employees;
+            const qProd = document.getElementById('qProductCount');
+            if (qProd) qProd.value = products;
+            const qSupp = document.getElementById('qSupplierCount');
+            if (qSupp) qSupp.value = suppliers;
+            const qDev = document.getElementById('qDeviceCount');
+            if (qDev) qDev.value = 0;
+
+            // Transfer all platform modules automatically (all included)
+            const wrap = document.getElementById('qHiddenFeaturesWrap');
+            if (wrap) {
+                wrap.innerHTML = '';
+                const featList = (typeof rawAllFeatures !== 'undefined' && rawAllFeatures) ? rawAllFeatures : [];
+                featList.forEach(f => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'SelectedFeatureKeys';
+                    input.value = f.key || f.FeatureKey;
+                    wrap.appendChild(input);
+                });
+            }
+
+            // Reset form view, confirmation state and alerts
+            const formEl = document.getElementById('customQuoteForm');
+            if (formEl) formEl.style.display = 'block';
+
+            const successState = document.getElementById('quoteModalSuccessState');
+            if (successState) successState.classList.add('d-none');
+
+            const btn = document.getElementById('qSubmitBtn');
+            if (btn) {
+                btn.disabled = false;
+                btn.style.display = '';
+                const btnText = document.getElementById('qBtnText');
+                if (btnText) btnText.innerText = 'Submit Inquiry';
+                const btnIcon = document.getElementById('qBtnIcon');
+                if (btnIcon) btnIcon.className = 'bi bi-send ms-1';
+            }
+
+            const alertBox = document.getElementById('quoteModalAlert');
+            if (alertBox) {
+                alertBox.className = 'd-none alert mb-3 fs-7 py-3 px-3 rounded-2';
+                alertBox.innerHTML = '';
+            }
+
+            const modalEl = document.getElementById('customQuoteModal');
+            if (modalEl) {
+                const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                bsModal.show();
+            }
+        }
+
         const rawPackages = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(p => new {
             id = p.Id,
             name = p.Name,
@@ -1006,6 +1653,92 @@
                     });
                 }, { passive: true });
             });
+
+            // 4. Custom Package Calculator Initial Calculation & Quote Form Handling
+            calculateLiveEstimate();
+
+            const quoteForm = document.getElementById('customQuoteForm');
+            if (quoteForm) {
+                quoteForm.addEventListener('submit', async function (e) {
+                    e.preventDefault();
+
+                    const alertBox = document.getElementById('quoteModalAlert');
+                    const btn = document.getElementById('qSubmitBtn');
+                    const btnText = document.getElementById('qBtnText');
+                    const btnIcon = document.getElementById('qBtnIcon');
+
+                    const nameInput = document.getElementById('qContactName');
+                    const bizInput = document.getElementById('qBusinessName');
+                    const emailInput = document.getElementById('qEmail');
+
+                    let hasErr = false;
+                    const nameErr = document.getElementById('qContactNameErr');
+                    if (!nameInput.value.trim()) {
+                        nameErr.classList.remove('d-none');
+                        hasErr = true;
+                    } else {
+                        nameErr.classList.add('d-none');
+                    }
+
+                    const bizErr = document.getElementById('qBusinessNameErr');
+                    if (!bizInput.value.trim()) {
+                        bizErr.classList.remove('d-none');
+                        hasErr = true;
+                    } else {
+                        bizErr.classList.add('d-none');
+                    }
+
+                    const emailErr = document.getElementById('qEmailErr');
+                    const emailVal = emailInput.value.trim();
+                    const hasValidEmail = emailVal.length >= 5 && emailVal.indexOf('@@') > 0 && emailVal.lastIndexOf('.') > emailVal.indexOf('@@') + 1 && !emailVal.includes(' ');
+                    if (!hasValidEmail) {
+                        emailErr.classList.remove('d-none');
+                        hasErr = true;
+                    } else {
+                        emailErr.classList.add('d-none');
+                    }
+
+                    if (hasErr) return;
+
+                    btn.disabled = true;
+                    btnText.innerText = 'Submitting Inquiry...';
+                    btnIcon.className = 'spinner-border spinner-border-sm ms-1';
+
+                    try {
+                        const formData = new FormData(quoteForm);
+                        const response = await fetch('@Url.Action("SubmitCustomQuote", "Landing")', {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const data = await response.json();
+
+                        if (data.success) {
+                            quoteForm.style.display = 'none';
+                            alertBox.className = 'd-none alert mb-3 fs-7 py-3 px-3 rounded-2';
+                            alertBox.innerHTML = '';
+
+                            const successState = document.getElementById('quoteModalSuccessState');
+                            if (successState) {
+                                document.getElementById('mSuccessRef').innerText = data.inquiryNumber;
+                                successState.classList.remove('d-none');
+                            }
+                            quoteForm.reset();
+                        } else {
+                            alertBox.className = 'alert alert-danger mb-3 fs-7 py-3 px-3 rounded-2';
+                            alertBox.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> ${data.message || 'An error occurred while submitting your custom quote inquiry.'}`;
+                            btn.disabled = false;
+                            btnText.innerText = 'Submit Inquiry';
+                            btnIcon.className = 'bi bi-send ms-1';
+                        }
+                    } catch (err) {
+                        alertBox.className = 'alert alert-danger mb-3 fs-7 py-3 px-3 rounded-2';
+                        alertBox.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-2"></i> A network or server error occurred. Please try again.';
+                        btn.disabled = false;
+                        btnText.innerText = 'Submit Inquiry';
+                        btnIcon.className = 'bi bi-send ms-1';
+                    }
+                });
+            }
         });
     </script>
 }

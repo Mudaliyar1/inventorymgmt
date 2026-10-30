@@ -1,0 +1,1162 @@
+@model IEnumerable<InventoryManagementSystem.Models.SaaSPaymentTransaction>
+@{
+    ViewData["Title"] = "Revenue & Subscription Payments — SaaS Admin";
+    Layout = "_Layout";
+    var metrics = (InventoryManagementSystem.Interfaces.RevenueMetricsViewModel)ViewBag.Metrics;
+    var platformSettings = (InventoryManagementSystem.Models.PlatformSettings)ViewBag.PlatformSettings;
+    var packages = (List<InventoryManagementSystem.Models.SubscriptionPackage>)ViewBag.Packages ?? new List<InventoryManagementSystem.Models.SubscriptionPackage>();
+    var currentStatus = (string)ViewBag.CurrentStatus ?? "All";
+    var currentActivationStatus = (string)ViewBag.CurrentActivationStatus ?? "All";
+    var currentBillingCycle = (string)ViewBag.CurrentBillingCycle ?? "All";
+    var currentPackageId = (string)ViewBag.CurrentPackageId ?? "All";
+    var currentSearch = (string)ViewBag.CurrentSearch ?? string.Empty;
+    var fromDate = (string)ViewBag.FromDate ?? string.Empty;
+    var toDate = (string)ViewBag.ToDate ?? string.Empty;
+    var activeTab = (string)(ViewBag.ActiveTab ?? "all");
+    var currentPage = (int)(ViewBag.CurrentPage ?? 1);
+    var totalPages = (int)(ViewBag.TotalPages ?? 1);
+    var totalCount = (long)(ViewBag.TotalCount ?? 0);
+}
+
+<style>
+    .rev-card {
+        background: rgba(15, 23, 42, 0.75);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .rev-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(255, 255, 255, 0.18);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+    .stat-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+    }
+    .table-dark-custom {
+        --bs-table-bg: transparent;
+        --bs-table-hover-bg: rgba(255, 255, 255, 0.03);
+        border-color: rgba(255, 255, 255, 0.08);
+    }
+    .table-dark-custom th {
+        background: rgba(15, 23, 42, 0.95) !important;
+        color: #94a3b8 !important;
+        font-weight: 700;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        padding: 14px 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .table-dark-custom td {
+        padding: 14px 12px;
+        color: #e2e8f0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        vertical-align: middle;
+    }
+    .filter-panel {
+        background: rgba(15, 23, 42, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 14px;
+    }
+    .copy-btn {
+        background: none;
+        border: none;
+        color: #64748b;
+        cursor: pointer;
+        padding: 0 4px;
+        transition: color 0.15s;
+    }
+    .copy-btn:hover {
+        color: #38bdf8;
+    }
+    .nav-tabs-custom {
+        border-bottom: 2px solid rgba(255, 255, 255, 0.08);
+        gap: 8px;
+    }
+    .nav-tabs-custom .nav-link {
+        color: #94a3b8;
+        border: none;
+        border-bottom: 2px solid transparent;
+        background: transparent;
+        padding: 10px 16px;
+        font-weight: 600;
+        font-size: 13px;
+        border-radius: 8px 8px 0 0;
+        transition: all 0.2s ease;
+        text-decoration: none;
+    }
+    .nav-tabs-custom .nav-link:hover {
+        color: #f1f5f9;
+        background: rgba(255, 255, 255, 0.03);
+    }
+    .nav-tabs-custom .nav-link.active {
+        color: #38bdf8;
+        background: rgba(56, 189, 248, 0.08);
+        border-bottom: 2px solid #38bdf8;
+    }
+    .timeline-item {
+        position: relative;
+        padding-left: 24px;
+        margin-bottom: 16px;
+        border-left: 2px solid rgba(255, 255, 255, 0.12);
+    }
+    .timeline-item::before {
+        content: "";
+        position: absolute;
+        left: -6px;
+        top: 2px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #38bdf8;
+    }
+</style>
+
+<div class="pz-page-wrap py-4">
+    <div class="container-fluid px-lg-4">
+        <!-- Breadcrumb & Header -->
+        <nav aria-label="breadcrumb" class="mb-3">
+            <ol class="breadcrumb small">
+                <li class="breadcrumb-item"><a href="@Url.Action("Dashboard", "PlatformAdmin")" class="text-info text-decoration-none"><i class="bi bi-speedometer2 me-1"></i>SaaS Admin</a></li>
+                <li class="breadcrumb-item active text-secondary" aria-current="page">Revenue &amp; Payments</li>
+            </ol>
+        </nav>
+
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="stat-pill" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">
+                        <i class="bi bi-shield-check"></i> Razorpay Reconciled
+                    </span>
+                    <span class="text-secondary small font-mono">IST (UTC+05:30)</span>
+                </div>
+                <h2 class="fw-bold mb-1 text-light">Revenue Management &amp; Payment Recovery</h2>
+                <p class="text-secondary small mb-0">Separate temporary checkouts, audit verified revenue, manage configurable retention, and recover paid-but-unactivated customer workspaces.</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <form method="post" action="@Url.Action("RunBatchReconciliation", "PlatformAdmin")" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-info btn-sm d-flex align-items-center gap-2 px-3 py-2 shadow-sm">
+                        <i class="bi bi-arrow-repeat"></i> Run Reconciliation
+                    </button>
+                </form>
+                <form method="post" action="@Url.Action("RunRetentionCleanup", "PlatformAdmin")" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-secondary btn-sm d-flex align-items-center gap-2 px-3 py-2 shadow-sm" onclick="return confirm('Run retention cleanup now? Only safe expired unconfirmed attempts will be archived.');">
+                        <i class="bi bi-trash3"></i> Run Retention Cleanup
+                    </button>
+                </form>
+                <a href="@Url.Action("PendingApprovals", "PlatformAdmin")" class="btn btn-outline-warning btn-sm d-flex align-items-center gap-2 px-3 py-2">
+                    <i class="bi bi-clock-history"></i> Trial Approvals Queue
+                </a>
+            </div>
+        </div>
+
+        @if (metrics != null && metrics.NeedsActivationCount > 0)
+        {
+            <div class="alert alert-warning d-flex align-items-center justify-content-between p-3 rounded-3 mb-4 shadow-sm border border-warning" style="background: rgba(245, 158, 11, 0.12);">
+                <div class="d-flex align-items-center gap-3">
+                    <i class="bi bi-exclamation-triangle-fill fs-3 text-warning"></i>
+                    <div>
+                        <h6 class="mb-0 fw-bold text-warning">Permanent Recovery Queue: @metrics.NeedsActivationCount Paid Transaction(s) Awaiting Activation</h6>
+                        <span class="small text-light opacity-75">Razorpay confirmed payment success, but customer workspace activation requires attention. These records are kept permanently until resolved.</span>
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="@Url.Action("Revenue", "PlatformAdmin", new { tab = "recovery" })" class="btn btn-warning btn-sm fw-bold px-3">
+                        <i class="bi bi-tools me-1"></i> Open Recovery Queue
+                    </a>
+                </div>
+            </div>
+        }
+
+        <!-- Revenue Metrics 8-Card Grid -->
+        <div class="row g-3 mb-4">
+            <!-- Confirmed Revenue -->
+            <div class="col-sm-6 col-xl-3">
+                <div class="rev-card p-3 h-100" style="border-left: 4px solid #10b981 !important;">
+                    <div class="text-secondary small text-uppercase fw-semibold font-mono">Confirmed Revenue (Paid)</div>
+                    <h3 class="fw-bold my-1 font-mono" style="color: #34d399;">₹@(metrics?.TotalVerifiedRevenue.ToString("N2") ?? "0.00")</h3>
+                    <span class="text-secondary small">Excludes abandoned / pending checkouts</span>
+                </div>
+            </div>
+            <!-- Today's Revenue -->
+            <div class="col-sm-6 col-xl-3">
+                <div class="rev-card p-3 h-100" style="border-left: 4px solid #38bdf8 !important;">
+                    <div class="text-secondary small text-uppercase fw-semibold font-mono">Today's Revenue</div>
+                    <h3 class="fw-bold my-1 font-mono" style="color: #38bdf8;">₹@(metrics?.TodayRevenue.ToString("N2") ?? "0.00")</h3>
+                    <span class="text-secondary small">Confirmed today (IST)</span>
+                </div>
+            </div>
+            <!-- This Month's Revenue -->
+            <div class="col-sm-6 col-xl-3">
+                <div class="rev-card p-3 h-100" style="border-left: 4px solid #818cf8 !important;">
+                    <div class="text-secondary small text-uppercase fw-semibold font-mono">This Month's Revenue</div>
+                    <h3 class="fw-bold my-1 font-mono" style="color: #818cf8;">₹@(metrics?.ThisMonthRevenue.ToString("N2") ?? "0.00")</h3>
+                    <span class="text-secondary small">Current calendar month (IST)</span>
+                </div>
+            </div>
+            <!-- Needs Activation (Recovery Queue) -->
+            <div class="col-sm-6 col-xl-3">
+                <div class="rev-card p-3 h-100" style="border-left: 4px solid @(metrics?.NeedsActivationCount > 0 ? "#ef4444" : "#64748b") !important;">
+                    <div class="text-secondary small text-uppercase fw-semibold font-mono">Needs Activation</div>
+                    <h3 class="fw-bold my-1 font-mono @(metrics?.NeedsActivationCount > 0 ? "text-danger" : "text-secondary")">@(metrics?.NeedsActivationCount ?? 0)</h3>
+                    <span class="text-secondary small">Paid but unactivated (Permanent)</span>
+                </div>
+            </div>
+
+            <!-- Successful Payments Count -->
+            <div class="col-sm-6 col-xl-3">
+                <div class="rev-card p-3 h-100" style="border-left: 4px solid #10b981 !important;">
+                    <div class="text-secondary small text-uppercase fw-semibold font-mono">Confirmed Payments</div>
+                    <h3 class="fw-bold my-1 font-mono text-light">@(metrics?.SuccessfulPaymentCount ?? 0)</h3>
+                    <span class="text-success small fw-semibold"><i class="bi bi-check-circle me-1"></i>Verified &amp; Permanent</span>
+                </div>
+            </div>
+            <!-- Recent Checkout Attempts -->
+            <div class="col-sm-6 col-xl-3">
+                <div class="rev-card p-3 h-100" style="border-left: 4px solid #f59e0b !important;">
+                    <div class="text-secondary small text-uppercase fw-semibold font-mono">Recent Checkouts</div>
+                    <h3 class="fw-bold my-1 font-mono text-warning">@(metrics?.RecentCheckoutsCount ?? 0)</h3>
+                    <span class="text-secondary small">Temporary within retention window</span>
+                </div>
+            </div>
+            <!-- Archived / Expired Attempts -->
+            <div class="col-sm-6 col-xl-3">
+                <div class="rev-card p-3 h-100" style="border-left: 4px solid #64748b !important;">
+                    <div class="text-secondary small text-uppercase fw-semibold font-mono">Archived Attempts</div>
+                    <h3 class="fw-bold my-1 font-mono text-secondary">@(metrics?.ArchivedAttemptsCount ?? 0)</h3>
+                    <span class="text-secondary small">Retention expired (Auditable)</span>
+                </div>
+            </div>
+            <!-- Net Confirmed Revenue -->
+            <div class="col-sm-6 col-xl-3">
+                <div class="rev-card p-3 h-100" style="border-left: 4px solid #06b6d4 !important;">
+                    <div class="text-secondary small text-uppercase fw-semibold font-mono">Net Confirmed Revenue</div>
+                    <h3 class="fw-bold my-1 font-mono" style="color: #22d3ee;">₹@(metrics?.NetRevenue.ToString("N2") ?? "0.00")</h3>
+                    <span class="text-secondary small">Net after refunds</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Navigation Tabs -->
+        <ul class="nav nav-tabs nav-tabs-custom mb-4" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link @(activeTab == "all" ? "active" : "")" href="@Url.Action("Revenue", "PlatformAdmin", new { tab = "all" })">
+                    <i class="bi bi-table me-1"></i> All Active Transactions
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @(activeTab == "recovery" ? "active" : "") d-flex align-items-center gap-2" href="@Url.Action("Revenue", "PlatformAdmin", new { tab = "recovery" })">
+                    <i class="bi bi-shield-exclamation text-danger"></i> Needs Activation / Recovery
+                    @if (metrics?.NeedsActivationCount > 0)
+                    {
+                        <span class="badge bg-danger rounded-pill">@metrics.NeedsActivationCount</span>
+                    }
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @(activeTab == "confirmed" ? "active" : "") d-flex align-items-center gap-2" href="@Url.Action("Revenue", "PlatformAdmin", new { tab = "confirmed" })">
+                    <span><i class="bi bi-check-circle-fill text-success me-1"></i> Confirmed Revenue (Paid)</span>
+                    <span class="badge bg-success bg-opacity-25 text-success rounded-pill font-mono">@(metrics?.SuccessfulPaymentCount ?? 0)</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @(activeTab == "recent" ? "active" : "") d-flex align-items-center gap-2" href="@Url.Action("Revenue", "PlatformAdmin", new { tab = "recent" })">
+                    <span><i class="bi bi-hourglass-split text-warning me-1"></i> Recent Checkout Attempts</span>
+                    <span class="badge bg-warning bg-opacity-25 text-warning rounded-pill font-mono">@(metrics?.RecentCheckoutsCount ?? 0)</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @(activeTab == "archived" ? "active" : "") d-flex align-items-center gap-2" href="@Url.Action("Revenue", "PlatformAdmin", new { tab = "archived" })">
+                    <span><i class="bi bi-archive text-secondary me-1"></i> Archived / Expired Attempts</span>
+                    <span class="badge bg-secondary bg-opacity-25 text-light rounded-pill font-mono">@(metrics?.ArchivedAttemptsCount ?? 0)</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link @(activeTab == "refunds" ? "active" : "")" href="@Url.Action("Revenue", "PlatformAdmin", new { tab = "refunds" })">
+                    <i class="bi bi-arrow-counterclockwise text-info me-1"></i> Refunds &amp; Disputes
+                </a>
+            </li>
+            <li class="nav-item ms-auto">
+                <a class="nav-link @(activeTab == "settings" ? "active" : "")" href="@Url.Action("Revenue", "PlatformAdmin", new { tab = "settings" })">
+                    <i class="bi bi-gear-fill me-1"></i> Payment Recovery Settings
+                </a>
+            </li>
+        </ul>
+
+        @if (activeTab == "settings")
+        {
+            <!-- ================= PAYMENT RECOVERY SETTINGS VIEW ================= -->
+            <div class="row g-4 mb-5">
+                <div class="col-lg-8">
+                    <div class="rev-card p-4 h-100 shadow">
+                        <div class="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom border-secondary border-opacity-25">
+                            <i class="bi bi-sliders text-info fs-5"></i>
+                            <h5 class="mb-0 fw-bold text-light">Payment Recovery &amp; Temporary Retention Policies</h5>
+                        </div>
+                        <p class="text-secondary small mb-4">
+                            Configure how long uncompleted, abandoned, or unresolved checkout attempts remain visible in the active dashboard before safe archiving.
+                        </p>
+
+                        <form method="post" action="@Url.Action("SavePaymentRecoverySettings", "PlatformAdmin")">
+                            @Html.AntiForgeryToken()
+
+                            <!-- Temporary Checkout Retention Duration & Unit -->
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label text-light fw-bold small">
+                                        Temporary Checkout Retention Duration
+                                    </label>
+                                    <div class="input-group">
+                                        <input type="number" name="retentionValue" class="form-control bg-dark border-secondary text-light py-2" min="1" max="365" value="@(platformSettings?.TemporaryCheckoutRetentionValue ?? 3)" required />
+                                        <select name="retentionUnit" class="form-select bg-dark border-secondary text-light py-2" style="max-width: 140px;">
+                                            <option value="Minutes" selected="@(platformSettings?.TemporaryCheckoutRetentionUnit == "Minutes")">Minutes</option>
+                                            <option value="Hours" selected="@(platformSettings?.TemporaryCheckoutRetentionUnit == "Hours" || string.IsNullOrEmpty(platformSettings?.TemporaryCheckoutRetentionUnit))">Hours</option>
+                                            <option value="Days" selected="@(platformSettings?.TemporaryCheckoutRetentionUnit == "Days")">Days</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-text text-muted small">Standard choices: 30 minutes, 1 hour, 3 hours, 6 hours, 12 hours, 24 hours, or custom duration.</div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label text-light fw-bold small">
+                                        Pending Verification Retention (Hours)
+                                    </label>
+                                    <input type="number" name="pendingVerificationHours" class="form-control bg-dark border-secondary text-light py-2" min="1" max="168" value="@(platformSettings?.PendingVerificationRetentionHours ?? 24)" required />
+                                    <div class="form-text text-muted small">Window to poll and reconcile unconfirmed payment IDs with Razorpay API.</div>
+                                </div>
+                            </div>
+
+                            <!-- Reassurance Message Duration -->
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-6">
+                                    <label class="form-label text-light fw-bold small">
+                                        Customer Reassurance Alert Duration (Minutes)
+                                    </label>
+                                    <input type="number" name="messageDuration" class="form-control bg-dark border-secondary text-light py-2" min="5" max="1440" value="@(platformSettings?.CustomerReassuranceMessageDurationMinutes ?? 60)" required />
+                                    <div class="form-text text-muted small">Duration reassurance banners remain displayed when customer revisits after checkout dismissal.</div>
+                                </div>
+                            </div>
+
+                            <hr class="border-secondary border-opacity-25 my-4" />
+
+                            <!-- Toggles -->
+                            <h6 class="text-info fw-bold small text-uppercase font-mono mb-3">Policy Automation Controls</h6>
+
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" name="enableFollowUp" id="chkFollowUp" value="true" @(platformSettings?.EnableCustomerFollowUpMessages == true ? "checked" : "") />
+                                <label class="form-check-label text-light small fw-semibold" for="chkFollowUp">
+                                    Enable Blinkit-Style Customer Reassurance &amp; Follow-Up Alerts
+                                </label>
+                                <div class="text-secondary fs-8">Displays reassuring verification guidance if customer cancels checkout or returns without confirmed payment.</div>
+                            </div>
+
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" name="archiveBeforeCleanup" id="chkArchive" value="true" @(platformSettings?.ArchiveBeforeCleanup == true ? "checked" : "") />
+                                <label class="form-check-label text-light small fw-semibold" for="chkArchive">
+                                    Archive Temporary Records Before Cleanup (Preserve Audit Trail)
+                                </label>
+                                <div class="text-secondary fs-8">Retains expired checkout attempts in the Archived tab rather than permanently purging them.</div>
+                            </div>
+
+                            <div class="form-check form-switch mb-4">
+                                <input class="form-check-input" type="checkbox" name="autoRestoreLate" id="chkAutoRestore" value="true" @(platformSettings?.AutoRestoreLatePayments == true ? "checked" : "") />
+                                <label class="form-check-label text-light small fw-semibold" for="chkAutoRestore">
+                                    Auto-Restore Expired Attempts on Late Webhook / Payment Confirmation
+                                </label>
+                                <div class="text-secondary fs-8">If Razorpay confirms payment for an expired or archived checkout, automatically restore it to permanent history and activate workspace.</div>
+                            </div>
+
+                            <div class="d-flex justify-content-end gap-2 pt-3 border-top border-secondary border-opacity-25">
+                                <button type="submit" class="btn btn-primary fw-bold px-4 py-2 shadow">
+                                    <i class="bi bi-save me-1"></i> Save Recovery Settings
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Right Policy Guardrails Info Card -->
+                <div class="col-lg-4">
+                    <div class="rev-card p-4 h-100 shadow border-info">
+                        <div class="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom border-secondary border-opacity-25">
+                            <i class="bi bi-shield-check text-success fs-5"></i>
+                            <h6 class="mb-0 fw-bold text-light">Financial Safety Guardrails</h6>
+                        </div>
+
+                        <ul class="list-unstyled text-secondary small mb-4">
+                            <li class="py-2 d-flex align-items-start gap-2 border-bottom border-secondary border-opacity-10">
+                                <i class="bi bi-check-circle-fill text-success flex-shrink-0 mt-1"></i>
+                                <span><strong>Never deletes confirmed payments:</strong> Every verified Razorpay transaction is permanently archived in financial history.</span>
+                            </li>
+                            <li class="py-2 d-flex align-items-start gap-2 border-bottom border-secondary border-opacity-10">
+                                <i class="bi bi-check-circle-fill text-success flex-shrink-0 mt-1"></i>
+                                <span><strong>Never deletes paid-but-unactivated cases:</strong> If payment succeeded, the record stays permanently in Needs Activation until resolved.</span>
+                            </li>
+                            <li class="py-2 d-flex align-items-start gap-2 border-bottom border-secondary border-opacity-10">
+                                <i class="bi bi-check-circle-fill text-success flex-shrink-0 mt-1"></i>
+                                <span><strong>Clean Revenue Reporting:</strong> Only verified successful payments count towards Revenue. Temporary checkouts are never counted as revenue.</span>
+                            </li>
+                            <li class="py-2 d-flex align-items-start gap-2">
+                                <i class="bi bi-check-circle-fill text-success flex-shrink-0 mt-1"></i>
+                                <span><strong>Strict IST Business Timestamps:</strong> All retention timers, payment verifications, and state transitions use Indian Standard Time (UTC+05:30).</span>
+                            </li>
+                        </ul>
+
+                        <div class="p-3 rounded bg-dark border border-secondary border-opacity-25 text-center">
+                            <span class="text-secondary fs-8 d-block mb-2 font-mono">Current Retention Policy:</span>
+                            <span class="badge font-mono px-3 py-2 fs-7" style="background: rgba(14, 165, 233, 0.2); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.4);">
+                                @(platformSettings?.TemporaryCheckoutRetentionValue ?? 3) @(platformSettings?.TemporaryCheckoutRetentionUnit ?? "Hours")
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <!-- ================= TRANSACTIONS / RECOVERY TABLE VIEW ================= -->
+
+            <!-- Filter & Search Bar -->
+            <div class="filter-panel p-4 mb-4 shadow">
+                <div class="d-flex align-items-center justify-content-between mb-3 border-bottom border-secondary border-opacity-25 pb-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-funnel-fill text-info"></i>
+                        <h6 class="mb-0 fw-bold text-light">
+                            @if (activeTab == "recovery") { <span>Needs Activation / Payment Recovery Queue</span> }
+                            else if (activeTab == "confirmed") { <span>Confirmed Successful Payments</span> }
+                            else if (activeTab == "recent") { <span>Recent Active Checkout Attempts</span> }
+                            else if (activeTab == "archived") { <span>Archived &amp; Expired Checkout Attempts</span> }
+                            else if (activeTab == "refunds") { <span>Refunds &amp; Disputed Payments</span> }
+                            else { <span>All Active Transactions</span> }
+                        </h6>
+                    </div>
+                    <span class="badge font-mono bg-dark text-secondary border border-secondary border-opacity-50 px-2 py-1">
+                        Tab: @activeTab.ToUpper()
+                    </span>
+                </div>
+
+                <form method="get" action="@Url.Action("Revenue", "PlatformAdmin")" class="row g-3">
+                    <input type="hidden" name="tab" value="@activeTab" />
+                    <div class="col-lg-4 col-md-6">
+                        <label class="form-label small text-secondary fw-semibold mb-1">
+                            <i class="bi bi-search me-1 text-info"></i>Search Keywords
+                        </label>
+                        <input type="text" name="search" class="form-control form-control-sm bg-dark border-secondary text-light py-2" placeholder="Ref, Receipt #, Shop, Owner, Email, Razorpay ID..." value="@currentSearch" />
+                    </div>
+                    <div class="col-lg-2 col-md-3">
+                        <label class="form-label small text-secondary fw-semibold mb-1">Payment Status</label>
+                        <select name="status" class="form-select form-select-sm bg-dark border-secondary text-light py-2">
+                            <option value="All" selected="@(currentStatus == "All")">All Payment Statuses</option>
+                            <option value="Paid" selected="@(currentStatus == "Paid")">Paid</option>
+                            <option value="Pending" selected="@(currentStatus == "Pending")">Pending</option>
+                            <option value="Created" selected="@(currentStatus == "Created")">Created</option>
+                            <option value="Failed" selected="@(currentStatus == "Failed")">Failed</option>
+                            <option value="PaymentVerificationPending" selected="@(currentStatus == "PaymentVerificationPending")">Verification Pending</option>
+                            <option value="Refunded" selected="@(currentStatus == "Refunded")">Refunded</option>
+                            <option value="Cancelled" selected="@(currentStatus == "Cancelled")">Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-3">
+                        <label class="form-label small text-secondary fw-semibold mb-1">Activation Status</label>
+                        <select name="activationStatus" class="form-select form-select-sm bg-dark border-secondary text-light py-2">
+                            <option value="All" selected="@(currentActivationStatus == "All")">All Activation States</option>
+                            <option value="Activated" selected="@(currentActivationStatus == "Activated")">Activated</option>
+                            <option value="ActivationPending" selected="@(currentActivationStatus == "ActivationPending")">Activation Pending</option>
+                            <option value="Pending" selected="@(currentActivationStatus == "Pending")">Pending</option>
+                            <option value="Failed" selected="@(currentActivationStatus == "Failed")">Failed</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-3">
+                        <label class="form-label small text-secondary fw-semibold mb-1">Subscription Plan</label>
+                        <select name="packageId" class="form-select form-select-sm bg-dark border-secondary text-light py-2">
+                            <option value="All" selected="@(currentPackageId == "All")">All Packages</option>
+                            @foreach (var pkg in packages)
+                            {
+                                <option value="@pkg.Id" selected="@(currentPackageId == pkg.Id)">@pkg.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-3">
+                        <label class="form-label small text-secondary fw-semibold mb-1">Billing Cycle</label>
+                        <select name="billingCycle" class="form-select form-select-sm bg-dark border-secondary text-light py-2">
+                            <option value="All" selected="@(currentBillingCycle == "All")">All Billing Cycles</option>
+                            <option value="Monthly" selected="@(currentBillingCycle == "Monthly")">Monthly</option>
+                            <option value="Quarterly" selected="@(currentBillingCycle == "Quarterly")">Quarterly</option>
+                            <option value="Semi-Annual" selected="@(currentBillingCycle == "Semi-Annual")">Semi-Annual</option>
+                            <option value="Yearly" selected="@(currentBillingCycle == "Yearly")">Yearly</option>
+                        </select>
+                    </div>
+
+                    <div class="col-lg-3 col-md-4">
+                        <label class="form-label small text-secondary fw-semibold mb-1">
+                            <i class="bi bi-calendar-event me-1 text-info"></i>From Date
+                        </label>
+                        <input type="date" name="fromDate" class="form-control form-control-sm bg-dark border-secondary text-light py-2" value="@fromDate" />
+                    </div>
+                    <div class="col-lg-3 col-md-4">
+                        <label class="form-label small text-secondary fw-semibold mb-1">
+                            <i class="bi bi-calendar-event me-1 text-info"></i>To Date
+                        </label>
+                        <input type="date" name="toDate" class="form-control form-control-sm bg-dark border-secondary text-light py-2" value="@toDate" />
+                    </div>
+                    <div class="col-lg-6 col-md-4 d-flex align-items-end gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm px-4 py-2 fw-semibold d-flex align-items-center gap-2 shadow flex-grow-1 justify-content-center">
+                            <i class="bi bi-funnel-fill"></i> Apply Filter
+                        </button>
+                        <a href="@Url.Action("Revenue", "PlatformAdmin", new { tab = activeTab })" class="btn btn-outline-secondary btn-sm px-3 py-2 fw-semibold">
+                            <i class="bi bi-x-circle me-1"></i> Reset
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Table Card -->
+            <div class="rev-card shadow-lg mb-5 overflow-hidden">
+                <div class="p-3 px-4 border-bottom border-secondary border-opacity-25 d-flex flex-wrap justify-content-between align-items-center gap-2" style="background: rgba(15, 23, 42, 0.9);">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-receipt-cutoff text-primary fs-5"></i>
+                        <h5 class="mb-0 fw-bold text-light">Transactions (@totalCount)</h5>
+                    </div>
+                    <span class="text-secondary small font-mono">
+                        <i class="bi bi-clock me-1 text-info"></i>All business timestamps displayed in IST (UTC+05:30)
+                    </span>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-dark-custom align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th class="ps-4">Date &amp; Time (IST)</th>
+                                <th>Reference &amp; Receipt</th>
+                                <th>Shop &amp; Customer</th>
+                                <th>Package &amp; Term</th>
+                                <th>Amount (₹)</th>
+                                <th>Payment Status</th>
+                                <th>Activation</th>
+                                @if (activeTab == "recovery")
+                                {
+                                    <th>Awaiting Duration</th>
+                                }
+                                <th class="text-end pe-4">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model != null && Model.Any())
+                            {
+                                foreach (var item in Model)
+                                {
+                                    var txnJson = System.Text.Json.JsonSerializer.Serialize(new {
+                                        id = item.Id,
+                                        refNo = item.TransactionRef,
+                                        receipt = item.ReceiptNumber,
+                                        rzpOrder = item.RazorpayOrderId,
+                                        rzpPayment = item.RazorpayPaymentId,
+                                        rzpSig = !string.IsNullOrEmpty(item.RazorpaySignature) ? "Verified / Present" : "Not Provided",
+                                        shop = item.ShopName,
+                                        tenantId = item.TenantId,
+                                        customer = item.CustomerName,
+                                        email = item.CustomerEmail,
+                                        phone = item.CustomerPhone,
+                                        pkg = item.PackageName,
+                                        cycle = item.BillingCycle,
+                                        duration = item.DurationMonths,
+                                        amount = item.Amount.ToString("N2"),
+                                        amountPaise = item.AmountInPaise,
+                                        currency = item.Currency,
+                                        gateway = item.GatewayProvider,
+                                        paymentStatus = item.PaymentStatus,
+                                        activationStatus = item.ActivationStatus,
+                                        purpose = item.PaymentPurpose,
+                                        isArchived = item.IsArchived,
+                                        archiveReason = item.ArchiveReason,
+                                        isCustomerCancelled = item.IsCustomerCancelled,
+                                        isManuallyResolved = item.IsManuallyResolved,
+                                        resolutionNotes = item.ResolutionNotes,
+                                        createdIst = item.CreatedDate.ToPolicyIstDisplayString(),
+                                        verifiedIst = item.VerifiedDate.HasValue ? item.VerifiedDate.Value.ToPolicyIstDisplayString() : "Pending",
+                                        activatedIst = item.ActivationDate.HasValue ? item.ActivationDate.Value.ToPolicyIstDisplayString() : "Pending",
+                                        receiptIssuedIst = item.ReceiptIssuedAt.HasValue ? item.ReceiptIssuedAt.Value.ToPolicyIstDisplayString() : "Pending",
+                                        failureReason = item.FailureReason ?? string.Empty,
+                                        processingDetails = item.SafeProcessingDetails ?? string.Empty,
+                                        reconciliationAttempts = item.ReconciliationAttempts,
+                                        transitions = item.StateTransitions.Select(st => new {
+                                            ist = st.TimestampIst,
+                                            from = st.FromStatus,
+                                            to = st.ToStatus,
+                                            trigger = st.Trigger,
+                                            details = st.Details
+                                        }).ToList()
+                                    });
+
+                                    <tr>
+                                        <!-- Date (IST) -->
+                                        <td class="ps-4">
+                                            <div class="fw-semibold text-light font-mono fs-7">@item.CreatedDate.ToPolicyIstDisplayString()</div>
+                                            @if (item.VerifiedDate.HasValue)
+                                            {
+                                                <div class="text-success small font-mono fs-8"><i class="bi bi-check-all me-1"></i>Paid: @item.VerifiedDate.Value.ToPolicyIstDisplayString()</div>
+                                            }
+                                            else
+                                            {
+                                                <div class="text-secondary small fs-8">Awaiting Payment</div>
+                                            }
+                                        </td>
+                                        <!-- Reference & Receipt -->
+                                        <td>
+                                            <div class="d-flex align-items-center gap-1">
+                                                <span class="font-mono fw-bold text-info fs-7">@item.TransactionRef</span>
+                                                <button type="button" class="copy-btn" onclick="copyToClipboard('@item.TransactionRef')" title="Copy Reference"><i class="bi bi-clipboard"></i></button>
+                                            </div>
+                                            @if (!string.IsNullOrEmpty(item.ReceiptNumber))
+                                            {
+                                                <div class="mt-1">
+                                                    <span class="badge font-mono" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">
+                                                        <i class="bi bi-file-earmark-check me-1"></i>@item.ReceiptNumber
+                                                    </span>
+                                                </div>
+                                            }
+                                            @if (!string.IsNullOrEmpty(item.RazorpayPaymentId))
+                                            {
+                                                <div class="text-secondary font-mono fs-8 mt-1">@item.RazorpayPaymentId</div>
+                                            }
+                                            @if (item.IsArchived)
+                                            {
+                                                <div class="badge bg-secondary font-mono fs-8 mt-1">Archived</div>
+                                            }
+                                        </td>
+                                        <!-- Customer & Shop -->
+                                        <td>
+                                            <div class="fw-bold text-light">@item.ShopName</div>
+                                            <div class="text-secondary fs-7"><i class="bi bi-person me-1"></i>@item.CustomerName</div>
+                                            <div class="text-secondary font-mono fs-8"><i class="bi bi-envelope me-1"></i>@item.CustomerEmail</div>
+                                            @if (!string.IsNullOrEmpty(item.CustomerPhone))
+                                            {
+                                                <div class="text-secondary font-mono fs-8"><i class="bi bi-telephone me-1"></i>@item.CustomerPhone</div>
+                                            }
+                                        </td>
+                                        <!-- Package & Cycle -->
+                                        <td>
+                                            <span class="badge px-2 py-1 font-mono" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);">
+                                                @item.PackageName
+                                            </span>
+                                            <div class="text-secondary small mt-1">@item.BillingCycle • <span class="text-muted">@item.PaymentPurpose</span></div>
+                                        </td>
+                                        <!-- Amount -->
+                                        <td>
+                                            <div class="fs-6 fw-bold font-mono text-success">₹@item.Amount.ToString("N2")</div>
+                                            <div class="text-secondary font-mono fs-8">@item.Currency</div>
+                                        </td>
+                                        <!-- Payment Status -->
+                                        <td>
+                                            @if (item.PaymentStatus == "Paid")
+                                            {
+                                                <span class="stat-pill" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">
+                                                    <i class="bi bi-check-circle-fill"></i> Paid
+                                                </span>
+                                            }
+                                            else if (item.PaymentStatus == "Pending" || item.PaymentStatus == "Created")
+                                            {
+                                                <span class="stat-pill" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3);">
+                                                    <i class="bi bi-hourglass-split"></i> @item.PaymentStatus
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="stat-pill" style="background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);">
+                                                    <i class="bi bi-x-circle-fill"></i> @item.PaymentStatus
+                                                </span>
+                                            }
+                                        </td>
+                                        <!-- Activation Status -->
+                                        <td>
+                                            @if (item.ActivationStatus == "Activated")
+                                            {
+                                                <span class="stat-pill" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3);">
+                                                    <i class="bi bi-check2-all"></i> Activated
+                                                </span>
+                                            }
+                                            else if (item.ActivationStatus == "ActivationPending")
+                                            {
+                                                <span class="stat-pill" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4);">
+                                                    <i class="bi bi-exclamation-circle-fill"></i> Pending
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="stat-pill" style="background: rgba(100, 116, 139, 0.2); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.3);">
+                                                    @item.ActivationStatus
+                                                </span>
+                                            }
+
+                                            @if (item.IsManuallyResolved)
+                                            {
+                                                <div class="badge bg-info text-dark font-mono fs-8 mt-1">Resolved Offline</div>
+                                            }
+                                        </td>
+                                        @if (activeTab == "recovery")
+                                        {
+                                            <td>
+                                                @if (item.AwaitingActivationDuration.HasValue)
+                                                {
+                                                    var dur = item.AwaitingActivationDuration.Value;
+                                                    <span class="font-mono text-warning small">
+                                                        @(dur.Days > 0 ? $"{dur.Days}d " : "")@(dur.Hours > 0 ? $"{dur.Hours}h " : "")@(dur.Minutes)m
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted small">-</span>
+                                                }
+                                            </td>
+                                        }
+                                        <!-- Actions -->
+                                        <td class="text-end pe-4">
+                                            <div class="d-flex align-items-center justify-content-end gap-1 flex-wrap">
+                                                <!-- View Details Modal Button -->
+                                                <button type="button" class="btn btn-outline-info btn-sm px-2 py-1" onclick='openTxnDetailsModal(@Html.Raw(txnJson))' title="View Full Transaction Dossier">
+                                                    <i class="bi bi-eye-fill me-1"></i> Details
+                                                </button>
+
+                                                <!-- Download Receipt PDF -->
+                                                @if (item.PaymentStatus == "Paid")
+                                                {
+                                                    <a href="@Url.Action("DownloadReceipt", "PlatformAdmin", new { id = item.Id })" class="btn btn-outline-light btn-sm px-2 py-1" title="Download Official Receipt PDF">
+                                                        <i class="bi bi-file-earmark-pdf-fill text-danger me-1"></i> PDF
+                                                    </a>
+                                                }
+
+                                                <!-- Retry Activation (if paid but not activated) -->
+                                                @if (item.PaymentStatus == "Paid" && item.ActivationStatus != "Activated")
+                                                {
+                                                    <form method="post" action="@Url.Action("RetryActivation", "PlatformAdmin")" class="d-inline">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="id" value="@item.Id" />
+                                                        <button type="submit" class="btn btn-warning btn-sm px-2 py-1 fw-bold" title="Activate Subscription Now">
+                                                            <i class="bi bi-lightning-charge-fill"></i> Activate
+                                                        </button>
+                                                    </form>
+
+                                                    <button type="button" class="btn btn-outline-danger btn-sm px-2 py-1" onclick="openResolveModal('@item.Id', '@item.TransactionRef')" title="Mark Case Resolved Manually">
+                                                        <i class="bi bi-check-square"></i> Resolve
+                                                    </button>
+                                                }
+
+                                                <!-- Reconcile with Razorpay (if pending) -->
+                                                @if (item.PaymentStatus != "Paid" && item.PaymentStatus != "Failed")
+                                                {
+                                                    <form method="post" action="@Url.Action("ReconcileTransaction", "PlatformAdmin")" class="d-inline">
+                                                        @Html.AntiForgeryToken()
+                                                        <input type="hidden" name="id" value="@item.Id" />
+                                                        <button type="submit" class="btn btn-outline-warning btn-sm px-2 py-1" title="Verify Status with Razorpay API">
+                                                            <i class="bi bi-arrow-repeat"></i> Verify
+                                                        </button>
+                                                    </form>
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="@(activeTab == "recovery" ? 9 : 8)" class="text-center py-5">
+                                        <i class="bi bi-inbox display-4 text-secondary mb-3 d-block opacity-50"></i>
+                                        <h5 class="fw-bold text-light">No Transactions Found in Tab: @activeTab.ToUpper()</h5>
+                                        <p class="text-secondary small">No payment records match the current tab filter or search criteria.</p>
+                                        <a href="@Url.Action("Revenue", "PlatformAdmin", new { tab = activeTab })" class="btn btn-sm btn-outline-primary px-3">Reset Filters</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination Bar -->
+                @if (totalPages > 1)
+                {
+                    <div class="p-3 border-top border-secondary border-opacity-25 d-flex justify-content-between align-items-center" style="background: rgba(15, 23, 42, 0.9);">
+                        <span class="text-secondary small">Showing Page <strong>@currentPage</strong> of <strong>@totalPages</strong> (@totalCount total records)</span>
+                        <ul class="pagination pagination-sm mb-0">
+                            @if (currentPage > 1)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link bg-dark border-secondary text-light" href="@Url.Action("Revenue", "PlatformAdmin", new { tab = activeTab, status = currentStatus, activationStatus = currentActivationStatus, billingCycle = currentBillingCycle, packageId = currentPackageId, search = currentSearch, fromDate = fromDate, toDate = toDate, page = currentPage - 1 })">Previous</a>
+                                </li>
+                            }
+                            <li class="page-item active">
+                                <span class="page-link bg-primary border-primary text-white">@currentPage</span>
+                            </li>
+                            @if (currentPage < totalPages)
+                            {
+                                <li class="page-item">
+                                    <a class="page-link bg-dark border-secondary text-light" href="@Url.Action("Revenue", "PlatformAdmin", new { tab = activeTab, status = currentStatus, activationStatus = currentActivationStatus, billingCycle = currentBillingCycle, packageId = currentPackageId, search = currentSearch, fromDate = fromDate, toDate = toDate, page = currentPage + 1 })">Next</a>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+<!-- ================= TRANSACTION DETAILS DOSSIER MODAL ================= -->
+<div class="modal fade" id="transactionDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content bg-dark text-light border border-secondary shadow-lg rounded-4 overflow-hidden">
+            <!-- Modal Header -->
+            <div class="modal-header border-bottom border-secondary border-opacity-25 px-4 py-3" style="background: #131d31;">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary bg-opacity-25 text-primary" style="width:36px;height:36px;">
+                        <i class="bi bi-receipt-cutoff fs-5"></i>
+                    </span>
+                    <div>
+                        <h5 class="modal-title fw-bold text-light mb-0" id="mdlTitle">Transaction Dossier</h5>
+                        <span class="text-secondary font-mono fs-8" id="mdlSubTitle">Reference #</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="modal-body p-4" style="background: #0b1120; max-height: 75vh; overflow-y: auto;">
+                <!-- Hero Highlight Box -->
+                <div class="p-3 rounded-3 mb-4 border border-secondary border-opacity-25" style="background: rgba(255,255,255,0.02)">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                        <div>
+                            <span class="text-secondary small font-mono text-uppercase">Payment Amount</span>
+                            <div class="fs-2 fw-bold text-success font-mono" id="mdlAmount">₹0.00</div>
+                            <span class="text-secondary fs-8 font-mono" id="mdlCurrency">INR</span>
+                        </div>
+                        <div class="text-end">
+                            <div class="mb-1" id="mdlPaymentStatusBadge"></div>
+                            <div id="mdlActivationStatusBadge"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 1: Customer & Shop Workspace -->
+                <h6 class="font-mono text-info fw-bold text-uppercase fs-8 mb-2 pb-1 border-bottom border-secondary border-opacity-25">
+                    <i class="bi bi-shop me-1"></i>Shop &amp; Customer Workspace
+                </h6>
+                <div class="row g-2 mb-4">
+                    <div class="col-md-6">
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25">
+                            <span class="text-secondary fs-8 d-block">Shop Name</span>
+                            <strong class="text-light fs-7" id="mdlShopName">-</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25">
+                            <span class="text-secondary fs-8 d-block">Customer / Owner Name</span>
+                            <strong class="text-light fs-7" id="mdlCustomerName">-</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25">
+                            <span class="text-secondary fs-8 d-block">Contact Email</span>
+                            <span class="text-light font-mono fs-8" id="mdlCustomerEmail">-</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25">
+                            <span class="text-secondary fs-8 d-block">Phone Number</span>
+                            <span class="text-light font-mono fs-8" id="mdlCustomerPhone">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Package & Subscription Term -->
+                <h6 class="font-mono text-warning fw-bold text-uppercase fs-8 mb-2 pb-1 border-bottom border-secondary border-opacity-25">
+                    <i class="bi bi-box-seam me-1"></i>Subscription Plan &amp; Term
+                </h6>
+                <div class="row g-2 mb-4">
+                    <div class="col-md-4">
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25">
+                            <span class="text-secondary fs-8 d-block">Plan Tier</span>
+                            <strong class="text-warning font-mono fs-7" id="mdlPackageName">-</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25">
+                            <span class="text-secondary fs-8 d-block">Billing Cycle</span>
+                            <strong class="text-light font-mono fs-7" id="mdlBillingCycle">-</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25">
+                            <span class="text-secondary fs-8 d-block">Purchased Duration</span>
+                            <strong class="text-light font-mono fs-7" id="mdlDuration">-</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Razorpay Gateway & Reference Identifiers -->
+                <h6 class="font-mono text-primary fw-bold text-uppercase fs-8 mb-2 pb-1 border-bottom border-secondary border-opacity-25">
+                    <i class="bi bi-credit-card-2-front me-1"></i>Payment Gateway &amp; Identifiers
+                </h6>
+                <div class="row g-2 mb-4">
+                    <div class="col-md-6">
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25">
+                            <span class="text-secondary fs-8 d-block">Transaction Ref</span>
+                            <span class="text-info font-mono fw-bold fs-7" id="mdlTxnRef">-</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25">
+                            <span class="text-secondary fs-8 d-block">Receipt Number</span>
+                            <span class="text-success font-mono fw-bold fs-7" id="mdlReceiptNumber">-</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25">
+                            <span class="text-secondary fs-8 d-block">Razorpay Order ID</span>
+                            <span class="text-light font-mono fs-8" id="mdlRazorpayOrderId">-</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25">
+                            <span class="text-secondary fs-8 d-block">Razorpay Payment ID</span>
+                            <span class="text-light font-mono fs-8" id="mdlRazorpayPaymentId">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 4: Lifecycle Timestamps (IST) -->
+                <h6 class="font-mono text-secondary fw-bold text-uppercase fs-8 mb-2 pb-1 border-bottom border-secondary border-opacity-25">
+                    <i class="bi bi-clock-history me-1"></i>Lifecycle Timeline (Indian Standard Time)
+                </h6>
+                <div class="row g-2 mb-4">
+                    <div class="col-md-6">
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25">
+                            <span class="text-secondary fs-8 d-block">Order Created (IST)</span>
+                            <span class="text-light font-mono fs-8" id="mdlCreatedIst">-</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25">
+                            <span class="text-secondary fs-8 d-block">Payment Verified (IST)</span>
+                            <span class="text-light font-mono fs-8" id="mdlVerifiedIst">-</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25">
+                            <span class="text-secondary fs-8 d-block">License Activated (IST)</span>
+                            <span class="text-light font-mono fs-8" id="mdlActivatedIst">-</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-2 rounded bg-dark border border-secondary border-opacity-25">
+                            <span class="text-secondary fs-8 d-block">Receipt Generated (IST)</span>
+                            <span class="text-light font-mono fs-8" id="mdlReceiptIssuedIst">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 5: State Transition Audit History -->
+                <h6 class="font-mono text-info fw-bold text-uppercase fs-8 mb-2 pb-1 border-bottom border-secondary border-opacity-25">
+                    <i class="bi bi-diagram-3 me-1"></i>State Transition Audit Trail
+                </h6>
+                <div id="mdlTransitionsList" class="p-3 rounded bg-dark border border-secondary border-opacity-25 mb-4">
+                    <span class="text-muted small">No recorded state transitions.</span>
+                </div>
+
+                <!-- Section 6: Audit & Diagnostics -->
+                <div id="mdlDiagnosticsBox" class="p-3 rounded bg-dark border border-secondary border-opacity-50 d-none">
+                    <span class="text-warning fs-8 font-mono text-uppercase fw-bold d-block mb-1"><i class="bi bi-info-circle me-1"></i>Processing &amp; Diagnostic Notes</span>
+                    <div class="text-secondary fs-8 font-mono" id="mdlProcessingDetails"></div>
+                    <div class="text-danger fs-8 font-mono mt-1" id="mdlFailureReason"></div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer border-top border-secondary border-opacity-25 px-4 py-3" style="background: #131d31;">
+                <div class="d-flex justify-content-between align-items-center w-100 flex-wrap gap-2">
+                    <div id="mdlFooterActions" class="d-flex gap-2"></div>
+                    <button type="button" class="btn btn-secondary btn-sm px-4" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================= RESOLVE RECOVERY CASE MODAL ================= -->
+<div class="modal fade" id="resolveCaseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-light border border-secondary shadow-lg rounded-4">
+            <form method="post" action="@Url.Action("ResolveRecoveryCase", "PlatformAdmin")">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" id="resolveTxnId" value="" />
+                <div class="modal-header border-bottom border-secondary border-opacity-25 px-4 py-3">
+                    <h5 class="modal-title fw-bold text-light mb-0">
+                        <i class="bi bi-check2-circle text-warning me-2"></i>Resolve Recovery Case
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-secondary small mb-3">
+                        Mark this unactivated payment recovery case as formally resolved. Note: the underlying payment record remains permanently in the system archive.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label text-light fw-bold small">Transaction Reference</label>
+                        <input type="text" id="resolveTxnRef" class="form-control form-control-sm bg-dark border-secondary text-info font-mono" readonly />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-light fw-bold small">Resolution Notes / Reason *</label>
+                        <textarea name="notes" rows="3" class="form-control bg-dark border-secondary text-light" placeholder="E.g., Activated subscription manually via phone; License extended offline; or Customer requested plan swap." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top border-secondary border-opacity-25 px-4 py-3">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning btn-sm fw-bold px-3">Mark Case Resolved</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Copied to clipboard: ' + text);
+            });
+        }
+
+        function openResolveModal(id, refNo) {
+            document.getElementById('resolveTxnId').value = id;
+            document.getElementById('resolveTxnRef').value = refNo;
+            const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('resolveCaseModal'));
+            modal.show();
+        }
+
+        function openTxnDetailsModal(txn) {
+            if (!txn) return;
+
+            document.getElementById('mdlTitle').innerText = 'Transaction ' + (txn.refNo || '');
+            document.getElementById('mdlSubTitle').innerText = 'Internal ID: ' + (txn.id || '') + ' | Tenant: ' + (txn.tenantId || 'N/A');
+            document.getElementById('mdlAmount').innerText = '₹' + (txn.amount || '0.00');
+            document.getElementById('mdlCurrency').innerText = (txn.currency || 'INR') + ' • ' + (txn.amountPaise ? txn.amountPaise + ' paise' : '') + ' • ' + (txn.gateway || 'Razorpay');
+
+            // Status Badges
+            let payBadgeHtml = '';
+            if (txn.paymentStatus === 'Paid') {
+                payBadgeHtml = '<span class="badge bg-success font-mono px-3 py-2 fs-7"><i class="bi bi-check-circle-fill me-1"></i>Paid</span>';
+            } else if (txn.paymentStatus === 'Pending' || txn.paymentStatus === 'Created') {
+                payBadgeHtml = '<span class="badge bg-warning text-dark font-mono px-3 py-2 fs-7"><i class="bi bi-hourglass-split me-1"></i>' + txn.paymentStatus + '</span>';
+            } else {
+                payBadgeHtml = '<span class="badge bg-danger font-mono px-3 py-2 fs-7"><i class="bi bi-x-circle-fill me-1"></i>' + txn.paymentStatus + '</span>';
+            }
+            document.getElementById('mdlPaymentStatusBadge').innerHTML = payBadgeHtml;
+
+            let actBadgeHtml = '';
+            if (txn.activationStatus === 'Activated') {
+                actBadgeHtml = '<span class="badge bg-success bg-opacity-75 font-mono px-3 py-1 fs-8"><i class="bi bi-check2-all me-1"></i>Activated</span>';
+            } else if (txn.activationStatus === 'ActivationPending') {
+                actBadgeHtml = '<span class="badge bg-warning font-mono text-dark px-3 py-1 fs-8"><i class="bi bi-exclamation-triangle-fill me-1"></i>Activation Pending</span>';
+            } else {
+                actBadgeHtml = '<span class="badge bg-secondary font-mono px-3 py-1 fs-8">' + (txn.activationStatus || 'Pending') + '</span>';
+            }
+            document.getElementById('mdlActivationStatusBadge').innerHTML = actBadgeHtml;
+
+            // Details
+            document.getElementById('mdlShopName').innerText = txn.shop || 'N/A';
+            document.getElementById('mdlCustomerName').innerText = txn.customer || 'N/A';
+            document.getElementById('mdlCustomerEmail').innerText = txn.email || 'N/A';
+            document.getElementById('mdlCustomerPhone').innerText = txn.phone || 'N/A';
+
+            document.getElementById('mdlPackageName').innerText = txn.pkg || 'N/A';
+            document.getElementById('mdlBillingCycle').innerText = txn.cycle || 'Monthly';
+            document.getElementById('mdlDuration').innerText = (txn.duration || 1) + ' Month(s)';
+
+            document.getElementById('mdlTxnRef').innerText = txn.refNo || 'N/A';
+            document.getElementById('mdlReceiptNumber').innerText = txn.receipt || 'Pending Generation';
+            document.getElementById('mdlRazorpayOrderId').innerText = txn.rzpOrder || 'N/A';
+            document.getElementById('mdlRazorpayPaymentId').innerText = txn.rzpPayment || 'Pending Payment';
+
+            document.getElementById('mdlCreatedIst').innerText = txn.createdIst || 'N/A';
+            document.getElementById('mdlVerifiedIst').innerText = txn.verifiedIst || 'Pending';
+            document.getElementById('mdlActivatedIst').innerText = txn.activatedIst || 'Pending';
+            document.getElementById('mdlReceiptIssuedIst').innerText = txn.receiptIssuedIst || 'Pending';
+
+            // State Transitions Timeline
+            const transList = document.getElementById('mdlTransitionsList');
+            if (txn.transitions && txn.transitions.length > 0) {
+                let tHtml = '';
+                txn.transitions.forEach(t => {
+                    tHtml += `
+                        <div class="timeline-item">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="badge bg-info text-dark font-mono fs-8">${t.trigger || 'Transition'}</span>
+                                <span class="text-secondary font-mono fs-8">${t.ist || ''}</span>
+                            </div>
+                            <div class="text-light small mt-1 font-mono">${t.from || 'None'} → <strong>${t.to || ''}</strong></div>
+                            <div class="text-secondary fs-8 mt-1">${t.details || ''}</div>
+                        </div>
+                    `;
+                });
+                transList.innerHTML = tHtml;
+            } else {
+                transList.innerHTML = '<span class="text-muted small">Initial record created. No additional transitions.</span>';
+            }
+
+            // Diagnostics
+            const diagBox = document.getElementById('mdlDiagnosticsBox');
+            const procDetails = document.getElementById('mdlProcessingDetails');
+            const failReason = document.getElementById('mdlFailureReason');
+            if (txn.processingDetails || txn.failureReason || txn.reconciliationAttempts > 0) {
+                diagBox.classList.remove('d-none');
+                procDetails.innerText = txn.processingDetails || 'Attempts: ' + (txn.reconciliationAttempts || 0);
+                failReason.innerText = txn.failureReason ? 'Error: ' + txn.failureReason : '';
+            } else {
+                diagBox.classList.add('d-none');
+            }
+
+            // Footer Actions
+            let footerHtml = '';
+            if (txn.paymentStatus === 'Paid') {
+                footerHtml += `<a href="/platform/DownloadReceipt?id=${txn.id}" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-pdf-fill me-1 text-danger"></i> PDF Receipt</a>`;
+                footerHtml += `
+                    <form method="post" action="/platform/RetryReceiptEmail" class="d-inline">
+                        <input type="hidden" name="__RequestVerificationToken" value="${document.querySelector('input[name=__RequestVerificationToken]')?.value || ''}" />
+                        <input type="hidden" name="id" value="${txn.id}" />
+                        <button type="submit" class="btn btn-outline-info btn-sm"><i class="bi bi-envelope-at me-1"></i> Resend Email</button>
+                    </form>
+                `;
+            }
+            if (txn.paymentStatus === 'Paid' && txn.activationStatus !== 'Activated') {
+                footerHtml += `
+                    <form method="post" action="/platform/RetryActivation" class="d-inline">
+                        <input type="hidden" name="__RequestVerificationToken" value="${document.querySelector('input[name=__RequestVerificationToken]')?.value || ''}" />
+                        <input type="hidden" name="id" value="${txn.id}" />
+                        <button type="submit" class="btn btn-warning btn-sm fw-bold"><i class="bi bi-lightning-charge-fill me-1"></i> Retry Activation</button>
+                    </form>
+                `;
+            }
+            if (txn.paymentStatus !== 'Paid' && txn.paymentStatus !== 'Failed') {
+                footerHtml += `
+                    <form method="post" action="/platform/ReconcileTransaction" class="d-inline">
+                        <input type="hidden" name="__RequestVerificationToken" value="${document.querySelector('input[name=__RequestVerificationToken]')?.value || ''}" />
+                        <input type="hidden" name="id" value="${txn.id}" />
+                        <button type="submit" class="btn btn-outline-warning btn-sm"><i class="bi bi-arrow-repeat me-1"></i> Verify with Razorpay</button>
+                    </form>
+                `;
+            }
+            document.getElementById('mdlFooterActions').innerHTML = footerHtml;
+
+            const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('transactionDetailsModal'));
+            modal.show();
+        }
+    </script>
+}

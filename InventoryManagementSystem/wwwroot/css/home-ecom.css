@@ -5204,11 +5204,11 @@ h3.pz-brevo-plan-name,
 /* --------------------------------------------------------------------------
    15. PUBLIC PRICING PACKAGE DETAILS MODAL (SOLID HIGH-CONTRAST SURFACE)
    -------------------------------------------------------------------------- */
-#packageDetailsModal .modal-dialog {
+.public-saas-wrapper #packageDetailsModal .modal-dialog {
   max-width: 820px;
 }
 
-#packageDetailsModal .modal-content {
+.public-saas-wrapper #packageDetailsModal .modal-content {
   background: #FFFFFF !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -5220,37 +5220,37 @@ h3.pz-brevo-plan-name,
   overflow: hidden;
 }
 
-#packageDetailsModal .modal-header {
+.public-saas-wrapper #packageDetailsModal .modal-header {
   background: #FAF9F5 !important;
   border-bottom: 1px solid #E7E5DF !important;
   padding: 1.15rem 1.65rem !important;
 }
 
-#packageDetailsModal .modal-title {
+.public-saas-wrapper #packageDetailsModal .modal-title {
   font-size: 1.12rem;
   font-weight: 800;
   color: var(--pz-text-main, #17181B);
   letter-spacing: -0.02em;
 }
 
-#packageDetailsModal .modal-header .btn-close {
+.public-saas-wrapper #packageDetailsModal .modal-header .btn-close {
   opacity: 0.65;
   transition: opacity 0.15s ease, transform 0.15s ease;
   box-shadow: none !important;
 }
 
-#packageDetailsModal .modal-header .btn-close:hover {
+.public-saas-wrapper #packageDetailsModal .modal-header .btn-close:hover {
   opacity: 1;
   transform: scale(1.08);
 }
 
-#packageDetailsModal .modal-header .btn-close:focus-visible {
+.public-saas-wrapper #packageDetailsModal .modal-header .btn-close:focus-visible {
   outline: none;
   opacity: 1;
   box-shadow: 0 0 0 3px rgba(23, 24, 27, 0.15) !important;
 }
 
-#packageDetailsModal .modal-body {
+.public-saas-wrapper #packageDetailsModal .modal-body {
   background: #FFFFFF !important;
   color: var(--pz-text-main, #17181B) !important;
   padding: 1.65rem !important;
@@ -5258,7 +5258,7 @@ h3.pz-brevo-plan-name,
   overflow-y: auto;
 }
 
-#packageDetailsModal .modal-footer {
+.public-saas-wrapper #packageDetailsModal .modal-footer {
   background: #FAF9F5 !important;
   border-top: 1px solid #E7E5DF !important;
   padding: 1.15rem 1.65rem !important;
@@ -5268,8 +5268,7 @@ h3.pz-brevo-plan-name,
   gap: 1rem;
 }
 
-/* Modal Price Typography (Reusing Shared Pricing Card Design Tokens) */
-#packageDetailsModal .pz-modal-price-block {
+.public-saas-wrapper #packageDetailsModal .pz-modal-price-block {
   display: inline-flex;
   align-items: baseline;
   gap: 0.35rem;

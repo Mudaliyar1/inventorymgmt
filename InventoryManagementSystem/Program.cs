@@ -32,6 +32,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Configure Logging Filter to reduce noisy Debug/Information chatter
 builder.Logging.AddFilter("Microsoft.AspNetCore", LogLevel.Warning);
 builder.Logging.AddFilter("Microsoft.Hosting.Lifetime", LogLevel.Information);
+builder.Logging.AddFilter("System.Net.Http", LogLevel.Warning);
+builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
 
 // Configure resolution order: Environment Variables -> User Secrets -> appsettings.Development.json -> appsettings.json
 builder.Configuration
@@ -135,6 +137,22 @@ builder.Services.Configure<BrevoApiSettings>(options =>
     options.SenderName = !string.IsNullOrWhiteSpace(brevoSettings.FromName) ? brevoSettings.FromName : "SIMS System";
 });
 
+var razorpaySettings = new RazorpaySettings
+{
+    KeyId = GetConfigValue("RAZORPAY_KEY_ID", "RazorpaySettings:KeyId", "rzp_test_placeholder"),
+    KeySecret = GetConfigValue("RAZORPAY_KEY_SECRET", "RazorpaySettings:KeySecret", "placeholder_secret"),
+    WebhookSecret = GetConfigValue("RAZORPAY_WEBHOOK_SECRET", "RazorpaySettings:WebhookSecret", string.Empty),
+    Currency = GetConfigValue("RAZORPAY_CURRENCY", "RazorpaySettings:Currency", "INR")
+};
+
+builder.Services.Configure<RazorpaySettings>(options =>
+{
+    options.KeyId = razorpaySettings.KeyId;
+    options.KeySecret = razorpaySettings.KeySecret;
+    options.WebhookSecret = razorpaySettings.WebhookSecret;
+    options.Currency = razorpaySettings.Currency;
+});
+
 builder.Services.Configure<AppSettings>(builder.Configuration.GetSection("AppSettings"));
 
 // Add services to the container
@@ -184,6 +202,9 @@ builder.Services.AddScoped<IFeatureCatalogService, FeatureCatalogService>();
 builder.Services.AddScoped<IAccountValidationService, AccountValidationService>();
 builder.Services.AddHttpClient<IBrevoEmailService, BrevoEmailService>();
 builder.Services.AddScoped<IPlatformSettingsService, PlatformSettingsService>();
+builder.Services.AddScoped<IPolicyService, PolicyService>();
+builder.Services.AddScoped<ICustomPricingService, CustomPricingService>();
+builder.Services.AddScoped<IContactInquiryService, ContactInquiryService>();
 builder.Services.AddScoped<IInventoryAlertService, InventoryAlertService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IImageService, CloudinaryImageService>();
@@ -206,6 +227,10 @@ builder.Services.AddScoped<IExchangeService, ExchangeService>();
 builder.Services.AddScoped<IRepairService, RepairService>();
 builder.Services.AddSingleton<IManufacturerRegistryService, ManufacturerRegistryService>();
 builder.Services.AddHttpClient<IMobileSpecSearchService, MobileSpecSearchService>();
+builder.Services.AddScoped<IRazorpayPaymentService, RazorpayPaymentService>();
+builder.Services.AddScoped<IReceiptService, ReceiptService>();
+builder.Services.AddScoped<ISaaSPaymentService, SaaSPaymentService>();
+builder.Services.AddHostedService<SubscriptionLifecycleBackgroundService>();
 
 // Configure Cookie Authentication
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -334,6 +359,12 @@ try
     var mongoDbContext = app.Services.GetRequiredService<MongoDbContext>();
     await mongoDbContext.InitializeIndexesAsync();
     await app.SeedDatabaseAsync();
+
+    using (var scope = app.Services.CreateScope())
+    {
+        var policyService = scope.ServiceProvider.GetRequiredService<IPolicyService>();
+        await policyService.SeedDefaultPoliciesAsync();
+    }
 }
 catch (Exception ex)
 {

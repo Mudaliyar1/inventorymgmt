@@ -1,0 +1,240 @@
+@model InventoryManagementSystem.Models.SaaSPaymentTransaction
+@{
+    ViewData["Title"] = "Secure Checkout — SIMS SaaS";
+    Layout = "_Layout";
+    var package = (InventoryManagementSystem.Models.SubscriptionPackage)ViewBag.Package;
+    var pending = (InventoryManagementSystem.Models.PendingRegistration)ViewBag.Pending;
+    var razorpayKey = (string)ViewBag.RazorpayKey;
+    var razorpayOrderId = (string)ViewBag.RazorpayOrderId;
+    var billingCycle = (string)ViewBag.BillingCycle;
+}
+
+<div class="pz-page-wrap py-5">
+    <div class="pz-container" style="max-width: 920px;">
+        <!-- Page Header -->
+        <div class="pz-section-head mb-4 text-center">
+            <span class="pz-accent-eyebrow">STEP 3 OF 3: COMPLETE SUBSCRIPTION</span>
+            <h1 class="pz-section-title">Secure Razorpay Checkout</h1>
+            <span class="pz-heading-accent" aria-hidden="true"></span>
+            <p class="pz-section-sub">
+                Activate your business workspace immediately with official Razorpay payment verification.
+            </p>
+        </div>
+
+        <div class="row g-4">
+            <!-- Left: Order Summary & Cycle Selector -->
+            <div class="col-lg-7">
+                <div class="pz-card p-4 p-md-5 h-100">
+                    <div class="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
+                        <div>
+                            <span class="badge px-3 py-1 rounded-pill mb-1" style="background: rgba(14, 165, 233, 0.15); color: #0ea5e9; font-weight: 600;">Selected Plan</span>
+                            <h3 class="pz-card-title mb-0 fs-4" style="color: #17181B;">@package.Name Plan</h3>
+                        </div>
+                        <div class="text-end">
+                            <span class="fs-4 fw-bold" style="color: #0284c7;">₹@Model.Amount.ToString("N2")</span>
+                            <div class="text-muted small">@billingCycle Billing</div>
+                        </div>
+                    </div>
+
+                    <!-- Billing Cycle Selector Switch -->
+                    <div class="mb-4">
+                        <label class="pz-form-label fw-semibold mb-2" style="color: #17181B;">Choose Billing Cycle</label>
+                        <div class="btn-group w-100" role="group">
+                            <a href="@Url.Action("Checkout", "Landing", new { token = pending.RegistrationToken, cycle = "Monthly" })" 
+                               class="btn py-2 @(billingCycle == "Monthly" ? "btn-dark fw-bold" : "btn-outline-secondary")">
+                                Monthly (₹@package.MonthlyPrice.ToString("N0")/mo)
+                            </a>
+                            <a href="@Url.Action("Checkout", "Landing", new { token = pending.RegistrationToken, cycle = "Yearly" })" 
+                               class="btn py-2 @(billingCycle == "Yearly" ? "btn-dark fw-bold" : "btn-outline-secondary")">
+                                Yearly (₹@package.YearlyPrice.ToString("N0")/yr)
+                                <span class="badge bg-success ms-1 small">Save @(package.MonthlyPrice > 0 ? ((1 - (package.YearlyPrice / (package.MonthlyPrice * 12))) * 100).ToString("N0") : "0")%</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Store & Customer Details -->
+                    <div class="mb-4">
+                        <h5 class="fs-6 fw-bold mb-3" style="color: #17181B;">Workspace Details</h5>
+                        <div class="p-3 rounded" style="background: #f8fafc; border: 1px solid #e2e8f0;">
+                            <div class="row g-2 small">
+                                <div class="col-sm-6">
+                                    <span class="text-muted d-block">Store Name</span>
+                                    <strong style="color: #1e293b;">@Model.ShopName</strong>
+                                </div>
+                                <div class="col-sm-6">
+                                    <span class="text-muted d-block">Store Owner</span>
+                                    <strong style="color: #1e293b;">@Model.CustomerName</strong>
+                                </div>
+                                <div class="col-sm-6">
+                                    <span class="text-muted d-block">Account Email</span>
+                                    <strong style="color: #1e293b;">@Model.CustomerEmail</strong>
+                                </div>
+                                <div class="col-sm-6">
+                                    <span class="text-muted d-block">Phone</span>
+                                    <strong style="color: #1e293b;">@(string.IsNullOrWhiteSpace(Model.CustomerPhone) ? "Not provided" : Model.CustomerPhone)</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Package Features Checklist -->
+                    <div>
+                        <h5 class="fs-6 fw-bold mb-2" style="color: #17181B;">Included with @package.Name</h5>
+                        <ul class="list-unstyled mb-0 small">
+                            <li class="py-1 d-flex align-items-center gap-2"><i class="bi bi-check-circle-fill text-success"></i> Instant automated account activation</li>
+                            <li class="py-1 d-flex align-items-center gap-2"><i class="bi bi-check-circle-fill text-success"></i> Official GST tax invoice &amp; payment receipt PDF</li>
+                            <li class="py-1 d-flex align-items-center gap-2"><i class="bi bi-check-circle-fill text-success"></i> Synchronized multi-device point of sale &amp; inventory</li>
+                            <li class="py-1 d-flex align-items-center gap-2"><i class="bi bi-check-circle-fill text-success"></i> Full cloud backup &amp; priority customer support</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Payment Action Card -->
+            <div class="col-lg-5">
+                <div class="pz-card p-4 p-md-5 h-100 d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <span class="badge rounded-circle p-2" style="width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; background: #0284c7; color: #FFFFFF;">
+                                <i class="bi bi-shield-lock-fill"></i>
+                            </span>
+                            <h4 class="pz-card-title mb-0 fs-5" style="color: #17181B;">Payment Details</h4>
+                        </div>
+
+                        <div class="p-3 mb-4 rounded" style="background: #f1f5f9; border: 1px solid #cbd5e1;">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small">Subscription Fee</span>
+                                <span class="fw-semibold">₹@Model.Amount.ToString("N2")</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small">Applicable Taxes (GST)</span>
+                                <span class="text-muted small">Included</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted small">Reference Code</span>
+                                <span class="font-monospace small">@Model.TransactionRef</span>
+                            </div>
+                            <hr class="my-2" />
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold" style="color: #1e293b;">Total Payable</span>
+                                <span class="fs-4 fw-bold" style="color: #0284c7;">₹@Model.Amount.ToString("N2")</span>
+                            </div>
+                        </div>
+
+                        <!-- Status Banners & Reassurance Alerts -->
+                        @if (Model.PaymentStatus == "Paid" && Model.ActivationStatus != "Activated")
+                        {
+                            <div class="alert alert-warning border-0 shadow-sm p-3 mb-4 rounded-3 d-flex align-items-start gap-3" style="background: rgba(245, 158, 11, 0.15); border-left: 4px solid #f59e0b !important;">
+                                <i class="bi bi-clock-history fs-4 text-warning flex-shrink-0"></i>
+                                <div>
+                                    <strong class="d-block text-dark fw-bold mb-1">Payment received — activation in progress</strong>
+                                    <span class="small text-muted">Your payment has been verified. We are completing your subscription activation. Please do not pay again for this transaction.</span>
+                                </div>
+                            </div>
+                        }
+
+                        <div id="cancellation-reassurance" class="alert alert-info border-0 shadow-sm p-3 mb-4 rounded-3 d-flex align-items-start gap-3 @(Model.IsCustomerCancelled ? "" : "d-none")" style="background: #f0fdf4; border-left: 4px solid #0284c7 !important;">
+                            <i class="bi bi-shield-check fs-4 text-primary flex-shrink-0"></i>
+                            <div>
+                                <strong class="d-block text-dark fw-bold mb-1">Payment not confirmed yet?</strong>
+                                <span class="small text-muted">If money was deducted from your account, please allow us to verify the transaction. If Razorpay confirms a successful payment, SIMS will process your subscription or investigate any activation issue.</span>
+                            </div>
+                        </div>
+
+                        <!-- Razorpay Payment Button -->
+                        <button id="rzp-button" type="button" class="btn btn-primary w-100 py-3 fw-bold fs-6 d-flex align-items-center justify-content-center gap-2 shadow-sm" style="background: #0284c7; border-color: #0284c7;">
+                            <i class="bi bi-credit-card-2-front"></i>
+                            <span>Pay ₹@Model.Amount.ToString("N2") via Razorpay</span>
+                        </button>
+
+                        <div class="text-center mt-3">
+                            <span class="badge bg-light text-dark border px-3 py-1">
+                                <i class="bi bi-lock-fill text-success me-1"></i> 256-Bit SSL Encrypted Payment
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Hidden callback submission form -->
+                    <form id="payment-callback-form" method="post" action="@Url.Action("PaymentCallback", "Landing")" style="display: none;">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="razorpay_order_id" id="razorpay_order_id" value="" />
+                        <input type="hidden" name="razorpay_payment_id" id="razorpay_payment_id" value="" />
+                        <input type="hidden" name="razorpay_signature" id="razorpay_signature" value="" />
+                        <input type="hidden" name="registration_token" value="@pending.RegistrationToken" />
+                    </form>
+
+                    <!-- Trust Strip -->
+                    <div class="pt-4 border-top mt-4">
+                        <div class="d-flex align-items-center justify-content-around text-muted small text-center">
+                            <div><i class="bi bi-patch-check-fill text-primary d-block fs-5 mb-1"></i> Instant Activation</div>
+                            <div><i class="bi bi-file-earmark-pdf-fill text-danger d-block fs-5 mb-1"></i> GST PDF Receipt</div>
+                            <div><i class="bi bi-shield-check text-success d-block fs-5 mb-1"></i> Razorpay Verified</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var options = {
+                "key": "@razorpayKey",
+                "amount": "@Model.AmountInPaise",
+                "currency": "@Model.Currency",
+                "name": "SIMS SaaS Platform",
+                "description": "@package.Name Plan (@billingCycle)",
+                "image": "/images/logo.png",
+                "order_id": "@razorpayOrderId",
+                "handler": function (response) {
+                    document.getElementById('razorpay_order_id').value = response.razorpay_order_id;
+                    document.getElementById('razorpay_payment_id').value = response.razorpay_payment_id;
+                    document.getElementById('razorpay_signature').value = response.razorpay_signature;
+                    
+                    // Show processing loader
+                    var btn = document.getElementById('rzp-button');
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verifying payment & activating workspace...';
+                    
+                    document.getElementById('payment-callback-form').submit();
+                },
+                "prefill": {
+                    "name": "@Model.CustomerName",
+                    "email": "@Model.CustomerEmail",
+                    "contact": "@Model.CustomerPhone"
+                },
+                "theme": {
+                    "color": "#0284c7"
+                },
+                "modal": {
+                    "ondismiss": function() {
+                        console.log('Razorpay checkout window was dismissed by customer.');
+                        // Show reassurance message
+                        var alertEl = document.getElementById('cancellation-reassurance');
+                        if (alertEl) {
+                            alertEl.classList.remove('d-none');
+                        }
+                        // Notify backend of checkout dismissal for follow-up & audit log
+                        var fd = new FormData();
+                        fd.append('orderId', '@razorpayOrderId');
+                        fd.append('reason', 'Customer closed or cancelled Razorpay checkout popup.');
+                        fetch('@Url.Action("RecordCheckoutCancellation", "Landing")', {
+                            method: 'POST',
+                            body: fd
+                        }).catch(function(e) { console.warn('Could not record cancellation:', e); });
+                    }
+                }
+            };
+
+            var rzp = new Razorpay(options);
+
+            document.getElementById('rzp-button').onclick = function (e) {
+                rzp.open();
+                e.preventDefault();
+            };
+        });
+    </script>
+}

@@ -22,7 +22,7 @@
             }
             <span class="badge-d @statusBadge fs-6 px-3 py-1">@r.Status</span>
         </div>
-        <p class="ph-sub">Initiated for Original PO <strong>#@r.PurchaseOrderNumber</strong> on @r.CreatedAt.ToString("dd-MMM-yyyy HH:mm") IST</p>
+        <p class="ph-sub">Initiated for Original PO <strong>#@r.PurchaseOrderNumber</strong> on @r.CreatedAt.ToIst().ToString("dd-MMM-yyyy hh:mm tt IST")</p>
     </div>
     <div class="ph-actions">
         <a asp-action="PurchaseReturns" class="btn-d btn-outline">

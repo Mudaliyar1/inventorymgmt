@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using InventoryManagementSystem.Interfaces;
 using InventoryManagementSystem.Models;
+using InventoryManagementSystem.Extensions;
 
 namespace InventoryManagementSystem.Services
 {
@@ -349,7 +350,7 @@ namespace InventoryManagementSystem.Services
                     htmlBuilder.Append($"<p style='margin:4px 0;'><strong>Order Number:</strong> {order.OrderNumber}</p>");
                     htmlBuilder.Append($"<p style='margin:4px 0;'><strong>Vendor / Brand:</strong> {supplier.DisplayVendorName}</p>");
                     htmlBuilder.Append($"<p style='margin:4px 0;'><strong>Company / Legal Name:</strong> {supplier.DisplayCompanyName}</p>");
-                    htmlBuilder.Append($"<p style='margin:4px 0;'><strong>Date:</strong> {order.CreatedAt:dd-MMM-yyyy HH:mm} IST</p>");
+                    htmlBuilder.Append($"<p style='margin:4px 0;'><strong>Date:</strong> {order.CreatedAt.ToIstString("dd-MMM-yyyy hh:mm tt IST")}</p>");
                     htmlBuilder.Append($"<p style='margin:4px 0;'><strong>Total Items:</strong> {order.TotalQuantity} units</p>");
                     htmlBuilder.Append($"<p style='margin:4px 0;'><strong>Grand Total:</strong> ₹{order.GrandTotal:N2}</p>");
                     htmlBuilder.Append($"</div>");

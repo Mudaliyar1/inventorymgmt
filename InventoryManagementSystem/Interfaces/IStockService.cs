@@ -7,9 +7,9 @@ namespace InventoryManagementSystem.Interfaces
 {
     public interface IStockService
     {
-        Task<bool> StockInAsync(string productId, int quantity, string reason, string executedBy);
-        Task<bool> StockOutAsync(string productId, int quantity, string reason, string executedBy);
-        Task<bool> AdjustStockAsync(string productId, int quantity, string type, string reason, string executedBy);
+        Task<bool> StockInAsync(string productId, int quantity, string reason, string executedBy, string? variantId = null, string? colorId = null, string? variantName = null, string? colorName = null);
+        Task<bool> StockOutAsync(string productId, int quantity, string reason, string executedBy, string? variantId = null, string? colorId = null, string? variantName = null, string? colorName = null);
+        Task<bool> AdjustStockAsync(string productId, int quantity, string type, string reason, string executedBy, string? variantId = null, string? colorId = null, string? variantName = null, string? colorName = null);
         
         // Mobile Shop Device Stock Operations
         Task<(bool Success, string Message)> StockInDeviceAsync(Device device, string executedBy);

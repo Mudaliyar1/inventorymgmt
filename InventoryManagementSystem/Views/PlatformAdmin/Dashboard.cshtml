@@ -223,7 +223,7 @@
                                         <td>
                                             <span class="badge @(tenant.Status == "Active" ? "bg-success" : tenant.Status == "Trial" ? "bg-warning" : "bg-danger")">@tenant.Status</span>
                                         </td>
-                                        <td class="fs-7 text-muted">@tenant.CreatedAt.ToString("MMM dd, yyyy")</td>
+                                        <td class="fs-7 text-muted">@tenant.CreatedAt.ToIst().ToString("MMM dd, yyyy")</td>
                                         <td class="text-end">
                                             <a href="@Url.Action("TenantDetails", "PlatformAdmin", new { id = tenant.Id })" class="btn btn-sm btn-outline-info"><i class="bi bi-eye"></i></a>
                                         </td>

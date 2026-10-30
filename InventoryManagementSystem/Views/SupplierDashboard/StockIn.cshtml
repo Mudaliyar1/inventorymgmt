@@ -304,8 +304,8 @@
                     {
                         <tr>
                             <td class="ps-3 text-muted">
-                                @t.Timestamp.ToLocalTime().ToString("dd-MMM-yyyy")
-                                <br /><small style="font-size:11px">@t.Timestamp.ToLocalTime().ToString("hh:mm tt")</small>
+                                @t.Timestamp.ToIst().ToString("dd-MMM-yyyy")
+                                <br /><small style="font-size:11px">@t.Timestamp.ToIst().ToString("hh:mm tt IST")</small>
                             </td>
                             <td>
                                 <strong class="text-dark d-block">@t.ProductName</strong>

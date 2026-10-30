@@ -134,7 +134,7 @@
                                 </a>
                             </td>
                             <td><span class="badge-d badge-gray font-monospace">@r.PurchaseOrderNumber</span></td>
-                            <td style="font-size:12px;color:var(--text-primary)">@r.CreatedAt.ToString("dd-MMM-yyyy HH:mm") IST</td>
+                            <td style="font-size:12px;color:var(--text-primary)">@r.CreatedAt.ToIst().ToString("dd-MMM-yyyy hh:mm tt IST")</td>
                             <td class="text-center">
                                 <span class="badge-d badge-gray me-1">@r.TotalQuantity Items</span>
                                 @if (r.TotalDeviceCount > 0)

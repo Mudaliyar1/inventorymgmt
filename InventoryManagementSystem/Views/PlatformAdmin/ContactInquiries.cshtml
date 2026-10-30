@@ -1,0 +1,551 @@
+@model List<InventoryManagementSystem.Models.ContactInquiry>
+@{
+    ViewData["Title"] = "Contact Inquiries — Super Admin";
+    var currentStatus = ViewBag.CurrentStatus as string ?? "All";
+    var currentSearch = ViewBag.CurrentSearch as string ?? "";
+    var fromDate = ViewBag.FromDate as string ?? "";
+    var toDate = ViewBag.ToDate as string ?? "";
+}
+
+<div class="container-fluid px-4 py-3">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <span class="badge bg-primary px-3 py-2 text-uppercase font-mono fw-bold fs-7 rounded-pill mb-2">Super Admin Platform</span>
+            <h1 class="h3 font-display fw-bold mb-1 text-light">Support &amp; Contact Desk Inquiries</h1>
+            <p class="text-muted fs-7 mb-0">General support messages, platform inquiries, and multi-branch consultation requests submitted through the public contact form.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="@Url.Action("Contact", "Landing")" target="_blank" class="btn btn-outline-light">
+                <i class="bi bi-box-arrow-up-right me-1"></i> Public Contact Desk
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-xl col-md-3 col-sm-6">
+            <div class="glass-card p-3 h-100 border-start border-primary border-4">
+                <div class="text-muted text-uppercase fs-8 font-mono fw-bold mb-1">Total Inquiries</div>
+                <div class="fs-3 font-display fw-bold text-light">@ViewBag.TotalCount</div>
+            </div>
+        </div>
+        <div class="col-xl col-md-3 col-sm-6">
+            <div class="glass-card p-3 h-100 border-start border-warning border-4">
+                <div class="text-muted text-uppercase fs-8 font-mono fw-bold mb-1">New Messages</div>
+                <div class="fs-3 font-display fw-bold text-warning">@ViewBag.NewCount</div>
+            </div>
+        </div>
+        <div class="col-xl col-md-3 col-sm-6">
+            <div class="glass-card p-3 h-100 border-start border-info border-4">
+                <div class="text-muted text-uppercase fs-8 font-mono fw-bold mb-1">In Progress</div>
+                <div class="fs-3 font-display fw-bold text-info">@ViewBag.InProgressCount</div>
+            </div>
+        </div>
+        <div class="col-xl col-md-3 col-sm-6">
+            <div class="glass-card p-3 h-100 border-start border-success border-4">
+                <div class="text-muted text-uppercase fs-8 font-mono fw-bold mb-1">Resolved &amp; Closed</div>
+                <div class="fs-3 font-display fw-bold text-success">@((int)ViewBag.ResolvedCount + (int)ViewBag.ClosedCount)</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search & Filter Bar -->
+    <div class="glass-card p-3 mb-4">
+        <form method="get" action="@Url.Action("ContactInquiries", "PlatformAdmin")" class="row g-2 align-items-center">
+            <div class="col-lg-4 col-md-6">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-dark text-muted border-secondary border-opacity-50"><i class="bi bi-search"></i></span>
+                    <input type="text" name="search" class="form-control bg-dark text-light border-secondary border-opacity-50" placeholder="Search sender, business, email, phone, reference..." value="@currentSearch" />
+                </div>
+            </div>
+            <div class="col-lg-2 col-md-3 col-6">
+                <select name="status" class="form-select form-select-sm bg-dark text-light border-secondary border-opacity-50">
+                    <option value="All" selected="@(currentStatus == "All")">All Statuses</option>
+                    <option value="New" selected="@(currentStatus == "New")">New</option>
+                    <option value="In Progress" selected="@(currentStatus == "In Progress")">In Progress</option>
+                    <option value="Responded" selected="@(currentStatus == "Responded")">Responded</option>
+                    <option value="Resolved" selected="@(currentStatus == "Resolved")">Resolved</option>
+                    <option value="Closed" selected="@(currentStatus == "Closed")">Closed</option>
+                </select>
+            </div>
+            <div class="col-lg-2 col-md-3 col-6">
+                <input type="date" name="fromDate" class="form-control form-control-sm bg-dark text-light border-secondary border-opacity-50" value="@fromDate" placeholder="From Date" title="From Date" />
+            </div>
+            <div class="col-lg-2 col-md-3 col-6">
+                <input type="date" name="toDate" class="form-control form-control-sm bg-dark text-light border-secondary border-opacity-50" value="@toDate" placeholder="To Date" title="To Date" />
+            </div>
+            <div class="col-lg-2 col-md-3 col-6 d-flex gap-2">
+                <button type="submit" class="btn btn-sm btn-primary w-100 fw-bold">Filter</button>
+                <a href="@Url.Action("ContactInquiries", "PlatformAdmin")" class="btn btn-sm btn-outline-secondary" title="Reset Filters"><i class="bi bi-arrow-counterclockwise"></i></a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Bulk Actions Toolbar -->
+    <div id="bulkActionBar" class="d-none alert alert-dark border border-danger border-opacity-50 py-2 px-3 mb-3 d-flex justify-content-between align-items-center rounded-3 bg-opacity-75">
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-danger rounded-pill px-2 py-1 font-mono fs-8" id="selectedBadge">0</span>
+            <span class="text-light fs-8 fw-semibold">Contact Messages Selected for Deletion</span>
+            <span class="text-muted fs-9 d-none d-md-inline">(Only closed or resolved messages can be deleted)</span>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary py-1" onclick="clearSelection()">Clear</button>
+            <button type="button" class="btn btn-sm btn-danger fw-bold py-1" onclick="openBulkDeleteModal()">
+                <i class="bi bi-trash me-1"></i> Delete Selected
+            </button>
+        </div>
+    </div>
+
+    <!-- Table -->
+    <div class="glass-card p-0 overflow-hidden mb-4">
+        <div class="table-responsive">
+            <table class="table table-dark table-hover mb-0 align-middle fs-8">
+                <thead class="bg-black bg-opacity-25 text-muted text-uppercase font-mono">
+                    <tr>
+                        <th class="ps-3" style="width: 38px;">
+                            <input type="checkbox" id="selectAllCheckbox" class="form-check-input" title="Select all deletable messages" onchange="toggleSelectAll(this)" />
+                        </th>
+                        <th>Reference</th>
+                        <th>Sender / Company</th>
+                        <th>Subject</th>
+                        <th>Status</th>
+                        <th>Confirmation Email</th>
+                        <th>Submitted At</th>
+                        <th class="pe-4 text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var inq in Model)
+                        {
+                            var badgeClass = inq.Status switch
+                            {
+                                "New" => "bg-warning text-dark",
+                                "In Progress" => "bg-info text-dark",
+                                "Responded" => "bg-primary text-light",
+                                "Resolved" => "bg-success text-light",
+                                "Closed" => "bg-secondary text-light",
+                                _ => "bg-secondary text-light"
+                            };
+
+                            var emailBadgeClass = inq.ConfirmationEmailStatus switch
+                            {
+                                "Sent" => "bg-success bg-opacity-25 text-success border border-success border-opacity-50",
+                                "Failed" => "bg-danger bg-opacity-25 text-danger border border-danger border-opacity-50",
+                                _ => "bg-secondary bg-opacity-25 text-secondary border border-secondary border-opacity-50"
+                            };
+
+                            var isDeletable = inq.Status == "Closed" || inq.Status == "Resolved" || inq.Status == "Completed";
+
+                            <tr>
+                                <td class="ps-3">
+                                    @if (isDeletable)
+                                    {
+                                        <input type="checkbox" class="form-check-input contact-cb cursor-pointer" value="@inq.Id" data-ref="@inq.ReferenceNumber" data-name="@inq.FullName" onchange="onCheckboxChange()" />
+                                    }
+                                    else
+                                    {
+                                        <input type="checkbox" class="form-check-input" disabled title="Pending message cannot be deleted (Only Closed or Resolved)" style="opacity: 0.3; cursor: not-allowed;" />
+                                    }
+                                </td>
+                                <td class="font-mono fw-bold text-info">
+                                    @inq.ReferenceNumber
+                                </td>
+                                <td>
+                                    <div class="fw-bold text-light">@inq.FullName</div>
+                                    <div class="text-muted fs-9">
+                                        @if (!string.IsNullOrWhiteSpace(inq.BusinessName))
+                                        {
+                                            <span>@inq.BusinessName • </span>
+                                        }
+                                        <a href="mailto:@inq.Email" class="text-muted text-decoration-none">@inq.Email</a>
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(inq.Phone))
+                                    {
+                                        <div class="text-muted fs-9"><i class="bi bi-telephone me-1"></i>@inq.Phone</div>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="text-light fw-semibold">@inq.Subject</div>
+                                    <div class="text-muted fs-9 text-truncate" style="max-width: 320px;">@inq.Message</div>
+                                </td>
+                                <td>
+                                    <span class="badge @badgeClass font-mono">@inq.Status</span>
+                                </td>
+                                <td>
+                                    <span class="badge @emailBadgeClass font-mono" title="@inq.ConfirmationEmailError">
+                                        @if (inq.ConfirmationEmailStatus == "Sent")
+                                        {
+                                            <i class="bi bi-envelope-check me-1"></i><span>Sent</span>
+                                        }
+                                        else if (inq.ConfirmationEmailStatus == "Failed")
+                                        {
+                                            <i class="bi bi-envelope-exclamation me-1"></i><span>Failed</span>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-clock me-1"></i><span>Pending</span>
+                                        }
+                                    </span>
+                                </td>
+                                <td class="text-muted fs-9 font-mono">
+                                    @inq.CreatedAt.ToIst().ToString("dd MMM yyyy")
+                                    <div class="text-muted fs-9">@inq.CreatedAt.ToIst().ToString("hh:mm tt IST")</div>
+                                </td>
+                                <td class="pe-4 text-end text-nowrap">
+                                    <button type="button" class="btn btn-sm btn-outline-info" onclick="viewContactDetails('@inq.Id')">
+                                        <i class="bi bi-chat-text me-1"></i> View
+                                    </button>
+                                    @if (isDeletable)
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-danger ms-1" onclick="openSingleDeleteModal('@inq.Id', '@inq.ReferenceNumber', '@inq.FullName')" title="Delete message permanently">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-secondary ms-1" disabled title="Pending message cannot be deleted (Only Closed / Resolved)" style="opacity:0.3; cursor:not-allowed;">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted">
+                                <i class="bi bi-envelope-open fs-2 d-block mb-2"></i>
+                                No contact inquiries found matching your filters.
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Details Modal -->
+<div class="modal fade" id="contactDetailsModal" tabindex="-1" aria-modal="true" role="dialog">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content bg-dark text-light border-secondary">
+            <div class="modal-header border-secondary py-3 px-4">
+                <div>
+                    <span class="badge bg-info-subtle text-info border border-info-subtle font-mono mb-1" id="cRef">CNT-XXXX</span>
+                    <h5 class="modal-title font-display fw-bold text-light" id="cSubject">Subject</h5>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+
+                <!-- Sender Info Card -->
+                <div class="p-3 bg-dark-subtle rounded-3 border border-secondary border-opacity-25 mb-4">
+                    <div class="row g-2 fs-8">
+                        <div class="col-md-6">
+                            <div><strong>Sender:</strong> <span id="cFullName" class="text-light"></span></div>
+                            <div><strong>Business:</strong> <span id="cBusiness" class="text-light"></span></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div><strong>Email:</strong> <a href="#" id="cEmail" class="text-info text-decoration-none"></a></div>
+                            <div><strong>Phone:</strong> <span id="cPhone" class="text-muted"></span></div>
+                            <div><strong>Submitted:</strong> <span id="cCreatedAt" class="text-muted font-mono fs-9"></span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Customer Confirmation Email Status & Resend -->
+                <div class="p-3 bg-dark-subtle rounded-3 border border-secondary border-opacity-25 mb-4">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <div>
+                            <h6 class="text-uppercase fs-8 text-muted fw-bold mb-1">Customer Confirmation Email</h6>
+                            <div id="cEmailStatusBadge" class="d-inline-block"></div>
+                            <div id="cEmailSentAt" class="fs-9 text-muted mt-1"></div>
+                            <div id="cEmailError" class="fs-9 text-danger mt-1 d-none"></div>
+                        </div>
+                        <form method="post" action="@Url.Action("RetryContactInquiryConfirmationEmail", "PlatformAdmin")" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" id="cEmailRetryId" value="" />
+                            <button type="submit" class="btn btn-sm btn-outline-warning" id="cEmailRetryBtn">
+                                <i class="bi bi-arrow-repeat me-1"></i> Resend Confirmation Email
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Message Card -->
+                <div class="mb-4">
+                    <h6 class="text-uppercase fs-8 text-muted fw-bold mb-2">Inquiry Message</h6>
+                    <div class="p-3 bg-dark rounded border border-secondary border-opacity-25 text-light fs-8" id="cMessage" style="white-space: pre-wrap; line-height: 1.6;">
+                    </div>
+                </div>
+
+                <!-- History -->
+                <div class="mb-4">
+                    <h6 class="text-uppercase fs-8 text-muted fw-bold mb-2">Follow-up Notes &amp; Activity Log</h6>
+                    <div id="cHistoryList" class="fs-8" style="max-height: 160px; overflow-y: auto;">
+                        <!-- Injected via JS -->
+                    </div>
+                </div>
+
+                <!-- Status Form -->
+                <form method="post" action="@Url.Action("UpdateContactInquiryStatus", "PlatformAdmin")" class="p-3 bg-dark-subtle rounded-3 border border-secondary border-opacity-50">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" id="cFormId" value="" />
+                    <h6 class="text-uppercase fs-8 text-warning fw-bold mb-2"><i class="bi bi-pencil-square me-1"></i>Update Inquiry Status &amp; Add Note</h6>
+
+                    <div class="mb-2">
+                        <label class="form-label text-muted fs-9 mb-1">Status</label>
+                        <select name="status" id="cFormStatus" class="form-select form-select-sm bg-dark text-light border-secondary">
+                            <option value="New">New</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Responded">Responded</option>
+                            <option value="Resolved">Resolved</option>
+                            <option value="Closed">Closed</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label text-muted fs-9 mb-1">Reply / Response Summary</label>
+                        <textarea name="note" id="cFormNote" class="form-control form-control-sm bg-dark text-light border-secondary" rows="3" placeholder="Enter reply to customer or internal note..."></textarea>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" name="sendEmailToCustomer" id="cSendEmailToCustomer" value="true" checked />
+                        <label class="form-check-label text-light fs-8" for="cSendEmailToCustomer">
+                            <i class="bi bi-envelope-check me-1 text-info"></i> Send this response as an email to customer (<span id="cReplyTargetEmail" class="text-info fw-bold font-mono"></span>)
+                        </label>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="submit" class="btn btn-sm btn-primary fw-bold px-3">
+                            <i class="bi bi-send me-1"></i> Save &amp; Send Reply
+                        </button>
+                    </div>
+                </form>
+
+            </div>
+            <div class="modal-footer border-secondary py-2 px-4 justify-content-between">
+                <div>
+                    <button type="button" id="cDeleteBtn" class="btn btn-sm btn-outline-danger d-none" onclick="openSingleDeleteFromModal()">
+                        <i class="bi bi-trash me-1"></i> Delete Message
+                    </button>
+                    <span id="cDeleteDisabledNotice" class="text-muted fs-9"><i class="bi bi-shield-lock me-1"></i>Pending messages cannot be deleted (Only Closed / Resolved)</span>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Single Delete Confirmation Modal -->
+<div class="modal fade" id="deleteSingleContactModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-danger text-light">
+            <div class="modal-header border-secondary border-opacity-50">
+                <h5 class="modal-title text-danger fs-6 fw-bold">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm Message Deletion
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="@Url.Action("DeleteContactInquiry", "PlatformAdmin")">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" id="deleteSingleContactId" value="" />
+                <div class="modal-body fs-8 py-3">
+                    <p class="mb-2">Are you sure you want to permanently delete contact message <strong class="text-warning font-mono" id="deleteSingleContactRef"></strong> from <strong id="deleteSingleContactName" class="text-light"></strong>?</p>
+                    <div class="alert alert-danger bg-danger bg-opacity-10 border-danger border-opacity-25 py-2 px-3 fs-9 mb-0">
+                        <i class="bi bi-shield-exclamation me-1"></i> This record will be permanently purged from the database. This action cannot be undone.
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary border-opacity-50 py-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-danger fw-bold"><i class="bi bi-trash me-1"></i> Permanently Delete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Delete Confirmation Modal -->
+<div class="modal fade" id="deleteBulkContactModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark border-danger text-light">
+            <div class="modal-header border-secondary border-opacity-50">
+                <h5 class="modal-title text-danger fs-6 fw-bold">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm Bulk Message Deletion
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="@Url.Action("BulkDeleteContactInquiries", "PlatformAdmin")" id="bulkDeleteContactForm">
+                @Html.AntiForgeryToken()
+                <div id="bulkDeleteContactHiddenInputs"></div>
+                <div class="modal-body fs-8 py-3">
+                    <p class="mb-2">You are about to permanently delete <strong class="text-danger fs-6 font-mono" id="bulkDeleteContactCountText">0</strong> closed / resolved contact message record(s).</p>
+                    <div class="alert alert-danger bg-danger bg-opacity-10 border-danger border-opacity-25 py-2 px-3 fs-9 mb-0">
+                        <i class="bi bi-shield-lock me-1"></i> Active and pending messages have been protected and excluded. Selected records will be permanently removed.
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary border-opacity-50 py-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-sm btn-danger fw-bold"><i class="bi bi-trash me-1"></i> Delete All Selected</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+var activeModalContact = null;
+
+function viewContactDetails(id) {
+    fetch('@Url.Action("ContactInquiryDetails", "PlatformAdmin")?id=' + id)
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        activeModalContact = data;
+        document.getElementById('cFormId').value = data.id;
+        document.getElementById('cRef').textContent = data.referenceNumber;
+        document.getElementById('cSubject').textContent = data.subject;
+        document.getElementById('cFullName').textContent = data.fullName;
+        document.getElementById('cBusiness').textContent = data.businessName || 'N/A';
+        document.getElementById('cEmail').textContent = data.email;
+        document.getElementById('cEmail').href = 'mailto:' + data.email;
+        document.getElementById('cPhone').textContent = data.phone || 'N/A';
+        document.getElementById('cCreatedAt').textContent = data.createdAt;
+        document.getElementById('cMessage').textContent = data.message;
+        document.getElementById('cFormStatus').value = data.status;
+        var replyEmailEl = document.getElementById('cReplyTargetEmail');
+        if (replyEmailEl) replyEmailEl.textContent = data.email;
+        var formNoteEl = document.getElementById('cFormNote');
+        if (formNoteEl) formNoteEl.value = '';
+
+        // Configure delete button visibility inside modal
+        var isDeletable = (data.status === 'Closed' || data.status === 'Resolved' || data.status === 'Completed');
+        var delBtn = document.getElementById('cDeleteBtn');
+        var delNotice = document.getElementById('cDeleteDisabledNotice');
+        if (isDeletable) {
+            delBtn.classList.remove('d-none');
+            delNotice.classList.add('d-none');
+        } else {
+            delBtn.classList.add('d-none');
+            delNotice.classList.remove('d-none');
+        }
+
+        // Populate Confirmation Email info & retry form
+        document.getElementById('cEmailRetryId').value = data.id;
+        var emailBadge = document.getElementById('cEmailStatusBadge');
+        var emailSentAt = document.getElementById('cEmailSentAt');
+        var emailErr = document.getElementById('cEmailError');
+
+        if (data.confirmationEmailStatus === 'Sent') {
+            emailBadge.innerHTML = '<span class="badge bg-success text-light"><i class="bi bi-check-circle me-1"></i>Sent to Customer</span>';
+            emailSentAt.textContent = data.confirmationEmailSentAt ? 'Sent at: ' + data.confirmationEmailSentAt : '';
+            emailErr.classList.add('d-none');
+        } else if (data.confirmationEmailStatus === 'Failed') {
+            emailBadge.innerHTML = '<span class="badge bg-danger text-light"><i class="bi bi-exclamation-triangle me-1"></i>Delivery Failed</span>';
+            emailSentAt.textContent = '';
+            emailErr.textContent = 'Error: ' + (data.confirmationEmailError || 'Failed to dispatch via email provider.');
+            emailErr.classList.remove('d-none');
+        } else {
+            emailBadge.innerHTML = '<span class="badge bg-secondary text-light"><i class="bi bi-clock me-1"></i>Pending</span>';
+            emailSentAt.textContent = '';
+            emailErr.classList.add('d-none');
+        }
+
+        var histWrap = document.getElementById('cHistoryList');
+        histWrap.innerHTML = '';
+        if (data.history && data.history.length > 0) {
+            data.history.forEach(function(h) {
+                var d = document.createElement('div');
+                d.className = 'p-2 mb-1 bg-dark rounded border border-secondary border-opacity-25';
+                d.innerHTML = '<div class="d-flex justify-content-between text-muted fs-9 font-mono"><span>' + (h.createdBy || 'Admin') + '</span><span>' + (h.timestamp || '') + '</span></div><div class="text-light mt-1">' + (h.note || '') + '</div>';
+                histWrap.appendChild(d);
+            });
+        } else {
+            histWrap.innerHTML = '<span class="text-muted fs-9">No previous notes.</span>';
+        }
+
+        var modal = new bootstrap.Modal(document.getElementById('contactDetailsModal'));
+        modal.show();
+    })
+    .catch(function(err) {
+        alert('Failed to load contact inquiry: ' + err);
+    });
+}
+
+function openSingleDeleteModal(id, ref, name) {
+    document.getElementById('deleteSingleContactId').value = id;
+    document.getElementById('deleteSingleContactRef').textContent = ref;
+    document.getElementById('deleteSingleContactName').textContent = name;
+    new bootstrap.Modal(document.getElementById('deleteSingleContactModal')).show();
+}
+
+function openSingleDeleteFromModal() {
+    if (!activeModalContact) return;
+    var detailsModalEl = document.getElementById('contactDetailsModal');
+    var detailsModal = bootstrap.Modal.getInstance(detailsModalEl);
+    if (detailsModal) detailsModal.hide();
+
+    openSingleDeleteModal(activeModalContact.id, activeModalContact.referenceNumber, activeModalContact.fullName);
+}
+
+function onCheckboxChange() {
+    var cbs = document.querySelectorAll('.contact-cb:checked');
+    var bar = document.getElementById('bulkActionBar');
+    var badge = document.getElementById('selectedBadge');
+    var count = cbs.length;
+
+    badge.textContent = count;
+    if (count > 0) {
+        bar.classList.remove('d-none');
+    } else {
+        bar.classList.add('d-none');
+    }
+
+    var allCbs = document.querySelectorAll('.contact-cb');
+    var selectAll = document.getElementById('selectAllCheckbox');
+    if (selectAll) {
+        selectAll.checked = (allCbs.length > 0 && cbs.length === allCbs.length);
+    }
+}
+
+function toggleSelectAll(masterCb) {
+    var allCbs = document.querySelectorAll('.contact-cb');
+    allCbs.forEach(function(cb) {
+        cb.checked = masterCb.checked;
+    });
+    onCheckboxChange();
+}
+
+function clearSelection() {
+    var allCbs = document.querySelectorAll('.contact-cb');
+    allCbs.forEach(function(cb) {
+        cb.checked = false;
+    });
+    var selectAll = document.getElementById('selectAllCheckbox');
+    if (selectAll) selectAll.checked = false;
+    onCheckboxChange();
+}
+
+function openBulkDeleteModal() {
+    var cbs = document.querySelectorAll('.contact-cb:checked');
+    if (cbs.length === 0) return;
+
+    var container = document.getElementById('bulkDeleteContactHiddenInputs');
+    container.innerHTML = '';
+    cbs.forEach(function(cb) {
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'selectedIds';
+        input.value = cb.value;
+        container.appendChild(input);
+    });
+
+    document.getElementById('bulkDeleteContactCountText').textContent = cbs.length;
+    new bootstrap.Modal(document.getElementById('deleteBulkContactModal')).show();
+}
+</script>
+}

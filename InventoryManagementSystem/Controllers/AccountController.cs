@@ -98,6 +98,12 @@ namespace InventoryManagementSystem.Controllers
                         bool isSusp = string.Equals(tenant.Status, "Suspended", StringComparison.OrdinalIgnoreCase)
                                    || (license != null && string.Equals(license.Status, "Suspended", StringComparison.OrdinalIgnoreCase));
 
+                        if (string.Equals(tenant.Status, "Rejected", StringComparison.OrdinalIgnoreCase))
+                        {
+                            ModelState.AddModelError(string.Empty, $"Your shop registration was not approved. Reason: {tenant.RejectionReason ?? "Does not meet verification criteria"}. Please contact platform support.");
+                            return View(model);
+                        }
+
                         if (isSusp)
                         {
                             if (user.Role == Role.Admin)
@@ -154,11 +160,20 @@ namespace InventoryManagementSystem.Controllers
                 TempData["ToastMessage"] = $"Welcome back, {user.FullName}!";
                 TempData["ToastType"] = "success";
 
-                if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl)) return Redirect(returnUrl);
                 if (user.Role == Role.SuperAdmin)
                 {
                     return RedirectToAction("Dashboard", "PlatformAdmin");
                 }
+
+                if (!string.IsNullOrEmpty(user.TenantId))
+                {
+                    var userTenant = await _context.Tenants.Find(t => t.Id == user.TenantId || t.TenantCode == user.TenantId).FirstOrDefaultAsync();
+                    if (userTenant != null && string.Equals(userTenant.Status, "PendingApproval", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return RedirectToAction("UnderReview", "Account");
+                    }
+                }
+
                 return RedirectToAction("Index", "Home");
             }
 
@@ -559,6 +574,25 @@ namespace InventoryManagementSystem.Controllers
         [HttpGet]
         public IActionResult AccessDenied()
         {
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> UnderReview()
+        {
+            var tenantId = User.FindFirst("TenantId")?.Value;
+            if (!string.IsNullOrEmpty(tenantId))
+            {
+                var tenant = await _context.Tenants.Find(t => t.Id == tenantId || t.TenantCode == tenantId).FirstOrDefaultAsync();
+                if (tenant != null)
+                {
+                    if (string.Equals(tenant.Status, "Active", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return RedirectToAction("Index", "Home");
+                    }
+                    ViewBag.Tenant = tenant;
+                }
+            }
             return View();
         }
 

@@ -358,8 +358,8 @@
                                 }
                             </td>
                             <td>
-                                <div>@ret.CreatedAt.ToString("dd-MMM-yyyy")</div>
-                                <small class="text-muted">@ret.CreatedAt.ToString("hh:mm tt")</small>
+                                <div>@ret.CreatedAt.ToIst().ToString("dd-MMM-yyyy")</div>
+                                <small class="text-muted">@ret.CreatedAt.ToIst().ToString("hh:mm tt IST")</small>
                             </td>
                             <td>
                                 @if (firstItem != null)

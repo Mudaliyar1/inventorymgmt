@@ -1,0 +1,146 @@
+@{
+    ViewData["Title"] = "Terms & Conditions — SIMS Smart Inventory Management System";
+    Layout = "_Layout";
+    var settings = ViewBag.Settings as InventoryManagementSystem.Models.PlatformSettings;
+    var platformName = settings?.PlatformName ?? "SIMS SaaS Platform";
+    var contactEmail = settings?.ContactEmail ?? "support@sims.com";
+    var contactPhone = settings?.ContactPhone ?? "+91 98765 43210";
+    var officeAddress = settings?.OfficeAddress ?? "123 Business Hub, Mumbai, India";
+}
+
+<div class="pz-page-wrap pb-5">
+    <div class="pz-container" style="max-width: 1040px;">
+
+        <!-- Header -->
+        <div class="pz-section-head mb-4 text-center">
+            <span class="pz-accent-eyebrow">LEGAL &amp; COMPLIANCE</span>
+            <h1 class="pz-section-title">Terms &amp; Conditions</h1>
+            <span class="pz-heading-accent" aria-hidden="true"></span>
+            <p class="pz-section-sub">
+                The governing master service terms and acceptable usage conditions for accessing and utilizing the SIMS SaaS inventory system.
+            </p>
+        </div>
+        <div class="row g-4">
+            <!-- Sidebar -->
+            <div class="col-lg-4 col-md-5">
+                <div class="pz-card p-4 position-sticky" style="top: 90px;">
+                    <h5 class="fw-bold fs-7 mb-3 text-uppercase text-muted" style="letter-spacing: 0.05em;">Table of Contents</h5>
+                    <nav class="nav flex-column gap-2 fs-8">
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#tc-agreement"><i class="bi bi-chevron-right me-1 text-primary"></i> 1. Acceptance of Terms</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#tc-registration"><i class="bi bi-chevron-right me-1 text-primary"></i> 2. Account Registration &amp; Security</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#tc-acceptable"><i class="bi bi-chevron-right me-1 text-primary"></i> 3. Acceptable Use Policy</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#tc-subscription"><i class="bi bi-chevron-right me-1 text-primary"></i> 4. Subscription Licenses &amp; Limits</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#tc-responsibilities"><i class="bi bi-chevron-right me-1 text-primary"></i> 5. Mutual Responsibilities</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#tc-ip"><i class="bi bi-chevron-right me-1 text-primary"></i> 6. Intellectual Property Rights</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#tc-availability"><i class="bi bi-chevron-right me-1 text-primary"></i> 7. Availability &amp; Maintenance</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#tc-termination"><i class="bi bi-chevron-right me-1 text-primary"></i> 8. Suspension &amp; Dispute Resolution</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#tc-updates"><i class="bi bi-chevron-right me-1 text-primary"></i> 9. Policy Updates &amp; Contact</a>
+                    </nav>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-lg-8 col-md-7">
+                <div class="pz-card p-4 p-lg-5">
+
+                    <!-- Section 1 -->
+                    <section id="tc-agreement" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">1. Acceptance of Terms</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            By registering an account, activating a trial license, purchasing a subscription package, or accessing the SIMS application, you agree to be bound by these Terms and Conditions ("Terms"). If registering on behalf of a retail store, business partnership, or company, you represent that you hold authority to bind said business entity.
+                        </p>
+                    </section>
+
+                    <!-- Section 2 -->
+                    <section id="tc-registration" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">2. Account Registration &amp; Security</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            Each registered retail business operates as an independent Tenant identified by a unique Shop Code. The primary Shop Admin is responsible for:
+                        </p>
+                        <ul class="fs-7 text-muted ps-3 mb-3">
+                            <li class="mb-2">Maintaining true, current, and complete registration credentials.</li>
+                            <li class="mb-2">Safeguarding administrative and employee passwords and immediately notifying SIMS support of any unauthorized login or security breach.</li>
+                            <li class="mb-2">Configuring employee roles (Manager, Cashier, Technician) appropriately so that access to cost pricing, profit reports, and customer records is restricted per company policies.</li>
+                        </ul>
+                    </section>
+
+                    <!-- Section 3 -->
+                    <section id="tc-acceptable" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">3. Acceptable Use Policy</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            The SIMS software may only be used for lawful business, inventory, POS billing, and repair tracking purposes. Tenants agree NOT to:
+                        </p>
+                        <ul class="fs-7 text-muted ps-3 mb-3">
+                            <li class="mb-2">Attempt reverse engineering, decompilation, unauthorized security probing, or penetration testing against the SIMS API or database infrastructure.</li>
+                            <li class="mb-2">Attempt cross-tenant data traversal or exploit software vulnerabilities to read or modify another tenant's records.</li>
+                            <li class="mb-2">Use the system to catalog stolen goods, fraudulent IMEI numbers, or counterfeit products in violation of national trade laws.</li>
+                            <li class="mb-2">Send bulk unsolicited marketing spam or unauthorized communications using integrated transactional messaging channels.</li>
+                        </ul>
+                    </section>
+
+                    <!-- Section 4 -->
+                    <section id="tc-subscription" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">4. Subscription Licenses &amp; Limits</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            Access to SIMS is provided under a revocable, non-exclusive, non-transferable subscription license tied to the selected Package (Starter, Professional, Enterprise, or Custom Quote).
+                        </p>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            Packages include defined resource limits, including maximum active administrators, employee accounts, cataloged products, registered suppliers, and serialized devices. Exceeding package allocations may restrict new record creation until the tenant upgrades their subscription tier or obtains a custom quota increase.
+                        </p>
+                    </section>
+
+                    <!-- Section 5 -->
+                    <section id="tc-responsibilities" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">5. Mutual Responsibilities</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            <strong>SIMS Platform Responsibility:</strong> We commit to maintaining software updates, platform stability, tenant database isolation, and providing technical support via our support desk within published operating hours.
+                        </p>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            <strong>Customer Responsibility:</strong> Tenants are responsible for the accuracy of their inventory entries, tax calculations, customer billing data, hardware peripherals (barcode scanners, ESC/POS receipt printers), and local Internet connectivity.
+                        </p>
+                    </section>
+
+                    <!-- Section 6 -->
+                    <section id="tc-ip" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">6. Intellectual Property Rights</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            All platform source code, user interfaces, branding, software architecture, and documentation remain the proprietary intellectual property of @platformName. Tenants retain complete ownership of their entered business data, product records, customer ledgers, and transaction histories.
+                        </p>
+                    </section>
+
+                    <!-- Section 7 -->
+                    <section id="tc-availability" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">7. Availability &amp; Scheduled Maintenance</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            We endeavor to maintain high platform availability; however, SIMS does not guarantee 100% uninterrupted, error-free operation. Scheduled maintenance windows, database optimizations, and platform feature upgrades are announced in advance or performed during off-peak hours where feasible.
+                        </p>
+                    </section>
+
+                    <!-- Section 8 -->
+                    <section id="tc-termination" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">8. Suspension, Termination &amp; Dispute Resolution</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            We reserve the right to suspend or terminate tenant access in cases of payment default, severe breach of acceptable use, or fraudulent conduct. In the event of a dispute, parties agree to first seek informal good-faith resolution via our support desk prior to initiating formal legal proceedings.
+                        </p>
+                    </section>
+
+                    <!-- Section 9 -->
+                    <section id="tc-updates">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">9. Policy Updates &amp; Contact</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            Terms may be revised periodically to incorporate new regulatory requirements or system features. Continued software usage following published updates constitutes acceptance of modified terms.
+                        </p>
+                        <div class="p-3 bg-light rounded-3 border fs-8">
+                            <div><strong>Platform:</strong> @platformName</div>
+                            <div><strong>Legal Inquiries:</strong> <a href="mailto:@contactEmail" class="text-decoration-none">@contactEmail</a></div>
+                            <div><strong>Support Line:</strong> <a href="tel:@contactPhone" class="text-decoration-none text-dark">@contactPhone</a></div>
+                            <div><strong>Address:</strong> @officeAddress</div>
+                        </div>
+                    </section>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

@@ -2,6 +2,8 @@
 @{
     ViewData["Title"] = "Stock In — Mobile Shop";
     var suppliers = ViewBag.Suppliers as IEnumerable<InventoryManagementSystem.Models.Supplier>;
+    var brands = ViewBag.Brands as List<string> ?? new List<string>();
+    var allProductsJson = ViewBag.AllActiveProductsJson as string ?? "[]";
 }
 
 <div class="d-flex align-items-center justify-content-between mb-4">
@@ -41,9 +43,22 @@
                 <form asp-action="StockInDevice" method="post" id="singleDeviceForm">
                     @Html.AntiForgeryToken()
                     <div class="row g-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Select Brand <span class="text-secondary fw-normal">(Filter Models)</span></label>
+                            <select id="SingleBrandSelect" class="form-select" onchange="onSingleBrandChanged(this.value)">
+                                <option value="">-- All Brands --</option>
+                                @if (brands != null)
+                                {
+                                    foreach (var b in brands)
+                                    {
+                                        <option value="@b">@b</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-4">
                             <label class="form-label small fw-semibold">Select Mobile Model <span class="text-danger">*</span></label>
-                            <select name="ProductId" id="SingleProductId" class="form-select" required>
+                            <select name="ProductId" id="SingleProductId" class="form-select" required onchange="onSingleProductChanged(this.value)">
                                 <option value="">-- Select Product Model --</option>
                                 @if (Model.Products != null)
                                 {
@@ -54,7 +69,7 @@
                                 }
                             </select>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label small fw-semibold">Supplier / Vendor</label>
                             <select name="SupplierName" class="form-select">
                                 <option value="">-- Direct Procurement --</option>
@@ -66,6 +81,56 @@
                                     }
                                 }
                             </select>
+                        </div>
+
+                        <!-- Dynamic Model, Variant & Color Selection -->
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Storage / Variant <span class="text-secondary fw-normal">(For Apple/iOS: Storage only)</span> <span class="text-danger">*</span></label>
+                            <select id="SingleVariantSelect" class="form-select" onchange="onSingleVariantChanged(this.value)" required>
+                                <option value="">-- Select Mobile Model First --</option>
+                            </select>
+                            <input type="hidden" name="VariantId" id="SingleVariantId" />
+                            <input type="hidden" name="Variant" id="SingleVariantName" />
+                            <div id="SingleCustomVariantWrap" class="mt-2" style="display:none">
+                                <input type="text" id="SingleCustomVariant" class="form-control form-control-sm" placeholder="e.g. 128GB, 256GB (or 12GB / 256GB)" oninput="onSingleCustomVariantInput(this.value)" />
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Color <span class="text-danger">*</span></label>
+                            <select id="SingleColorSelect" class="form-select" onchange="onSingleColorChanged(this.value)" required>
+                                <option value="">-- Select Variant First --</option>
+                            </select>
+                            <input type="hidden" name="ColorId" id="SingleColorId" />
+                            <input type="hidden" name="Color" id="SingleColorName" />
+                            <div id="SingleCustomColorWrap" class="mt-2" style="display:none">
+                                <input type="text" id="SingleCustomColor" class="form-control form-control-sm" placeholder="e.g. Phantom Black, Pink gold" oninput="onSingleCustomColorInput(this.value)" />
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Serial Number</label>
+                            <input type="text" name="SerialNumber" class="form-control font-monospace" placeholder="Serial Number (Optional)">
+                        </div>
+
+                        <!-- Live Stock & Specs Banner -->
+                        <div class="col-12" id="SingleVariantStockBanner" style="display:none">
+                            <div class="p-3 rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-2" style="background:rgba(59, 130, 246, 0.08);border:1px solid rgba(59, 130, 246, 0.25)">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div style="width:36px;height:36px;border-radius:10px;background:#3b82f6;color:#fff;display:flex;align-items:center;justify-content:center">
+                                        <i class="bi bi-phone"></i>
+                                    </div>
+                                    <div>
+                                        <span class="fw-bold text-primary" id="SingleBannerTitle">Selected Mobile Variant</span>
+                                        <div class="small text-muted" id="SingleBannerDetails">Color &amp; Specifications</div>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill fs-7 fw-bold" id="SingleBannerStockBadge">
+                                        <i class="bi bi-box-seam me-1"></i> Current Stock: 0 Units
+                                    </span>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- IMEI 1 with Scan Button -->
@@ -92,25 +157,15 @@
                             <div id="SingleIMEI2Help" class="form-text small"></div>
                         </div>
 
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold">Serial Number</label>
-                            <input type="text" name="SerialNumber" class="form-control font-monospace" placeholder="Serial Number (Optional)">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold">Storage / Variant <span class="text-secondary fw-normal">(For Apple/iOS: Storage only)</span></label>
-                            <input type="text" name="Variant" class="form-control" placeholder="e.g. 128GB, 256GB (or 8GB / 128GB)">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-semibold">Color</label>
-                            <input type="text" name="Color" class="form-control" placeholder="e.g. Phantom Black">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Purchase Unit Cost (₹) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" name="PurchasePrice" id="SinglePurchasePrice" class="form-control font-monospace fw-bold" placeholder="0.00" required>
+                            <div class="form-text small text-muted">Auto-suggested from variant/supplier cost, editable for this IMEI</div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Purchase Unit Cost (₹)</label>
-                            <input type="number" step="0.01" name="PurchasePrice" class="form-control" placeholder="0.00">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Retail Selling Price (₹)</label>
-                            <input type="number" step="0.01" name="SellingPrice" class="form-control fw-bold text-success" placeholder="0.00">
+                            <label class="form-label small fw-semibold">Retail Selling Price (₹) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" name="SellingPrice" id="SingleSellingPrice" class="form-control font-monospace fw-bold text-success" placeholder="0.00" required>
+                            <div class="form-text small text-muted">Auto-suggested from retail shop pricing, editable for this IMEI</div>
                         </div>
                     </div>
                     <hr class="my-4">
@@ -129,9 +184,22 @@
             <div class="card-body p-4">
                 <h5 class="fw-bold mb-3 text-primary"><i class="bi bi-layers me-2"></i>Batch Header & Pricing Setup</h5>
                 <div class="row g-3">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Select Brand <span class="text-secondary fw-normal">(Filter Models)</span></label>
+                        <select id="BatchBrandSelect" class="form-select" onchange="onBatchBrandChanged(this.value)">
+                            <option value="">-- All Brands --</option>
+                            @if (brands != null)
+                            {
+                                foreach (var b in brands)
+                                {
+                                    <option value="@b">@b</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4">
                         <label class="form-label small fw-semibold">Select Mobile Model <span class="text-danger">*</span></label>
-                        <select id="BatchProductId" class="form-select" required>
+                        <select id="BatchProductId" class="form-select" required onchange="onBatchProductChanged(this.value)">
                             <option value="">-- Select Product Model --</option>
                             @if (Model.Products != null)
                             {
@@ -142,7 +210,7 @@
                             }
                         </select>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label small fw-semibold">Supplier / Vendor</label>
                         <select id="BatchSupplierName" class="form-select">
                             <option value="">-- Direct Procurement --</option>
@@ -156,20 +224,54 @@
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label small fw-semibold">Storage / Variant <span class="text-secondary fw-normal">(For Apple/iOS: Storage only)</span></label>
-                        <input type="text" id="BatchVariant" class="form-control" placeholder="e.g. 128GB, 256GB (or 8GB / 128GB)">
+                        <label class="form-label small fw-semibold">Storage / Variant <span class="text-secondary fw-normal">(For Apple/iOS: Storage only)</span> <span class="text-danger">*</span></label>
+                        <select id="BatchVariantSelect" class="form-select" onchange="onBatchVariantChanged(this.value)" required>
+                            <option value="">-- Select Model First --</option>
+                        </select>
+                        <input type="hidden" id="BatchVariantId" />
+                        <input type="hidden" id="BatchVariantName" />
+                        <div id="BatchCustomVariantWrap" class="mt-2" style="display:none">
+                            <input type="text" id="BatchCustomVariant" class="form-control form-control-sm" placeholder="e.g. 128GB, 256GB (or 12GB / 256GB)" oninput="onBatchCustomVariantInput(this.value)" />
+                        </div>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label small fw-semibold">Color</label>
-                        <input type="text" id="BatchColor" class="form-control" placeholder="e.g. Phantom Black">
+                        <label class="form-label small fw-semibold">Color <span class="text-danger">*</span></label>
+                        <select id="BatchColorSelect" class="form-select" onchange="onBatchColorChanged(this.value)" required>
+                            <option value="">-- Select Variant First --</option>
+                        </select>
+                        <input type="hidden" id="BatchColorId" />
+                        <input type="hidden" id="BatchColorName" />
+                        <div id="BatchCustomColorWrap" class="mt-2" style="display:none">
+                            <input type="text" id="BatchCustomColor" class="form-control form-control-sm" placeholder="e.g. Phantom Black, Pink gold" oninput="onBatchCustomColorInput(this.value)" />
+                        </div>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label small fw-semibold">Purchase Cost (₹)</label>
-                        <input type="number" step="0.01" id="BatchPurchasePrice" class="form-control" placeholder="0.00">
+                        <label class="form-label small fw-semibold">Purchase Unit Cost (₹)</label>
+                        <input type="number" step="0.01" id="BatchPurchasePrice" class="form-control font-monospace" placeholder="0.00">
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label small fw-semibold">Selling Price (₹)</label>
-                        <input type="number" step="0.01" id="BatchSellingPrice" class="form-control fw-bold text-success" placeholder="0.00">
+                        <label class="form-label small fw-semibold">Retail Selling Price (₹)</label>
+                        <input type="number" step="0.01" id="BatchSellingPrice" class="form-control font-monospace fw-bold text-success" placeholder="0.00">
+                    </div>
+
+                    <!-- Batch Live Stock Banner -->
+                    <div class="col-12" id="BatchVariantStockBanner" style="display:none">
+                        <div class="p-3 rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-2" style="background:rgba(59, 130, 246, 0.08);border:1px solid rgba(59, 130, 246, 0.25)">
+                            <div class="d-flex align-items-center gap-2">
+                                <div style="width:36px;height:36px;border-radius:10px;background:#3b82f6;color:#fff;display:flex;align-items:center;justify-content:center">
+                                    <i class="bi bi-boxes"></i>
+                                </div>
+                                <div>
+                                    <span class="fw-bold text-primary" id="BatchBannerTitle">Selected Mobile Variant</span>
+                                    <div class="small text-muted" id="BatchBannerDetails">Color &amp; Specifications</div>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill fs-7 fw-bold" id="BatchBannerStockBadge">
+                                    <i class="bi bi-box-seam me-1"></i> Current Stock: 0 Units
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -237,15 +339,94 @@
                 <form asp-action="StockIn" method="post">
                     @Html.AntiForgeryToken()
                     <div class="row g-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Select Brand <span class="text-secondary fw-normal">(Filter Items)</span></label>
+                            <select id="AccessoryBrandSelect" class="form-select" onchange="onAccessoryBrandChanged(this.value)">
+                                <option value="">-- All Brands --</option>
+                                @if (brands != null)
+                                {
+                                    foreach (var b in brands)
+                                    {
+                                        <option value="@b">@b</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-4">
                             <label class="form-label small fw-semibold">Select Accessory Product <span class="text-danger">*</span></label>
-                            <select asp-for="ProductId" asp-items="Model.Products" class="form-select" required>
+                            <select asp-for="ProductId" asp-items="Model.Products" class="form-select" id="AccessoryProductId" required onchange="onAccessoryProductChanged(this.value)">
                                 <option value="">-- Select Accessory Product --</option>
                             </select>
                         </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Supplier / Vendor</label>
+                            <select name="SupplierName" class="form-select">
+                                <option value="">-- Direct Procurement --</option>
+                                @if (suppliers != null)
+                                {
+                                    foreach (var sup in suppliers)
+                                    {
+                                        <option value="@sup.DisplayVendorName">@sup.DisplayVendorName — @sup.DisplayCompanyName</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+
                         <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Storage / Variant <span class="text-secondary fw-normal">(For Apple/iOS: Storage only)</span></label>
+                            <select id="AccessoryVariantSelect" class="form-select" onchange="onAccessoryVariantChanged(this.value)">
+                                <option value="">-- Standard / Base Variant --</option>
+                            </select>
+                            <input type="hidden" name="VariantId" id="AccessoryVariantId" />
+                            <input type="hidden" name="VariantName" id="AccessoryVariantName" />
+                            <div id="AccessoryCustomVariantWrap" class="mt-2" style="display:none">
+                                <input type="text" id="AccessoryCustomVariant" class="form-control form-control-sm" placeholder="e.g. 128GB, 256GB (or 12GB / 256GB)" oninput="onAccessoryCustomVariantInput(this.value)" />
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Color</label>
+                            <select id="AccessoryColorSelect" class="form-select" onchange="onAccessoryColorChanged(this.value)">
+                                <option value="">-- Standard / Default Color --</option>
+                            </select>
+                            <input type="hidden" name="ColorId" id="AccessoryColorId" />
+                            <input type="hidden" name="ColorName" id="AccessoryColorName" />
+                            <div id="AccessoryCustomColorWrap" class="mt-2" style="display:none">
+                                <input type="text" id="AccessoryCustomColor" class="form-control form-control-sm" placeholder="e.g. Phantom Black, Desert Titanium" oninput="onAccessoryCustomColorInput(this.value)" />
+                            </div>
+                        </div>
+
+                        <!-- Accessory Live Stock Banner -->
+                        <div class="col-12" id="AccessoryStockBanner" style="display:none">
+                            <div class="p-3 rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-2" style="background:rgba(16, 185, 129, 0.08);border:1px solid rgba(16, 185, 129, 0.25)">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div style="width:36px;height:36px;border-radius:10px;background:#10b981;color:#fff;display:flex;align-items:center;justify-content:center">
+                                        <i class="bi bi-box-seam"></i>
+                                    </div>
+                                    <div>
+                                        <span class="fw-bold text-success" id="AccessoryBannerTitle">Accessory Product</span>
+                                        <div class="small text-muted" id="AccessoryBannerDetails">Bulk Inventory</div>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill fs-7 fw-bold" id="AccessoryBannerStockBadge">
+                                        <i class="bi bi-box-seam me-1"></i> Current Stock: 0 Units
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
                             <label class="form-label small fw-semibold">Quantity to Add <span class="text-danger">*</span></label>
-                            <input asp-for="Quantity" type="number" min="1" class="form-control" placeholder="e.g. 50" required>
+                            <input asp-for="Quantity" type="number" min="1" class="form-control font-monospace fw-bold" placeholder="e.g. 50" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Purchase Unit Cost (₹)</label>
+                            <input type="number" step="0.01" id="AccessoryPurchasePrice" name="PurchasePrice" class="form-control font-monospace" placeholder="0.00">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Retail Selling Price (₹)</label>
+                            <input type="number" step="0.01" id="AccessorySellingPrice" name="SellingPrice" class="form-control font-monospace fw-bold text-success" placeholder="0.00">
                         </div>
                         <div class="col-12">
                             <label class="form-label small fw-semibold">Reason / PO Reference <span class="text-danger">*</span></label>
@@ -346,6 +527,610 @@
 let html5QrcodeScanner = null;
 let currentScanTargetMode = 'single_imei1'; // 'single_imei1', 'single_imei2', 'bulk_batch'
 let batchScannedDevices = [];
+let singleProductVariants = [];
+let batchProductVariants = [];
+let accessoryProductVariants = [];
+
+const allActiveProducts = @Html.Raw(allProductsJson);
+
+function populateProductDropdown(selectEl, products, placeholder, selectedValue) {
+    if (!selectEl) return;
+    let html = `<option value="">${placeholder}</option>`;
+    products.forEach(p => {
+        const isSel = (p.id === selectedValue) ? ' selected' : '';
+        html += `<option value="${p.id}"${isSel}>${p.displayText}</option>`;
+    });
+    selectEl.innerHTML = html;
+}
+
+function onSingleBrandChanged(brand) {
+    const prodSelect = document.getElementById('SingleProductId');
+    const currentVal = prodSelect.value;
+    let filtered = allActiveProducts;
+    if (brand) {
+        filtered = allActiveProducts.filter(p => (p.brand || '').toLowerCase() === brand.toLowerCase());
+    }
+    const matchCurrent = filtered.some(p => p.id === currentVal);
+    populateProductDropdown(prodSelect, filtered, '-- Select Product Model --', matchCurrent ? currentVal : '');
+    if (!matchCurrent) {
+        prodSelect.value = '';
+        onSingleProductChanged('');
+    }
+}
+
+function onBatchBrandChanged(brand) {
+    const prodSelect = document.getElementById('BatchProductId');
+    const currentVal = prodSelect.value;
+    let filtered = allActiveProducts;
+    if (brand) {
+        filtered = allActiveProducts.filter(p => (p.brand || '').toLowerCase() === brand.toLowerCase());
+    }
+    const matchCurrent = filtered.some(p => p.id === currentVal);
+    populateProductDropdown(prodSelect, filtered, '-- Select Product Model --', matchCurrent ? currentVal : '');
+    if (!matchCurrent) {
+        prodSelect.value = '';
+        onBatchProductChanged('');
+    }
+}
+
+function onAccessoryBrandChanged(brand) {
+    const prodSelect = document.getElementById('AccessoryProductId');
+    const currentVal = prodSelect.value;
+    let filtered = allActiveProducts;
+    if (brand) {
+        filtered = allActiveProducts.filter(p => (p.brand || '').toLowerCase() === brand.toLowerCase());
+    }
+    const matchCurrent = filtered.some(p => p.id === currentVal);
+    populateProductDropdown(prodSelect, filtered, '-- Select Accessory Product --', matchCurrent ? currentVal : '');
+    if (!matchCurrent) {
+        prodSelect.value = '';
+        onAccessoryProductChanged('');
+    }
+}
+
+// SINGLE DEVICE CASCADE
+async function onSingleProductChanged(productId) {
+    const variantSelect = document.getElementById('SingleVariantSelect');
+    const colorSelect = document.getElementById('SingleColorSelect');
+    const banner = document.getElementById('SingleVariantStockBanner');
+    const customVarWrap = document.getElementById('SingleCustomVariantWrap');
+    const customColorWrap = document.getElementById('SingleCustomColorWrap');
+    
+    document.getElementById('SingleVariantId').value = '';
+    document.getElementById('SingleVariantName').value = '';
+    document.getElementById('SingleColorId').value = '';
+    document.getElementById('SingleColorName').value = '';
+    if (customVarWrap) customVarWrap.style.display = 'none';
+    if (customColorWrap) customColorWrap.style.display = 'none';
+    if (banner) banner.style.display = 'none';
+
+    if (productId) {
+        const prodObj = allActiveProducts.find(p => p.id === productId);
+        if (prodObj && prodObj.brand) {
+            const brandSelect = document.getElementById('SingleBrandSelect');
+            if (brandSelect && brandSelect.value !== prodObj.brand) {
+                brandSelect.value = prodObj.brand;
+            }
+        }
+    }
+
+    if (!productId) {
+        variantSelect.innerHTML = '<option value="">-- Select Mobile Model First --</option>';
+        colorSelect.innerHTML = '<option value="">-- Select Variant First --</option>';
+        return;
+    }
+
+    variantSelect.innerHTML = '<option value="">Loading variants...</option>';
+    colorSelect.innerHTML = '<option value="">-- Select Variant First --</option>';
+
+    try {
+        const res = await fetch(`/Product/GetProductVariants?productId=${encodeURIComponent(productId)}`);
+        singleProductVariants = await res.json();
+
+        if (singleProductVariants && singleProductVariants.length > 0) {
+            let options = '<option value="">-- Select Storage / Hardware Variant --</option>';
+            singleProductVariants.forEach(v => {
+                const stockText = v.availableStock !== undefined ? ` (Stock: ${v.availableStock} Units)` : '';
+                options += `<option value="${v.variantId}">${v.displayVariant}${stockText}</option>`;
+            });
+            options += '<option value="__custom__">+ Other / Custom Variant</option>';
+            variantSelect.innerHTML = options;
+        } else {
+            variantSelect.innerHTML = '<option value="__custom__">+ Enter Custom Variant</option>';
+            onSingleVariantChanged('__custom__');
+        }
+    } catch (err) {
+        console.error('Error fetching product variants:', err);
+        variantSelect.innerHTML = '<option value="__custom__">+ Enter Custom Variant</option>';
+        onSingleVariantChanged('__custom__');
+    }
+}
+
+function onSingleVariantChanged(variantId) {
+    const colorSelect = document.getElementById('SingleColorSelect');
+    const customVarWrap = document.getElementById('SingleCustomVariantWrap');
+    const customColorWrap = document.getElementById('SingleCustomColorWrap');
+    const banner = document.getElementById('SingleVariantStockBanner');
+    const purchaseInput = document.getElementById('SinglePurchasePrice');
+    const sellingInput = document.getElementById('SingleSellingPrice');
+
+    document.getElementById('SingleColorId').value = '';
+    document.getElementById('SingleColorName').value = '';
+    if (customColorWrap) customColorWrap.style.display = 'none';
+
+    if (variantId === '__custom__') {
+        if (customVarWrap) customVarWrap.style.display = 'block';
+        document.getElementById('SingleVariantId').value = '';
+        document.getElementById('SingleVariantName').value = document.getElementById('SingleCustomVariant')?.value || '';
+        colorSelect.innerHTML = '<option value="__custom__">+ Enter Custom Color</option>';
+        onSingleColorChanged('__custom__');
+        if (banner) banner.style.display = 'none';
+        return;
+    }
+
+    if (customVarWrap) customVarWrap.style.display = 'none';
+
+    const selectedVariant = singleProductVariants.find(v => v.variantId === variantId);
+    if (!selectedVariant) {
+        colorSelect.innerHTML = '<option value="">-- Select Variant First --</option>';
+        if (banner) banner.style.display = 'none';
+        return;
+    }
+
+    document.getElementById('SingleVariantId').value = selectedVariant.variantId || '';
+    document.getElementById('SingleVariantName').value = selectedVariant.displayVariant || '';
+
+    // Auto-populate prices from variant if set
+    if (selectedVariant.purchasePrice && selectedVariant.purchasePrice > 0) {
+        purchaseInput.value = selectedVariant.purchasePrice.toFixed(2);
+    }
+    if (selectedVariant.sellingPrice && selectedVariant.sellingPrice > 0) {
+        sellingInput.value = selectedVariant.sellingPrice.toFixed(2);
+    }
+
+    // Populate Colors
+    if (selectedVariant.colors && selectedVariant.colors.length > 0) {
+        let cOpts = '<option value="">-- Select Color Option --</option>';
+        selectedVariant.colors.forEach(c => {
+            const stockText = c.availableStock !== undefined ? ` (Stock: ${c.availableStock} Units)` : '';
+            cOpts += `<option value="${c.colorId || c.name}">${c.name}${stockText}</option>`;
+        });
+        cOpts += '<option value="__custom__">+ Other / Custom Color</option>';
+        colorSelect.innerHTML = cOpts;
+    } else {
+        colorSelect.innerHTML = '<option value="__custom__">+ Enter Custom Color</option>';
+        onSingleColorChanged('__custom__');
+    }
+
+    // Show live variant stock banner
+    if (banner) {
+        banner.style.display = 'block';
+        const modelSelect = document.getElementById('SingleProductId');
+        const modelName = modelSelect.options[modelSelect.selectedIndex]?.text || 'Mobile Device';
+        document.getElementById('SingleBannerTitle').innerText = `${modelName} — ${selectedVariant.displayVariant}`;
+        document.getElementById('SingleBannerDetails').innerText = `Hardware SKU Variant`;
+        document.getElementById('SingleBannerStockBadge').innerHTML = `<i class="bi bi-box-seam me-1"></i> Current Stock: ${selectedVariant.availableStock || 0} Units`;
+    }
+}
+
+function onSingleColorChanged(colorVal) {
+    const customColorWrap = document.getElementById('SingleCustomColorWrap');
+    const purchaseInput = document.getElementById('SinglePurchasePrice');
+    const sellingInput = document.getElementById('SingleSellingPrice');
+
+    if (colorVal === '__custom__') {
+        if (customColorWrap) customColorWrap.style.display = 'block';
+        document.getElementById('SingleColorId').value = '';
+        document.getElementById('SingleColorName').value = document.getElementById('SingleCustomColor')?.value || '';
+        return;
+    }
+
+    if (customColorWrap) customColorWrap.style.display = 'none';
+
+    const variantId = document.getElementById('SingleVariantSelect').value;
+    const selectedVariant = singleProductVariants.find(v => v.variantId === variantId);
+    if (!selectedVariant) return;
+
+    const selectedColor = selectedVariant.colors?.find(c => (c.colorId && c.colorId === colorVal) || c.name === colorVal);
+    if (selectedColor) {
+        document.getElementById('SingleColorId').value = selectedColor.colorId || '';
+        document.getElementById('SingleColorName').value = selectedColor.name || '';
+
+        if (selectedColor.purchasePrice && selectedColor.purchasePrice > 0) {
+            purchaseInput.value = selectedColor.purchasePrice.toFixed(2);
+        }
+        if (selectedColor.sellingPrice && selectedColor.sellingPrice > 0) {
+            sellingInput.value = selectedColor.sellingPrice.toFixed(2);
+        }
+
+        // Update banner with specific color stock
+        const stockBadge = document.getElementById('SingleBannerStockBadge');
+        if (stockBadge) {
+            stockBadge.innerHTML = `<i class="bi bi-check2-circle me-1"></i> ${selectedColor.name} Stock: ${selectedColor.availableStock || 0} Units`;
+        }
+        const detailsEl = document.getElementById('SingleBannerDetails');
+        if (detailsEl) {
+            detailsEl.innerText = `Selected Color: ${selectedColor.name}`;
+        }
+    }
+}
+
+function onSingleCustomVariantInput(val) {
+    document.getElementById('SingleVariantName').value = val.trim();
+}
+
+function onSingleCustomColorInput(val) {
+    document.getElementById('SingleColorName').value = val.trim();
+}
+
+// BATCH CASCADE
+async function onBatchProductChanged(productId) {
+    const variantSelect = document.getElementById('BatchVariantSelect');
+    const colorSelect = document.getElementById('BatchColorSelect');
+    const banner = document.getElementById('BatchVariantStockBanner');
+    const customVarWrap = document.getElementById('BatchCustomVariantWrap');
+    const customColorWrap = document.getElementById('BatchCustomColorWrap');
+
+    document.getElementById('BatchVariantId').value = '';
+    document.getElementById('BatchVariantName').value = '';
+    document.getElementById('BatchColorId').value = '';
+    document.getElementById('BatchColorName').value = '';
+    if (customVarWrap) customVarWrap.style.display = 'none';
+    if (customColorWrap) customColorWrap.style.display = 'none';
+    if (banner) banner.style.display = 'none';
+
+    if (productId) {
+        const prodObj = allActiveProducts.find(p => p.id === productId);
+        if (prodObj && prodObj.brand) {
+            const brandSelect = document.getElementById('BatchBrandSelect');
+            if (brandSelect && brandSelect.value !== prodObj.brand) {
+                brandSelect.value = prodObj.brand;
+            }
+        }
+    }
+
+    if (!productId) {
+        variantSelect.innerHTML = '<option value="">-- Select Mobile Model First --</option>';
+        colorSelect.innerHTML = '<option value="">-- Select Variant First --</option>';
+        return;
+    }
+
+    variantSelect.innerHTML = '<option value="">Loading variants...</option>';
+    colorSelect.innerHTML = '<option value="">-- Select Variant First --</option>';
+
+    try {
+        const res = await fetch(`/Product/GetProductVariants?productId=${encodeURIComponent(productId)}`);
+        batchProductVariants = await res.json();
+
+        if (batchProductVariants && batchProductVariants.length > 0) {
+            let options = '<option value="">-- Select Storage / Hardware Variant --</option>';
+            batchProductVariants.forEach(v => {
+                const stockText = v.availableStock !== undefined ? ` (Stock: ${v.availableStock} Units)` : '';
+                options += `<option value="${v.variantId}">${v.displayVariant}${stockText}</option>`;
+            });
+            options += '<option value="__custom__">+ Other / Custom Variant</option>';
+            variantSelect.innerHTML = options;
+        } else {
+            variantSelect.innerHTML = '<option value="__custom__">+ Enter Custom Variant</option>';
+            onBatchVariantChanged('__custom__');
+        }
+    } catch (err) {
+        console.error('Error fetching batch product variants:', err);
+        variantSelect.innerHTML = '<option value="__custom__">+ Enter Custom Variant</option>';
+        onBatchVariantChanged('__custom__');
+    }
+}
+
+function onBatchVariantChanged(variantId) {
+    const colorSelect = document.getElementById('BatchColorSelect');
+    const customVarWrap = document.getElementById('BatchCustomVariantWrap');
+    const customColorWrap = document.getElementById('BatchCustomColorWrap');
+    const banner = document.getElementById('BatchVariantStockBanner');
+    const purchaseInput = document.getElementById('BatchPurchasePrice');
+    const sellingInput = document.getElementById('BatchSellingPrice');
+
+    document.getElementById('BatchColorId').value = '';
+    document.getElementById('BatchColorName').value = '';
+    if (customColorWrap) customColorWrap.style.display = 'none';
+
+    if (variantId === '__custom__') {
+        if (customVarWrap) customVarWrap.style.display = 'block';
+        document.getElementById('BatchVariantId').value = '';
+        document.getElementById('BatchVariantName').value = document.getElementById('BatchCustomVariant')?.value || '';
+        colorSelect.innerHTML = '<option value="__custom__">+ Enter Custom Color</option>';
+        onBatchColorChanged('__custom__');
+        if (banner) banner.style.display = 'none';
+        return;
+    }
+
+    if (customVarWrap) customVarWrap.style.display = 'none';
+
+    const selectedVariant = batchProductVariants.find(v => v.variantId === variantId);
+    if (!selectedVariant) {
+        colorSelect.innerHTML = '<option value="">-- Select Variant First --</option>';
+        if (banner) banner.style.display = 'none';
+        return;
+    }
+
+    document.getElementById('BatchVariantId').value = selectedVariant.variantId || '';
+    document.getElementById('BatchVariantName').value = selectedVariant.displayVariant || '';
+
+    if (selectedVariant.purchasePrice && selectedVariant.purchasePrice > 0) {
+        purchaseInput.value = selectedVariant.purchasePrice.toFixed(2);
+    }
+    if (selectedVariant.sellingPrice && selectedVariant.sellingPrice > 0) {
+        sellingInput.value = selectedVariant.sellingPrice.toFixed(2);
+    }
+
+    if (selectedVariant.colors && selectedVariant.colors.length > 0) {
+        let cOpts = '<option value="">-- Select Color Option --</option>';
+        selectedVariant.colors.forEach(c => {
+            const stockText = c.availableStock !== undefined ? ` (Stock: ${c.availableStock} Units)` : '';
+            cOpts += `<option value="${c.colorId || c.name}">${c.name}${stockText}</option>`;
+        });
+        cOpts += '<option value="__custom__">+ Other / Custom Color</option>';
+        colorSelect.innerHTML = cOpts;
+    } else {
+        colorSelect.innerHTML = '<option value="__custom__">+ Enter Custom Color</option>';
+        onBatchColorChanged('__custom__');
+    }
+
+    if (banner) {
+        banner.style.display = 'block';
+        const modelSelect = document.getElementById('BatchProductId');
+        const modelName = modelSelect.options[modelSelect.selectedIndex]?.text || 'Mobile Device';
+        document.getElementById('BatchBannerTitle').innerText = `${modelName} — ${selectedVariant.displayVariant}`;
+        document.getElementById('BatchBannerDetails').innerText = `Batch Hardware Variant`;
+        document.getElementById('BatchBannerStockBadge').innerHTML = `<i class="bi bi-box-seam me-1"></i> Current Stock: ${selectedVariant.availableStock || 0} Units`;
+    }
+}
+
+function onBatchColorChanged(colorVal) {
+    const customColorWrap = document.getElementById('BatchCustomColorWrap');
+    const purchaseInput = document.getElementById('BatchPurchasePrice');
+    const sellingInput = document.getElementById('BatchSellingPrice');
+
+    if (colorVal === '__custom__') {
+        if (customColorWrap) customColorWrap.style.display = 'block';
+        document.getElementById('BatchColorId').value = '';
+        document.getElementById('BatchColorName').value = document.getElementById('BatchCustomColor')?.value || '';
+        return;
+    }
+
+    if (customColorWrap) customColorWrap.style.display = 'none';
+
+    const variantId = document.getElementById('BatchVariantSelect').value;
+    const selectedVariant = batchProductVariants.find(v => v.variantId === variantId);
+    if (!selectedVariant) return;
+
+    const selectedColor = selectedVariant.colors?.find(c => (c.colorId && c.colorId === colorVal) || c.name === colorVal);
+    if (selectedColor) {
+        document.getElementById('BatchColorId').value = selectedColor.colorId || '';
+        document.getElementById('BatchColorName').value = selectedColor.name || '';
+
+        if (selectedColor.purchasePrice && selectedColor.purchasePrice > 0) {
+            purchaseInput.value = selectedColor.purchasePrice.toFixed(2);
+        }
+        if (selectedColor.sellingPrice && selectedColor.sellingPrice > 0) {
+            sellingInput.value = selectedColor.sellingPrice.toFixed(2);
+        }
+
+        const stockBadge = document.getElementById('BatchBannerStockBadge');
+        if (stockBadge) {
+            stockBadge.innerHTML = `<i class="bi bi-check2-circle me-1"></i> ${selectedColor.name} Stock: ${selectedColor.availableStock || 0} Units`;
+        }
+        const detailsEl = document.getElementById('BatchBannerDetails');
+        if (detailsEl) {
+            detailsEl.innerText = `Selected Color: ${selectedColor.name}`;
+        }
+    }
+}
+
+function onBatchCustomVariantInput(val) {
+    document.getElementById('BatchVariantName').value = val.trim();
+}
+
+function onBatchCustomColorInput(val) {
+    document.getElementById('BatchColorName').value = val.trim();
+}
+
+// ACCESSORY / BULK STOCK IN CASCADE
+async function onAccessoryProductChanged(productId) {
+    const variantSelect = document.getElementById('AccessoryVariantSelect');
+    const colorSelect = document.getElementById('AccessoryColorSelect');
+    const banner = document.getElementById('AccessoryStockBanner');
+    const customVarWrap = document.getElementById('AccessoryCustomVariantWrap');
+    const customColorWrap = document.getElementById('AccessoryCustomColorWrap');
+    const purInput = document.getElementById('AccessoryPurchasePrice');
+    const sellInput = document.getElementById('AccessorySellingPrice');
+
+    document.getElementById('AccessoryVariantId').value = '';
+    document.getElementById('AccessoryVariantName').value = '';
+    document.getElementById('AccessoryColorId').value = '';
+    document.getElementById('AccessoryColorName').value = '';
+    if (customVarWrap) customVarWrap.style.display = 'none';
+    if (customColorWrap) customColorWrap.style.display = 'none';
+    if (banner) banner.style.display = 'none';
+
+    if (productId) {
+        const prodObj = allActiveProducts.find(p => p.id === productId);
+        if (prodObj && prodObj.brand) {
+            const brandSelect = document.getElementById('AccessoryBrandSelect');
+            if (brandSelect && brandSelect.value !== prodObj.brand) {
+                brandSelect.value = prodObj.brand;
+            }
+        }
+    }
+
+    if (!productId) {
+        if (variantSelect) variantSelect.innerHTML = '<option value="">-- Standard / Base Variant --</option>';
+        if (colorSelect) colorSelect.innerHTML = '<option value="">-- Standard / Default Color --</option>';
+        return;
+    }
+
+    if (variantSelect) variantSelect.innerHTML = '<option value="">Loading variants...</option>';
+    if (colorSelect) colorSelect.innerHTML = '<option value="">-- Select Variant First --</option>';
+
+    try {
+        const res = await fetch(`/Product/GetProductVariants?productId=${encodeURIComponent(productId)}`);
+        accessoryProductVariants = await res.json();
+        const prodSelect = document.getElementById('AccessoryProductId');
+        const prodName = prodSelect.options[prodSelect.selectedIndex]?.text || 'Accessory Item';
+
+        if (accessoryProductVariants && accessoryProductVariants.length > 0) {
+            let options = '<option value="">-- Select Storage / Hardware Variant --</option>';
+            accessoryProductVariants.forEach(v => {
+                const stockText = v.availableStock !== undefined ? ` (Stock: ${v.availableStock} Units)` : '';
+                options += `<option value="${v.variantId}">${v.displayVariant}${stockText}</option>`;
+            });
+            options += '<option value="__custom__">+ Other / Custom Variant</option>';
+            if (variantSelect) variantSelect.innerHTML = options;
+
+            if (accessoryProductVariants.length === 1) {
+                variantSelect.value = accessoryProductVariants[0].variantId;
+                onAccessoryVariantChanged(accessoryProductVariants[0].variantId);
+            }
+        } else {
+            if (variantSelect) {
+                variantSelect.innerHTML = '<option value="__custom__">+ Enter Custom Variant</option>';
+                onAccessoryVariantChanged('__custom__');
+            }
+        }
+
+        if (banner) {
+            banner.style.display = 'block';
+            document.getElementById('AccessoryBannerTitle').innerText = prodName;
+            document.getElementById('AccessoryBannerDetails').innerText = 'Bulk Stock In';
+            const totalStock = accessoryProductVariants.reduce((sum, v) => sum + (v.availableStock || 0), 0);
+            document.getElementById('AccessoryBannerStockBadge').innerHTML = `<i class="bi bi-box-seam me-1"></i> Current Stock: ${totalStock} Units`;
+        }
+    } catch (e) {
+        console.warn('Error fetching accessory details:', e);
+        if (variantSelect) {
+            variantSelect.innerHTML = '<option value="__custom__">+ Enter Custom Variant</option>';
+            onAccessoryVariantChanged('__custom__');
+        }
+    }
+}
+
+function onAccessoryVariantChanged(variantId) {
+    const colorSelect = document.getElementById('AccessoryColorSelect');
+    const customVarWrap = document.getElementById('AccessoryCustomVariantWrap');
+    const customColorWrap = document.getElementById('AccessoryCustomColorWrap');
+    const banner = document.getElementById('AccessoryStockBanner');
+    const purInput = document.getElementById('AccessoryPurchasePrice');
+    const sellInput = document.getElementById('AccessorySellingPrice');
+
+    document.getElementById('AccessoryColorId').value = '';
+    document.getElementById('AccessoryColorName').value = '';
+    if (customColorWrap) customColorWrap.style.display = 'none';
+
+    if (variantId === '__custom__') {
+        if (customVarWrap) customVarWrap.style.display = 'block';
+        document.getElementById('AccessoryVariantId').value = '';
+        document.getElementById('AccessoryVariantName').value = document.getElementById('AccessoryCustomVariant')?.value || '';
+        if (colorSelect) colorSelect.innerHTML = '<option value="__custom__">+ Enter Custom Color</option>';
+        onAccessoryColorChanged('__custom__');
+        return;
+    }
+
+    if (customVarWrap) customVarWrap.style.display = 'none';
+
+    const selectedVariant = accessoryProductVariants.find(v => v.variantId === variantId);
+    if (!selectedVariant) {
+        if (colorSelect) colorSelect.innerHTML = '<option value="">-- Select Variant First --</option>';
+        return;
+    }
+
+    document.getElementById('AccessoryVariantId').value = selectedVariant.variantId || '';
+    document.getElementById('AccessoryVariantName').value = selectedVariant.displayVariant || '';
+
+    if (selectedVariant.purchasePrice && selectedVariant.purchasePrice > 0 && purInput) {
+        purInput.value = selectedVariant.purchasePrice.toFixed(2);
+    }
+    if (selectedVariant.sellingPrice && selectedVariant.sellingPrice > 0 && sellInput) {
+        sellInput.value = selectedVariant.sellingPrice.toFixed(2);
+    }
+
+    if (selectedVariant.colors && selectedVariant.colors.length > 0) {
+        let cOpts = '<option value="">-- Select Color Option --</option>';
+        selectedVariant.colors.forEach(c => {
+            const stockText = c.availableStock !== undefined ? ` (Stock: ${c.availableStock} Units)` : '';
+            cOpts += `<option value="${c.colorId || c.name}">${c.name}${stockText}</option>`;
+        });
+        cOpts += '<option value="__custom__">+ Other / Custom Color</option>';
+        if (colorSelect) {
+            colorSelect.innerHTML = cOpts;
+            if (selectedVariant.colors.length === 1) {
+                colorSelect.value = selectedVariant.colors[0].colorId || selectedVariant.colors[0].name;
+                onAccessoryColorChanged(colorSelect.value);
+            }
+        }
+    } else {
+        if (colorSelect) {
+            colorSelect.innerHTML = '<option value="__custom__">+ Enter Custom Color</option>';
+            onAccessoryColorChanged('__custom__');
+        }
+    }
+
+    if (banner) {
+        banner.style.display = 'block';
+        const modelSelect = document.getElementById('AccessoryProductId');
+        const modelName = modelSelect.options[modelSelect.selectedIndex]?.text || 'Accessory Product';
+        document.getElementById('AccessoryBannerTitle').innerText = `${modelName} — ${selectedVariant.displayVariant}`;
+        document.getElementById('AccessoryBannerDetails').innerText = `Selected Hardware Variant`;
+        document.getElementById('AccessoryBannerStockBadge').innerHTML = `<i class="bi bi-box-seam me-1"></i> Current Stock: ${selectedVariant.availableStock || 0} Units`;
+    }
+}
+
+function onAccessoryColorChanged(colorVal) {
+    const customColorWrap = document.getElementById('AccessoryCustomColorWrap');
+    const purInput = document.getElementById('AccessoryPurchasePrice');
+    const sellInput = document.getElementById('AccessorySellingPrice');
+
+    if (colorVal === '__custom__') {
+        if (customColorWrap) customColorWrap.style.display = 'block';
+        document.getElementById('AccessoryColorId').value = '';
+        document.getElementById('AccessoryColorName').value = document.getElementById('AccessoryCustomColor')?.value || '';
+        return;
+    }
+
+    if (customColorWrap) customColorWrap.style.display = 'none';
+
+    const variantId = document.getElementById('AccessoryVariantSelect')?.value;
+    const selectedVariant = accessoryProductVariants.find(v => v.variantId === variantId);
+    if (!selectedVariant) return;
+
+    const selectedColor = selectedVariant.colors?.find(c => (c.colorId && c.colorId === colorVal) || c.name === colorVal);
+    if (selectedColor) {
+        document.getElementById('AccessoryColorId').value = selectedColor.colorId || '';
+        document.getElementById('AccessoryColorName').value = selectedColor.name || '';
+
+        if (selectedColor.purchasePrice && selectedColor.purchasePrice > 0 && purInput) {
+            purInput.value = selectedColor.purchasePrice.toFixed(2);
+        }
+        if (selectedColor.sellingPrice && selectedColor.sellingPrice > 0 && sellInput) {
+            sellInput.value = selectedColor.sellingPrice.toFixed(2);
+        }
+
+        const stockBadge = document.getElementById('AccessoryBannerStockBadge');
+        if (stockBadge) {
+            stockBadge.innerHTML = `<i class="bi bi-check2-circle me-1"></i> ${selectedColor.name} Stock: ${selectedColor.availableStock || 0} Units`;
+        }
+        const detailsEl = document.getElementById('AccessoryBannerDetails');
+        if (detailsEl) {
+            detailsEl.innerText = `Selected Color: ${selectedColor.name}`;
+        }
+    }
+}
+
+function onAccessoryCustomVariantInput(val) {
+    document.getElementById('AccessoryVariantName').value = val.trim();
+}
+
+function onAccessoryCustomColorInput(val) {
+    document.getElementById('AccessoryColorName').value = val.trim();
+}
 
 document.addEventListener('DOMContentLoaded', function () {
     // Populate cameras on modal open
@@ -929,8 +1714,10 @@ async function submitBatchStockIn() {
     const payload = {
         ProductId: productId,
         SupplierName: document.getElementById('BatchSupplierName').value,
-        Variant: document.getElementById('BatchVariant').value,
-        Color: document.getElementById('BatchColor').value,
+        VariantId: document.getElementById('BatchVariantId')?.value || '',
+        ColorId: document.getElementById('BatchColorId')?.value || '',
+        Variant: document.getElementById('BatchVariantName')?.value || '',
+        Color: document.getElementById('BatchColorName')?.value || '',
         PurchasePrice: parseFloat(document.getElementById('BatchPurchasePrice').value) || 0,
         SellingPrice: parseFloat(document.getElementById('BatchSellingPrice').value) || 0,
         Devices: batchScannedDevices

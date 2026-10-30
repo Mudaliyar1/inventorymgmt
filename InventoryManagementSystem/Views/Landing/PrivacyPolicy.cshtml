@@ -1,0 +1,150 @@
+@{
+    ViewData["Title"] = "Privacy Policy — SIMS Smart Inventory Management System";
+    Layout = "_Layout";
+    var settings = ViewBag.Settings as InventoryManagementSystem.Models.PlatformSettings;
+    var platformName = settings?.PlatformName ?? "SIMS SaaS Platform";
+    var contactEmail = settings?.ContactEmail ?? "support@sims.com";
+    var contactPhone = settings?.ContactPhone ?? "+91 98765 43210";
+    var officeAddress = settings?.OfficeAddress ?? "123 Business Hub, Mumbai, India";
+}
+
+<div class="pz-page-wrap pb-5">
+    <div class="pz-container" style="max-width: 1040px;">
+
+        <!-- Header -->
+        <div class="pz-section-head mb-4 text-center">
+            <span class="pz-accent-eyebrow">LEGAL &amp; COMPLIANCE</span>
+            <h1 class="pz-section-title">Privacy Policy</h1>
+            <span class="pz-heading-accent" aria-hidden="true"></span>
+            <p class="pz-section-sub">
+                How SIMS collects, processes, protects, and stores business, user, customer, and transactional data across our multi-tenant SaaS platform.
+            </p>
+        </div>
+        <div class="row g-4">
+            <!-- Table of Contents Sticky Sidebar -->
+            <div class="col-lg-4 col-md-5">
+                <div class="pz-card p-4 position-sticky" style="top: 90px;">
+                    <h5 class="fw-bold fs-7 mb-3 text-uppercase text-muted" style="letter-spacing: 0.05em;">Table of Contents</h5>
+                    <nav class="nav flex-column gap-2 fs-8">
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#sec-overview"><i class="bi bi-chevron-right me-1 text-primary"></i> 1. Platform Overview</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#sec-collection"><i class="bi bi-chevron-right me-1 text-primary"></i> 2. Information We Collect</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#sec-usage"><i class="bi bi-chevron-right me-1 text-primary"></i> 3. How Data Is Handled &amp; Used</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#sec-storage"><i class="bi bi-chevron-right me-1 text-primary"></i> 4. Storage, Retention &amp; Security</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#sec-thirdparty"><i class="bi bi-chevron-right me-1 text-primary"></i> 5. Third-Party Services &amp; Payments</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#sec-rights"><i class="bi bi-chevron-right me-1 text-primary"></i> 6. Account Deletion &amp; Export</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#sec-limitations"><i class="bi bi-chevron-right me-1 text-primary"></i> 7. Security Limitations &amp; Notice</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#sec-contact"><i class="bi bi-chevron-right me-1 text-primary"></i> 8. Privacy Queries &amp; Support</a>
+                    </nav>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="col-lg-8 col-md-7">
+                <div class="pz-card p-4 p-lg-5">
+
+                    <!-- Section 1 -->
+                    <section id="sec-overview" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">1. Platform Overview</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            @platformName ("SIMS", "we", "our", or "us") provides a multi-tenant cloud-based inventory, Point of Sale (POS), serial/IMEI device tracking, and workshop repair management platform engineered for retail businesses, repair centers, and distributors.
+                        </p>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            This Privacy Policy explains how information is collected during account registration, trial activation, contact inquiries, and ongoing software usage. By accessing or using SIMS, subscribed businesses ("Tenants") and their authorized employees acknowledge the data handling practices described herein.
+                        </p>
+                    </section>
+
+                    <!-- Section 2 -->
+                    <section id="sec-collection" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">2. Information We Collect</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            We collect only the information necessary to provide, secure, and bill for our software services:
+                        </p>
+                        <ul class="fs-7 text-muted ps-3 mb-3">
+                            <li class="mb-2"><strong>Account &amp; Registration Information:</strong> Business legal/trade name, owner name, login email, username, encrypted password hash, phone number, operating address, and GSTIN (where provided).</li>
+                            <li class="mb-2"><strong>Inquiry &amp; Support Communications:</strong> Full name, company name, work email address, phone number, subject, message body, and custom package quantity estimates submitted via public contact desks and quote calculators.</li>
+                            <li class="mb-2"><strong>Tenant Operational Data:</strong> Product catalog details (SKU, brand, category, purchase/selling pricing), serial &amp; IMEI numbers for serialized devices, customer records (names, contact numbers), supplier ledgers, stock transactions, repair tickets, and POS billing receipts generated during business operations.</li>
+                            <li class="mb-2"><strong>Technical &amp; Audit Logs:</strong> Access timestamps, user roles, IP addresses, system error telemetry, and security action logs (such as login events, password resets, and critical master record edits).</li>
+                        </ul>
+                    </section>
+
+                    <!-- Section 3 -->
+                    <section id="sec-usage" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">3. How Data Is Handled &amp; Used</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            We process collected data strictly for legitimate operational purposes:
+                        </p>
+                        <ul class="fs-7 text-muted ps-3 mb-3">
+                            <li class="mb-2">To provision isolated tenant databases and authenticate authorized staff accounts.</li>
+                            <li class="mb-2">To calculate real-time inventory counts, process POS transactions, and generate GST-compliant billing invoices.</li>
+                            <li class="mb-2">To deliver transactional system emails, such as password resets, subscription expiry alerts, low-stock notifications, and customer receipt copies.</li>
+                            <li class="mb-2">To process custom pricing inquiries and provide technical onboarding assistance.</li>
+                            <li class="mb-2">To safeguard the platform against abuse, brute-force attacks, and unauthorized cross-tenant data access.</li>
+                        </ul>
+                        <div class="alert alert-light border p-3 rounded-2 fs-8 text-secondary">
+                            <i class="bi bi-info-circle me-1"></i> SIMS does not sell, rent, monetize, or broker tenant customer lists or inventory records to external advertisers or data brokers.
+                        </div>
+                    </section>
+
+                    <!-- Section 4 -->
+                    <section id="sec-storage" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">4. Storage, Retention &amp; Security</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            Operational data is maintained in secure MongoDB databases structured with tenant boundary filtering (`TenantId` enforcement). Passwords are encrypted using industry-standard salted BCrypt hashing.
+                        </p>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            <strong>Retention Period:</strong> Active tenant inventory and billing data is preserved for the duration of the active subscription. In the event of account cancellation or license expiry, tenant records are archived in a suspended state for a grace period (typically 30 to 90 days) to allow renewal, after which data may be queued for permanent purge.
+                        </p>
+                    </section>
+
+                    <!-- Section 5 -->
+                    <section id="sec-thirdparty" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">5. Third-Party Services &amp; Payments</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            To ensure platform performance and reliable messaging, SIMS integrates select infrastructure service providers:
+                        </p>
+                        <ul class="fs-7 text-muted ps-3 mb-3">
+                            <li class="mb-2"><strong>Transactional Email Delivery:</strong> SMTP relay services (such as Brevo / Sendinblue) are utilized exclusively to dispatch system alerts and invoice receipts.</li>
+                            <li class="mb-2"><strong>Image &amp; Asset Storage:</strong> Cloudinary is used to host tenant brand logos and product catalog photos where enabled.</li>
+                            <li class="mb-2"><strong>Payment Processing:</strong> Online subscription renewal transactions are processed via secure external payment gateways. SIMS does not store full credit card numbers or CVV codes on our servers.</li>
+                        </ul>
+                    </section>
+
+                    <!-- Section 6 -->
+                    <section id="sec-rights" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">6. Account Deletion &amp; Data Export</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            Tenant administrators may export their product lists, stock reports, and customer ledgers to spreadsheet formats (Excel / CSV) directly from the application interface at any time during an active subscription.
+                        </p>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            Requests for complete account termination and permanent database deletion may be submitted by verified shop owners to our support desk. Subject to legal, accounting, and tax compliance obligations, data deletion is scheduled within 30 days of verification.
+                        </p>
+                    </section>
+
+                    <!-- Section 7 -->
+                    <section id="sec-limitations" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">7. Security Limitations &amp; Notice</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            While SIMS implements strict access controls, secure hashing, and role-based access filters, no Internet-connected software system can claim 100% invulnerability. Tenants are responsible for maintaining strong password hygiene, safeguarding staff credentials, and revoking access for departed employees.
+                        </p>
+                    </section>
+
+                    <!-- Section 8 -->
+                    <section id="sec-contact">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">8. Privacy Queries &amp; Support</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            For inquiries regarding this policy or to request data corrections, contact our administrative desk:
+                        </p>
+                        <div class="p-3 bg-light rounded-3 border fs-8">
+                            <div><strong>Platform:</strong> @platformName</div>
+                            <div><strong>Email:</strong> <a href="mailto:@contactEmail" class="text-decoration-none">@contactEmail</a></div>
+                            <div><strong>Phone:</strong> <a href="tel:@contactPhone" class="text-decoration-none text-dark">@contactPhone</a></div>
+                            <div><strong>Address:</strong> @officeAddress</div>
+                        </div>
+                    </section>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

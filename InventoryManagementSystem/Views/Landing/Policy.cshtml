@@ -1,0 +1,107 @@
+@model InventoryManagementSystem.Models.PolicyDocument
+@using InventoryManagementSystem.Extensions
+@{
+    ViewData["Title"] = $"{Model.Title} — SIMS Smart Inventory Management System";
+    Layout = "_Layout";
+    var settings = ViewBag.Settings as InventoryManagementSystem.Models.PlatformSettings;
+    var allPublicPolicies = ViewBag.AllPublicPolicies as List<InventoryManagementSystem.Models.PolicyDocument> ?? new List<InventoryManagementSystem.Models.PolicyDocument>();
+    var platformName = settings?.PlatformName ?? "SIMS SaaS Platform";
+    var contactEmail = settings?.ContactEmail ?? "support@sims.com";
+    var contactPhone = settings?.ContactPhone ?? "+91 98765 43210";
+    var officeAddress = settings?.OfficeAddress ?? "123 Business Hub, Mumbai, India";
+}
+
+<div class="pz-page-wrap pb-5">
+    <div class="pz-container" style="max-width: 1080px;">
+
+        <!-- Header -->
+        <div class="pz-section-head mb-4 text-center">
+            <span class="pz-accent-eyebrow">@(string.IsNullOrWhiteSpace(Model.Category) ? "LEGAL & COMPLIANCE" : Model.Category.ToUpperInvariant())</span>
+            <h1 class="pz-section-title">@Model.Title</h1>
+            <span class="pz-heading-accent" aria-hidden="true"></span>
+            
+            <div class="d-flex flex-wrap justify-content-center align-items-center gap-3 mt-2 text-muted fs-8 font-mono">
+                <span>
+                    <i class="bi bi-clock-history me-1 text-primary"></i>
+                    <strong>Last Updated:</strong> @Model.UpdatedAtUtc.ToPolicyIstDisplayString()
+                </span>
+                @if (Model.EffectiveDate.HasValue)
+                {
+                    <span class="text-secondary opacity-50">|</span>
+                    <span>
+                        <i class="bi bi-calendar-check me-1 text-success"></i>
+                        <strong>Effective:</strong> @Model.EffectiveDate.Value.ToString("dd MMMM yyyy")
+                    </span>
+                }
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(Model.Summary))
+            {
+                <p class="pz-section-sub mt-2 mb-0" style="max-width: 720px;">
+                    @Model.Summary
+                </p>
+            }
+        </div>
+
+        <div class="row g-4">
+            <!-- Sidebar: Navigation to Related Policies & Support Desk -->
+            <div class="col-lg-4 col-md-5">
+                <div class="pz-card p-4 position-sticky" style="top: 90px;">
+                    <h5 class="fw-bold fs-7 mb-3 text-uppercase text-muted" style="letter-spacing: 0.05em;">
+                        <i class="bi bi-shield-check me-1 text-primary"></i> Legal Documentation
+                    </h5>
+                    
+                    <nav class="nav flex-column gap-1 fs-8 mb-4">
+                        @foreach (var pol in allPublicPolicies)
+                        {
+                            var isActive = pol.Slug.Equals(Model.Slug, StringComparison.OrdinalIgnoreCase);
+                            <a class="nav-link px-2 py-2 rounded-2 text-decoration-none d-flex align-items-center justify-content-between @(isActive ? "bg-primary-subtle text-primary fw-bold" : "text-dark hover-bg-light")" 
+                               href="@Url.Action("Policy", "Landing", new { slug = pol.Slug })">
+                                <span><i class="bi bi-file-earmark-text me-2"></i>@pol.Title</span>
+                                @if (isActive)
+                                {
+                                    <i class="bi bi-check2 text-primary"></i>
+                                }
+                            </a>
+                        }
+                    </nav>
+
+                    <!-- Contact & Grievance Assistance -->
+                    <div class="p-3 bg-light rounded-3 border">
+                        <div class="fw-bold fs-8 text-dark mb-1 d-flex align-items-center">
+                            <i class="bi bi-headset text-primary me-2"></i> Compliance &amp; Help Desk
+                        </div>
+                        <p class="fs-9 text-muted mb-2">
+                            Questions regarding these terms, privacy requests, or subscription administration?
+                        </p>
+                        <div class="fs-9 text-secondary font-mono mb-1">
+                            <i class="bi bi-envelope me-1 text-primary"></i> @contactEmail
+                        </div>
+                        <div class="fs-9 text-secondary font-mono mb-2">
+                            <i class="bi bi-geo-alt me-1 text-danger"></i> @officeAddress
+                        </div>
+                        <a href="@Url.Action("Contact", "Landing")" class="btn btn-sm btn-outline-primary w-100 fs-9 fw-semibold">
+                            Submit Inquiry
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Area -->
+            <div class="col-lg-8 col-md-7">
+                <div class="pz-card p-4 p-md-5 bg-white shadow-sm">
+                    <article class="pz-policy-content fs-8">
+                        @Html.Raw(Model.ContentHtml)
+                    </article>
+
+                    <!-- Footer Note within Policy Card -->
+                    <div class="mt-5 pt-3 border-top d-flex flex-wrap justify-content-between align-items-center gap-2 text-muted fs-9 font-mono">
+                        <span>Document Reference: @Model.Slug</span>
+                        <span>Official SIMS Platform Policy</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

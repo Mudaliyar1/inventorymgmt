@@ -165,6 +165,14 @@
                         <span style="color: #ffffff !important; font-weight: 500;">Apple devices do not advertise RAM or RAM Types. RAM inputs are completely disabled and omitted — only Storage Capacity (128GB, 256GB, 512GB, 1TB) is used.</span>
                     </div>
                 </div>
+
+                <div class="alert alert-info py-2 px-3 small d-flex align-items-center gap-2 mb-3" style="background: rgba(30, 41, 59, 0.9); border: 1px solid rgba(59, 130, 246, 0.4); color: #93c5fd;">
+                    <i class="bi bi-shield-lock-fill fs-5 text-primary"></i>
+                    <div>
+                        <strong class="text-white">Audited Stock Protection:</strong> Physical stock quantities cannot be edited here. Physical mobile units must be received via <strong><a href="/Stock/StockIn" class="text-white text-decoration-underline fw-bold">Stock In (Camera/Barcode Scan)</a></strong> or deducted via <strong><a href="/Stock/StockOut" class="text-white text-decoration-underline fw-bold">Stock Out</a></strong> to maintain IMEI audit trails.
+                    </div>
+                </div>
+
                 <p class="small mb-3" id="variantsIntroText" style="color: rgba(255, 255, 255, 0.75) !important;">Manage sellable RAM/Storage combinations and color options with color-specific product gallery images.</p>
 
                 <div id="variantsContainer" class="d-flex flex-column gap-3">
@@ -1262,8 +1270,12 @@ function addVariantCard(ram = '', storage = '', purPrice = '', sellPrice = '', i
                 <input type="text" name="Variants[${vIndex}].Storage" value="${storage}" class="fg-control" placeholder="e.g. 128GB, 256GB, 512GB, 1TB" required />
             </div>
             <div class="col-md-2">
-                <label class="fg-label">Initial Stock</label>
-                <input type="number" name="Variants[${vIndex}].InitialStock" value="${initialStock}" class="fg-control" placeholder="0" min="0" />
+                <label class="fg-label">Current Stock <i class="bi bi-lock-fill text-muted small" title="Audited Stock - Managed via Stock In"></i></label>
+                <div class="input-group input-group-sm">
+                    <input type="number" name="Variants[${vIndex}].CurrentStock" value="${currentStock || initialStock}" class="fg-control bg-light text-muted fw-bold" readonly title="Stock is managed via Stock In / Audited Receipts" />
+                    <span class="input-group-text bg-light text-muted small"><i class="bi bi-lock"></i></span>
+                </div>
+                <input type="hidden" name="Variants[${vIndex}].InitialStock" value="${initialStock}" />
             </div>
         </div>
 
@@ -1454,7 +1466,11 @@ function addColorRow(vIndex, colorName = '', colorCode = '', initialStock = '0',
             <input type="number" step="0.01" name="Variants[${vIndex}].Colors[${cIndex}].SellingPrice" value="${sellPrice}" class="fg-control form-control-sm" placeholder="Selling Price (₹)" min="0" title="Color Selling Price" />
         </div>
         <div class="col-md-2">
-            <input type="number" name="Variants[${vIndex}].Colors[${cIndex}].InitialStock" value="${initialStock}" class="fg-control form-control-sm" placeholder="Initial Stock" min="0" title="Initial Stock for this color" />
+            <div class="input-group input-group-sm">
+                <input type="number" name="Variants[${vIndex}].Colors[${cIndex}].CurrentStock" value="${currentStock || initialStock}" class="fg-control form-control-sm bg-light text-muted fw-bold" readonly title="Audited stock managed via Stock In" />
+                <span class="input-group-text bg-light text-muted small"><i class="bi bi-lock"></i></span>
+            </div>
+            <input type="hidden" name="Variants[${vIndex}].Colors[${cIndex}].InitialStock" value="${initialStock}" />
         </div>
         <div class="col-md-2">
             <div class="d-flex flex-column gap-1">

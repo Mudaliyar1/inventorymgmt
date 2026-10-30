@@ -14,6 +14,90 @@
     var officeAddress = platformSettings?.OfficeAddress;
 }
 
+<style>
+    #shopPackageDetailsModal .modal-dialog {
+        max-width: 840px;
+    }
+    #shopPackageDetailsModal .modal-content {
+        background: #0f172a !important;
+        background-color: #0f172a !important;
+        border: 1px solid rgba(255, 255, 255, 0.14) !important;
+        border-radius: 16px !important;
+        color: #f8fafc !important;
+        box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+        overflow: hidden;
+    }
+    #shopPackageDetailsModal .modal-header {
+        background: #131d31 !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+        padding: 1.15rem 1.5rem !important;
+    }
+    #shopPackageDetailsModal .modal-title {
+        color: #ffffff !important;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+    }
+    #shopPackageDetailsModal .modal-body {
+        background: #0b1120 !important;
+        color: #e2e8f0 !important;
+        padding: 1.5rem !important;
+        max-height: 75vh;
+        overflow-y: auto;
+    }
+    #shopPackageDetailsModal .modal-footer {
+        background: #131d31 !important;
+        border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+        padding: 1rem 1.5rem !important;
+    }
+    .modal-hero-box {
+        background: #131d31;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 1.25rem;
+        margin-bottom: 1.25rem;
+    }
+    .modal-quota-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 6px;
+        padding: 5px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #e2e8f0;
+    }
+    .modal-feat-card {
+        background: #131d31;
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 10px;
+        padding: 12px 14px;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        height: 100%;
+        transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .modal-feat-card:hover {
+        border-color: rgba(56, 189, 248, 0.35);
+        transform: translateY(-1px);
+    }
+    .modal-feat-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: rgba(16, 185, 129, 0.12);
+        border: 1px solid rgba(16, 185, 129, 0.25);
+        color: #10b981;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-size: 15px;
+    }
+</style>
+
 <div class="container-fluid px-2 px-md-3 py-3">
     <!-- Page Header -->
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
@@ -32,6 +116,10 @@
             </a>
         </div>
     </div>
+
+    <form id="plansAntiForgeryToken" style="display:none">
+        @Html.AntiForgeryToken()
+    </form>
 
     <!-- Active License Status Banner -->
     @if (currentPackage != null || activeLicense != null)
@@ -54,9 +142,9 @@
                     </div>
                 </div>
                 <div class="col-md-5 text-md-end">
-                    <button type="button" class="btn-d btn-primary" data-bs-toggle="modal" data-bs-target="#upgradeRequestModal">
-                        <i class="bi bi-rocket-takeoff-fill me-1"></i> Request Plan Upgrade
-                    </button>
+                    <a href="@Url.Action("Renew", "Subscription")" class="btn-d btn-primary">
+                        <i class="bi bi-arrow-repeat me-1"></i> Renew Subscription
+                    </a>
                 </div>
             </div>
         </div>
@@ -155,10 +243,16 @@
                                     <i class="bi bi-check2-circle me-1"></i> Current Plan
                                 </button>
                             }
+                            else if (pkg.MonthlyPrice <= 0)
+                            {
+                                <button type="button" class="btn-d btn-outline disabled" disabled title="Trial plans are available for new shop signups only">
+                                    <i class="bi bi-shield-lock me-1"></i> New Signups Only
+                                </button>
+                            }
                             else
                             {
-                                <button type="button" class="btn-d btn-primary" data-bs-toggle="modal" data-bs-target="#upgradeRequestModal" onclick="selectUpgradePackage('@pkg.Name', '@pkg.Id')">
-                                    <i class="bi bi-rocket-takeoff-fill me-1"></i> Choose Plan
+                                <button type="button" class="btn-d btn-primary btn-choose-plan" id="btn-choose-@pkg.Id" onclick="initiateDirectRazorpayRenewal('@pkg.Id', '@pkg.Name')">
+                                    <i class="bi bi-lightning-charge-fill me-1"></i> Choose Plan
                                 </button>
                             }
                         </div>
@@ -239,22 +333,22 @@
 </div>
 
 <!-- DYNAMIC VIEW MORE DETAILS MODAL -->
-<div class="modal fade" id="packageDetailsModal" tabindex="-1" aria-modal="true" role="dialog">
+<div class="modal fade" id="shopPackageDetailsModal" tabindex="-1" aria-modal="true" role="dialog">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content" style="background:var(--card-bg);border:1px solid var(--border);color:var(--text-primary);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg)">
-            <div class="modal-header border-bottom" style="border-color:var(--border)!important">
-                <h5 class="modal-title font-display fw-bold mb-0" id="detModalTitle" style="color:var(--text-primary)">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title font-display fw-bold mb-0 text-white" id="detModalTitle">
                     <i class="bi bi-shield-check me-2 text-primary"></i>Package Feature Breakdown
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4" id="detModalBody">
+            <div class="modal-body" id="detModalBody">
                 <!-- JS Dynamic Feature Categories -->
             </div>
-            <div class="modal-footer justify-content-between" style="border-color:var(--border)!important">
-                <button type="button" class="btn-d btn-ghost" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn-d btn-primary" id="detModalUpgradeBtn" data-bs-toggle="modal" data-bs-target="#upgradeRequestModal">
-                    <i class="bi bi-rocket-takeoff-fill me-1"></i> Request Plan Upgrade
+            <div class="modal-footer justify-content-between">
+                <button type="button" class="btn btn-outline-secondary btn-sm px-4 py-2" data-bs-dismiss="modal" style="color:#cbd5e1;border-color:#475569;border-radius:8px;font-weight:600;">Close</button>
+                <button type="button" class="btn btn-primary btn-sm px-4 py-2 fw-bold d-inline-flex align-items-center gap-2" id="detModalUpgradeBtn" data-bs-toggle="modal" data-bs-target="#upgradeRequestModal" style="border-radius:8px;box-shadow:0 4px 14px rgba(59,130,246,0.4);">
+                    <i class="bi bi-rocket-takeoff-fill"></i> Request Plan Upgrade
                 </button>
             </div>
         </div>
@@ -264,14 +358,14 @@
 <!-- UPGRADE REQUEST / INQUIRY MODAL -->
 <div class="modal fade" id="upgradeRequestModal" tabindex="-1" aria-modal="true" role="dialog">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="background:var(--card-bg);border:1px solid var(--border);color:var(--text-primary);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg)">
-            <div class="modal-header border-bottom" style="border-color:var(--border)!important">
-                <h5 class="modal-title font-display fw-bold mb-0 text-primary">
-                    <i class="bi bi-rocket-takeoff me-2"></i>Request Subscription Upgrade / Inquiry
+        <div class="modal-content" style="background:#0f172a!important;border:1px solid rgba(255,255,255,0.15)!important;color:#f8fafc!important;border-radius:14px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.85);">
+            <div class="modal-header border-bottom" style="border-color:rgba(255,255,255,0.1)!important;background:rgba(255,255,255,0.02);">
+                <h5 class="modal-title font-display fw-bold mb-0 text-white">
+                    <i class="bi bi-rocket-takeoff me-2 text-primary"></i>Request Subscription Upgrade / Inquiry
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4">
+            <div class="modal-body p-4" style="background:#0f172a;color:#f8fafc;">
                 <div class="text-center mb-3">
                     <span class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
                           style="width:56px;height:56px;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3)">
@@ -359,6 +453,7 @@
 </div>
 
 @section Scripts {
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script>
         const rawPackages = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(p => new {
             id = p.Id,
@@ -366,6 +461,13 @@
             desc = p.Description,
             monthly = p.MonthlyPrice,
             yearly = p.YearlyPrice,
+            trialValue = p.TrialDuration > 0 ? p.TrialDuration : p.TrialDays,
+            trialUnit = p.TrialDurationUnit,
+            trialDays = p.TrialDays,
+            maxAdmins = p.MaxAdmins,
+            maxEmployees = p.MaxEmployees,
+            maxProducts = p.MaxProducts,
+            maxSuppliers = p.MaxSuppliers,
             features = p.EnabledFeatures ?? p.EnabledModules ?? new List<string>()
         })));
 
@@ -398,30 +500,49 @@
             const pName = pkg.name || pkg.Name || 'Package Details';
             const pDesc = pkg.desc || pkg.Description || '';
             const pMonthly = pkg.monthly ?? pkg.MonthlyPrice ?? 0;
+            const pYearly = pkg.yearly ?? pkg.YearlyPrice ?? 0;
             const pFeatures = pkg.features || pkg.EnabledFeatures || pkg.EnabledModules || [];
             const pMaxAdmins = pkg.maxAdmins ?? pkg.MaxAdmins ?? 0;
             const pMaxStaff = pkg.maxEmployees ?? pkg.MaxEmployees ?? 0;
             const pMaxProducts = pkg.maxProducts ?? pkg.MaxProducts ?? 0;
             const pMaxSuppliers = pkg.maxSuppliers ?? pkg.MaxSuppliers ?? 0;
+            const pTrialVal = pkg.trialValue ?? 0;
+            const pTrialUnit = pkg.trialUnit || 'Days';
 
             const titleEl = document.getElementById('detModalTitle');
-            if (titleEl) titleEl.innerText = `${pName} — Included Features`;
+            if (titleEl) titleEl.innerHTML = `<i class="bi bi-shield-check me-2 text-primary"></i>${pName} — Included Features`;
+
+            let trialBadge = '';
+            if (pTrialVal > 0) {
+                trialBadge = `<span class="badge" style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3);font-size:12px;padding:5px 12px;border-radius:20px;font-weight:600;"><i class="bi bi-gift-fill me-1"></i>${pTrialVal} ${pTrialUnit} Free Trial</span>`;
+            }
 
             let html = `
-                <div class="mb-4 pb-3 border-bottom border-secondary">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <h4 class="text-light font-display fw-bold mb-0">${pName}</h4>
-                        <span class="fs-3 fw-bold text-success font-mono">₹${Number(pMonthly).toLocaleString('en-IN')}/mo</span>
+                <div class="modal-hero-box">
+                    <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <h3 class="fw-bold mb-0 text-white">${pName}</h3>
+                            ${trialBadge}
+                        </div>
+                        <div class="text-end">
+                            <span class="fs-3 fw-bold text-success font-mono">₹${Number(pMonthly).toLocaleString('en-IN')}</span>
+                            <span class="text-secondary fs-7">/mo</span>
+                            ${pYearly > 0 ? `<div class="fs-8 font-mono" style="color:#94a3b8!important;">(₹${Number(pYearly).toLocaleString('en-IN')}/yr billed annually)</div>` : ''}
+                        </div>
                     </div>
-                    <p class="text-muted fs-7 mb-3">${pDesc}</p>
-                    <div class="d-flex flex-wrap gap-2 text-light fs-8">
-                        <span class="badge bg-dark border border-secondary text-light"><i class="bi bi-shield-lock text-warning me-1"></i>Admins: ${pMaxAdmins > 0 ? pMaxAdmins : 'Unlimited'}</span>
-                        <span class="badge bg-dark border border-secondary text-light"><i class="bi bi-people text-info me-1"></i>Staff: ${pMaxStaff > 0 ? pMaxStaff : 'Unlimited'}</span>
-                        <span class="badge bg-dark border border-secondary text-light"><i class="bi bi-box-seam text-info me-1"></i>Products: ${pMaxProducts > 0 ? pMaxProducts : 'Unlimited'}</span>
-                        <span class="badge bg-dark border border-secondary text-light"><i class="bi bi-truck text-info me-1"></i>Suppliers: ${pMaxSuppliers > 0 ? pMaxSuppliers : 'Unlimited'}</span>
+                    <p class="fs-7 mb-3" style="color:#94a3b8!important;line-height:1.5;">${pDesc}</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="modal-quota-pill"><i class="bi bi-shield-lock text-warning"></i>Admins: <strong class="text-white">${pMaxAdmins > 0 ? pMaxAdmins : 'Unlimited'}</strong></span>
+                        <span class="modal-quota-pill"><i class="bi bi-people text-info"></i>Staff: <strong class="text-white">${pMaxStaff > 0 ? pMaxStaff : 'Unlimited'}</strong></span>
+                        <span class="modal-quota-pill"><i class="bi bi-box-seam text-primary"></i>Products: <strong class="text-white">${pMaxProducts > 0 ? pMaxProducts : 'Unlimited'}</strong></span>
+                        <span class="modal-quota-pill"><i class="bi bi-truck text-success"></i>Suppliers: <strong class="text-white">${pMaxSuppliers > 0 ? pMaxSuppliers : 'Unlimited'}</strong></span>
                     </div>
                 </div>
-                <h6 class="font-display fw-bold text-warning mb-3 uppercase font-mono">What's Included</h6>
+
+                <div class="d-flex align-items-center gap-2 mb-3 mt-4">
+                    <span style="width:3px;height:16px;background:#38bdf8;border-radius:2px;"></span>
+                    <h6 class="mb-0 fw-bold font-mono text-uppercase" style="color:#38bdf8;font-size:12px;letter-spacing:0.06em;">Included Modules & Capabilities</h6>
+                </div>
             `;
 
             // Group features by Category
@@ -446,23 +567,28 @@
                 featCount += featList.length;
                 html += `
                     <div class="mb-3">
-                        <h6 class="text-info font-mono fs-7 fw-bold mb-2 uppercase"><i class="bi bi-folder2-open me-2"></i>${catName} (${featList.length})</h6>
+                        <div class="d-flex align-items-center justify-content-between mb-2 mt-3 pb-1" style="border-bottom:1px solid rgba(255,255,255,0.06);">
+                            <span class="fw-bold font-mono fs-7 text-uppercase" style="color:#f59e0b;"><i class="bi bi-folder2-open me-2"></i>${catName}</span>
+                            <span class="badge" style="background:#1e293b;color:#94a3b8;border:1px solid #334155;font-size:11px;">${featList.length} Included</span>
+                        </div>
                         <div class="row g-2">
                 `;
                 featList.forEach(f => {
                     html += `
                         <div class="col-md-6">
-                            <div class="p-2 border border-secondary rounded bg-dark bg-opacity-50 d-flex align-items-center">
-                                <i class="bi ${f.icon} text-success me-2 fs-6"></i>
-                                <div>
-                                    <strong class="text-light fs-7 d-block">${f.name}</strong>
-                                    <small class="text-muted fs-8">${f.desc}</small>
+                            <div class="modal-feat-card">
+                                <div class="modal-feat-icon">
+                                    <i class="bi ${f.icon}"></i>
+                                </div>
+                                <div class="overflow-hidden">
+                                    <strong class="text-white fs-7 d-block mb-1">${f.name}</strong>
+                                    <div class="fs-8" style="color:#94a3b8!important;line-height:1.45;">${f.desc}</div>
                                 </div>
                             </div>
                         </div>
                     `;
                 });
-`                html += `</div></div>`;
+                html += `</div></div>`;
             }
 
             if (featCount === 0) {
@@ -474,17 +600,126 @@
 
             const upgradeBtn = document.getElementById('detModalUpgradeBtn');
             if (upgradeBtn) {
-                upgradeBtn.onclick = function() {
-                    selectUpgradePackage(pName, pkgId);
-                };
+                if (pMonthly <= 0) {
+                    upgradeBtn.classList.add('d-none');
+                } else {
+                    upgradeBtn.classList.remove('d-none');
+                    upgradeBtn.innerHTML = '<i class="bi bi-lightning-charge-fill me-1"></i> Choose & Pay (Razorpay)';
+                    upgradeBtn.onclick = function() {
+                        const modalEl = document.getElementById('shopPackageDetailsModal');
+                        if (modalEl) {
+                            const bsModal = bootstrap.Modal.getInstance(modalEl);
+                            if (bsModal) bsModal.hide();
+                        }
+                        initiateDirectRazorpayRenewal(pkgId, pName);
+                    };
+                }
             }
 
-            const modalEl = document.getElementById('packageDetailsModal');
+            const modalEl = document.getElementById('shopPackageDetailsModal');
             if (modalEl) {
                 const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);
                 bsModal.show();
             }
         };
+
+        async function initiateDirectRazorpayRenewal(packageId, packageName) {
+            const isYearly = document.getElementById('billingToggle')?.checked;
+            const billingCycle = isYearly ? 'Yearly' : 'Monthly';
+
+            const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+            const csrfToken = tokenInput ? tokenInput.value : '';
+
+            const btn = document.getElementById('btn-choose-' + packageId);
+            const originalHtml = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Connecting...';
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('packageId', packageId);
+                formData.append('billingCycle', billingCycle);
+                formData.append('__RequestVerificationToken', csrfToken);
+
+                const response = await fetch('@Url.Action("InitiateRazorpayRenewal", "Subscription")', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (!data.success) {
+                    alert('Could not start Razorpay payment: ' + (data.message || 'Unknown error'));
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = originalHtml;
+                    }
+                    return;
+                }
+
+                // Launch Razorpay Checkout Modal directly
+                const options = {
+                    key: data.keyId,
+                    amount: data.amountInPaise,
+                    currency: data.currency,
+                    name: 'SIMS SaaS Platform',
+                    description: data.packageName + ' Renewal (' + data.billingCycle + ')',
+                    order_id: data.orderId,
+                    handler: async function (paymentResponse) {
+                        if (btn) {
+                            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Activating...';
+                        }
+
+                        const verifyForm = new FormData();
+                        verifyForm.append('razorpay_order_id', paymentResponse.razorpay_order_id);
+                        verifyForm.append('razorpay_payment_id', paymentResponse.razorpay_payment_id);
+                        verifyForm.append('razorpay_signature', paymentResponse.razorpay_signature);
+                        verifyForm.append('__RequestVerificationToken', csrfToken);
+
+                        const verifyRes = await fetch('@Url.Action("VerifyRazorpayRenewal", "Subscription")', {
+                            method: 'POST',
+                            body: verifyForm
+                        });
+
+                        const verifyData = await verifyRes.json();
+                        if (verifyData.success) {
+                            alert('Payment successful! Your license has been upgraded immediately. Receipt #' + verifyData.receiptNumber);
+                            window.location.href = '@Url.Action("MyPlan", "Subscription")';
+                        } else {
+                            alert('Payment was processed but activation requires attention: ' + verifyData.message);
+                            window.location.reload();
+                        }
+                    },
+                    prefill: {
+                        name: data.customerName,
+                        email: data.customerEmail,
+                        contact: data.customerPhone
+                    },
+                    theme: {
+                        color: '#0284c7'
+                    },
+                    modal: {
+                        ondismiss: function () {
+                            if (btn) {
+                                btn.disabled = false;
+                                btn.innerHTML = originalHtml;
+                            }
+                        }
+                    }
+                };
+
+                const rzp = new Razorpay(options);
+                rzp.open();
+            } catch (err) {
+                console.error('Razorpay direct checkout error:', err);
+                alert('An unexpected error occurred while initiating Razorpay payment. Please try again.');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                }
+            }
+        }
 
         function selectUpgradePackage(name, id) {
             const container = document.getElementById('selectedPlanContainer');

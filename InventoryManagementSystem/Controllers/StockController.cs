@@ -66,11 +66,20 @@ namespace InventoryManagementSystem.Controllers
                 return View(model);
             }
 
-            var success = await _stockService.StockInAsync(model.ProductId, model.Quantity, model.Reason, User.Identity?.Name ?? "System");
+            var success = await _stockService.StockInAsync(
+                model.ProductId, 
+                model.Quantity, 
+                model.Reason, 
+                User.Identity?.Name ?? "System",
+                model.VariantId,
+                model.ColorId,
+                model.VariantName,
+                model.ColorName);
             if (success)
             {
                 var product = await _productService.GetProductByIdAsync(model.ProductId);
-                await _auditLogService.LogActivityAsync("Stock In", User.Identity?.Name ?? "System", $"Product: {product?.Name}", $"Added {model.Quantity} units. Reason: {model.Reason}");
+                var variantDesc = !string.IsNullOrWhiteSpace(model.VariantName) ? $" ({model.VariantName}{(string.IsNullOrWhiteSpace(model.ColorName) ? "" : " - " + model.ColorName)})" : "";
+                await _auditLogService.LogActivityAsync("Stock In", User.Identity?.Name ?? "System", $"Product: {product?.Name}{variantDesc}", $"Added {model.Quantity} units. Reason: {model.Reason}");
 
                 TempData["ToastMessage"] = "Stock added successfully!";
                 TempData["ToastType"] = "success";
@@ -236,7 +245,7 @@ namespace InventoryManagementSystem.Controllers
                 return View(model);
             }
 
-            var success = await _stockService.StockOutAsync(model.ProductId, model.Quantity, model.Reason, User.Identity?.Name ?? "System");
+            var success = await _stockService.StockOutAsync(model.ProductId, model.Quantity, model.Reason, User.Identity?.Name ?? "System", model.VariantId, model.ColorId, model.VariantName, model.ColorName);
             if (success)
             {
                 await _auditLogService.LogActivityAsync("Stock Out", User.Identity?.Name ?? "System", $"Product: {product?.Name}", $"Removed {model.Quantity} units. Reason: {model.Reason}");
@@ -459,11 +468,51 @@ namespace InventoryManagementSystem.Controllers
         private async Task PopulateProductsList(StockTransactionViewModel model)
         {
             var products = await _productService.GetAllProductsAsync();
-            model.Products = products.Where(p => p.Status == "Active").Select(p => new SelectListItem
+            var activeProducts = products.Where(p => p.Status == "Active").ToList();
+            model.Products = activeProducts.Select(p => new SelectListItem
             {
                 Value = p.Id,
                 Text = $"{p.Name} (SKU: {p.Code} - Qty: {p.CurrentStock}) - {(p.IsImeiRequired ? "Requires IMEI" : "Accessory")}"
             }).ToList();
+
+            ViewBag.Brands = activeProducts
+                .Where(p => !string.IsNullOrWhiteSpace(p.Brand))
+                .Select(p => p.Brand.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(b => b)
+                .ToList();
+
+            ViewBag.AllActiveProductsJson = System.Text.Json.JsonSerializer.Serialize(activeProducts.Select(p => new
+            {
+                id = p.Id,
+                name = p.Name,
+                code = p.Code,
+                brand = p.Brand ?? string.Empty,
+                currentStock = p.CurrentStock,
+                isImeiRequired = p.IsImeiRequired,
+                displayText = $"{p.Name} (SKU: {p.Code} - Qty: {p.CurrentStock}) - {(p.IsImeiRequired ? "Requires IMEI" : "Accessory")}"
+            }));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetProductsByBrand(string? brand)
+        {
+            var products = await _productService.GetAllProductsAsync();
+            var query = products.Where(p => p.Status == "Active");
+            if (!string.IsNullOrWhiteSpace(brand))
+            {
+                query = query.Where(p => string.Equals(p.Brand, brand, StringComparison.OrdinalIgnoreCase));
+            }
+            return Json(query.Select(p => new
+            {
+                id = p.Id,
+                name = p.Name,
+                code = p.Code,
+                brand = p.Brand ?? string.Empty,
+                currentStock = p.CurrentStock,
+                isImeiRequired = p.IsImeiRequired,
+                displayText = $"{p.Name} (SKU: {p.Code} - Qty: {p.CurrentStock}) - {(p.IsImeiRequired ? "Requires IMEI" : "Accessory")}"
+            }));
         }
 
         [HttpPost]

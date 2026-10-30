@@ -1,0 +1,130 @@
+@{
+    ViewData["Title"] = "Refund & Cancellation Policy — SIMS Smart Inventory Management System";
+    Layout = "_Layout";
+    var settings = ViewBag.Settings as InventoryManagementSystem.Models.PlatformSettings;
+    var platformName = settings?.PlatformName ?? "SIMS SaaS Platform";
+    var contactEmail = settings?.ContactEmail ?? "support@sims.com";
+    var contactPhone = settings?.ContactPhone ?? "+91 98765 43210";
+    var officeAddress = settings?.OfficeAddress ?? "123 Business Hub, Mumbai, India";
+}
+
+<div class="pz-page-wrap pb-5">
+    <div class="pz-container" style="max-width: 1040px;">
+
+        <!-- Header -->
+        <div class="pz-section-head mb-4 text-center">
+            <span class="pz-accent-eyebrow">BILLING &amp; SUBSCRIPTIONS</span>
+            <h1 class="pz-section-title">Refund &amp; Cancellation Policy</h1>
+            <span class="pz-heading-accent" aria-hidden="true"></span>
+            <p class="pz-section-sub">
+                Clear rules regarding subscription renewals, cancellations, duplicate billing reconciliations, and refund evaluation processes.
+            </p>
+        </div>
+        <div class="row g-4">
+            <!-- Sidebar -->
+            <div class="col-lg-4 col-md-5">
+                <div class="pz-card p-4 position-sticky" style="top: 90px;">
+                    <h5 class="fw-bold fs-7 mb-3 text-uppercase text-muted" style="letter-spacing: 0.05em;">Table of Contents</h5>
+                    <nav class="nav flex-column gap-2 fs-8">
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#rc-trial"><i class="bi bi-chevron-right me-1 text-primary"></i> 1. 14-Day Free Trial</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#rc-cancellation"><i class="bi bi-chevron-right me-1 text-primary"></i> 2. Subscription Cancellation</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#rc-current"><i class="bi bi-chevron-right me-1 text-primary"></i> 3. Active Billing Periods</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#rc-review"><i class="bi bi-chevron-right me-1 text-primary"></i> 4. Refund Review Process</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#rc-duplicate"><i class="bi bi-chevron-right me-1 text-primary"></i> 5. Duplicate or Failed Charges</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#rc-exclusions"><i class="bi bi-chevron-right me-1 text-primary"></i> 6. Non-Refundable Items</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#rc-submit"><i class="bi bi-chevron-right me-1 text-primary"></i> 7. How to Submit a Request</a>
+                    </nav>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-lg-8 col-md-7">
+                <div class="pz-card p-4 p-lg-5">
+
+                    <!-- Section 1 -->
+                    <section id="rc-trial" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">1. 14-Day Free Trial</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            Every newly registered retail shop on SIMS receives an automatic 14-day full-feature trial with zero payment information required upfront. This trial allows store owners and staff to evaluate barcode scanning, POS counter billing, IMEI serial tracking, and inventory reports in full before committing financially.
+                        </p>
+                    </section>
+
+                    <!-- Section 2 -->
+                    <section id="rc-cancellation" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">2. Subscription Cancellation Procedure</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            Shop Admins may request subscription cancellation at any time directly through their billing dashboard or by notifying our support desk at <a href="mailto:@contactEmail" class="text-decoration-none">@contactEmail</a>.
+                        </p>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            Upon receiving a cancellation notice, automatic billing renewals are halted immediately. No further recurring charges will be incurred.
+                        </p>
+                    </section>
+
+                    <!-- Section 3 -->
+                    <section id="rc-current" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">3. Active Billing Periods</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            Subscription plans are billed in advance on either a monthly or yearly cycle. When an active plan is canceled mid-cycle:
+                        </p>
+                        <ul class="fs-7 text-muted ps-3 mb-3">
+                            <li class="mb-2">Your shop maintains full operational access to the SIMS platform until the conclusion of the paid billing period.</li>
+                            <li class="mb-2">Unless otherwise required by applicable consumer protection laws or agreed in a specific enterprise contract, partial-month or unutilized days within a paid billing term are generally not refunded as cash.</li>
+                        </ul>
+                    </section>
+
+                    <!-- Section 4 -->
+                    <section id="rc-review" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">4. Refund Request Process &amp; Case Review</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            We review refund requests individually on their merits. Favorable considerations typically include:
+                        </p>
+                        <ul class="fs-7 text-muted ps-3 mb-3">
+                            <li class="mb-2">Documented severe platform unavailability or technical failures that prevented shop billing operations for an extended duration.</li>
+                            <li class="mb-2">Billing renewal requests submitted within 48 hours of an automated annual subscription charge where the tenant has not accessed the system since renewal.</li>
+                        </ul>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            Approved refunds are credited back to the original payment method within 5 to 7 business banking days following review approval.
+                        </p>
+                    </section>
+
+                    <!-- Section 5 -->
+                    <section id="rc-duplicate" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">5. Treatment of Duplicate or Failed Payments</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            If a network glitch or gateway timeout causes an accidental duplicate charge for a single billing renewal invoice, our billing reconciliation system will either void the duplicate transaction immediately or issue a full refund within 24 to 48 hours upon verification.
+                        </p>
+                    </section>
+
+                    <!-- Section 6 -->
+                    <section id="rc-exclusions" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">6. Non-Refundable Items</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            The following categories are non-refundable:
+                        </p>
+                        <ul class="fs-7 text-muted ps-3 mb-3">
+                            <li class="mb-2">Completed custom data migration and historical inventory cleanup services performed by technical staff.</li>
+                            <li class="mb-2">Dedicated on-site or personalized 1-on-1 staff training sessions already rendered.</li>
+                            <li class="mb-2">Subscriptions terminated due to severe violations of our Acceptable Use Policy or fraudulent conduct.</li>
+                        </ul>
+                    </section>
+
+                    <!-- Section 7 -->
+                    <section id="rc-submit">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">7. How to Submit a Refund Request</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            To initiate an evaluation, email our billing team with your Shop Code, registered owner email, and payment transaction reference ID:
+                        </p>
+                        <div class="p-3 bg-light rounded-3 border fs-8">
+                            <div><strong>Billing Support:</strong> <a href="mailto:@contactEmail" class="text-decoration-none">@contactEmail</a></div>
+                            <div><strong>Assistance Hotline:</strong> <a href="tel:@contactPhone" class="text-decoration-none text-dark">@contactPhone</a></div>
+                            <div><strong>Response Time:</strong> Within 1 to 2 business days</div>
+                            <div><strong>Office Address:</strong> @officeAddress</div>
+                        </div>
+                    </section>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

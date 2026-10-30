@@ -150,33 +150,6 @@
     </div>
 </div>
 
-@if (isExpired)
-{
-    <div class="alert alert-danger bg-danger-subtle text-danger border-danger p-3 rounded-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
-        <div class="d-flex align-items-center gap-2">
-            <i class="bi bi-exclamation-octagon-fill fs-4"></i>
-            <div>
-                <strong>Subscription Plan Expired!</strong>
-                <div class="fs-7">Your shop's active license expired on @expiryDate.AddMinutes(330).ToString("dd MMM yyyy, hh:mm tt IST"). Please renew immediately to restore full store access.</div>
-            </div>
-        </div>
-        <a href="@Url.Action("Renew", "Subscription")" class="btn btn-danger btn-sm fw-bold">Renew License Now</a>
-    </div>
-}
-else if (remainingDays <= 7)
-{
-    <div class="alert alert-warning bg-warning-subtle text-warning border-warning p-3 rounded-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-2">
-        <div class="d-flex align-items-center gap-2">
-            <i class="bi bi-hourglass-bottom fs-4"></i>
-            <div>
-                <strong>Subscription Expiring Soon!</strong>
-                <div class="fs-7">You have only <strong>@remainingDays day(s)</strong> remaining on your active plan. Renew or upgrade now to retain seamless access to all your shop features.</div>
-            </div>
-        </div>
-        <a href="@Url.Action("Renew", "Subscription")" class="btn btn-warning btn-sm fw-bold text-dark">Extend License</a>
-    </div>
-}
-
 <!-- Hero Plan & Real-Time Countdown Card -->
 <div class="plan-hero-card p-4 p-md-5 mb-4">
     <div class="row align-items-center g-4">
@@ -458,6 +431,98 @@ else if (remainingDays <= 7)
             </div>
         }
     </div>
+</div>
+
+<!-- Payment & Billing History Section -->
+@{
+    var transactions = ViewBag.PaymentTransactions as List<InventoryManagementSystem.Models.SaaSPaymentTransaction>;
+}
+<div class="glass-card p-4 mb-4">
+    <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom border-secondary border-opacity-25">
+        <div>
+            <h4 class="h5 font-display fw-bold mb-1 text-light">
+                <i class="bi bi-receipt text-success me-2"></i>Payment &amp; Billing History
+            </h4>
+            <p class="text-secondary fs-7 mb-0">Official Razorpay transaction receipts with downloadable GST PDF copies.</p>
+        </div>
+        <a href="@Url.Action("Renew", "Subscription")" class="btn btn-sm btn-outline-info">
+            <i class="bi bi-arrow-repeat me-1"></i> Renew Online
+        </a>
+    </div>
+
+    @if (transactions != null && transactions.Any())
+    {
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 small text-light">
+                <thead class="table-dark text-muted text-uppercase fs-8">
+                    <tr>
+                        <th>Date (IST)</th>
+                        <th>Receipt #</th>
+                        <th>Package &amp; Cycle</th>
+                        <th>Amount</th>
+                        <th>Payment Status</th>
+                        <th>Activation</th>
+                        <th class="text-end">Receipt PDF</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var txn in transactions)
+                    {
+                        <tr>
+                            <td>@txn.CreatedDate.ToIstString("dd MMM yyyy, hh:mm tt")</td>
+                            <td>
+                                <span class="font-monospace fw-bold text-info">@(string.IsNullOrEmpty(txn.ReceiptNumber) ? txn.TransactionRef : txn.ReceiptNumber)</span>
+                            </td>
+                            <td>
+                                <span class="badge bg-primary-subtle text-primary">@txn.PackageName</span>
+                                <span class="text-muted ms-1">(@txn.BillingCycle)</span>
+                            </td>
+                            <td class="fw-bold text-success">₹@txn.Amount.ToString("N2")</td>
+                            <td>
+                                @if (txn.PaymentStatus == "Paid")
+                                {
+                                    <span class="badge bg-success-subtle text-success border border-success"><i class="bi bi-check-circle-fill me-1"></i>Paid</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning-subtle text-warning border border-warning">@txn.PaymentStatus</span>
+                                }
+                            </td>
+                            <td>
+                                @if (txn.ActivationStatus == "Activated")
+                                {
+                                    <span class="badge bg-success-subtle text-success"><i class="bi bi-check2-all me-1"></i>Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">@txn.ActivationStatus</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                @if (txn.PaymentStatus == "Paid")
+                                {
+                                    <a href="@Url.Action("DownloadReceipt", "Subscription", new { id = txn.Id })" class="btn btn-sm btn-outline-light d-inline-flex align-items-center gap-1">
+                                        <i class="bi bi-file-earmark-pdf text-danger"></i> Download PDF
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="text-muted fs-8">N/A</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <div class="text-center py-4 text-secondary">
+            <i class="bi bi-receipt-cutoff fs-2 d-block mb-2 text-muted"></i>
+            <p class="mb-0 fs-7">No online payment transactions recorded yet.</p>
+        </div>
+    }
 </div>
 
 <!-- Modal: Contact SaaS Admin -->

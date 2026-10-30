@@ -1,0 +1,177 @@
+@model List<InventoryManagementSystem.Models.PolicyRevision>
+@using InventoryManagementSystem.Extensions
+@{
+    var policy = ViewBag.Policy as InventoryManagementSystem.Models.PolicyDocument;
+    ViewData["Title"] = $"Revision History: {policy?.Title} — Super Admin";
+}
+
+<div class="container-fluid px-4 py-3">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-1 fs-8 text-uppercase font-mono">
+                    <li class="breadcrumb-item"><a href="@Url.Action("Dashboard", "PlatformAdmin")" class="text-decoration-none text-muted">Super Admin</a></li>
+                    <li class="breadcrumb-item"><a href="@Url.Action("Policies", "PlatformAdmin")" class="text-decoration-none text-muted">Policies</a></li>
+                    <li class="breadcrumb-item active text-primary" aria-current="page">Revision History</li>
+                </ol>
+            </nav>
+            <h1 class="h3 font-display fw-bold mb-1 text-light">Revision History: <span class="text-info">@policy?.Title</span></h1>
+            <p class="text-muted fs-7 mb-0">Complete audit trail of all revisions, modifications, and publication state changes stored with IST timestamps.</p>
+        </div>
+        <div class="d-flex gap-2">
+            @if (policy != null)
+            {
+                <a href="@Url.Action("EditPolicy", "PlatformAdmin", new { id = policy.Id })" class="btn btn-primary btn-sm">
+                    <i class="bi bi-pencil-square me-1"></i> Edit Policy
+                </a>
+            }
+            <a href="@Url.Action("Policies", "PlatformAdmin")" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i> Back to Policies
+            </a>
+        </div>
+    </div>
+
+    <!-- Policy Info Summary Card -->
+    @if (policy != null)
+    {
+        <div class="glass-card p-3 mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <div class="fw-bold text-light fs-6">@policy.Title</div>
+                <div class="font-mono fs-8 text-muted">URL: <span class="text-info">/policy/@policy.Slug</span> &bull; Category: <span class="text-light">@policy.Category</span></div>
+            </div>
+            <div class="d-flex gap-2">
+                <span class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-50 px-3 py-2 fs-8 font-mono">
+                    Current Version: v@(policy.RevisionCount)
+                </span>
+                <span class="badge bg-dark border border-secondary text-light px-3 py-2 fs-8 font-mono">
+                    Total Revisions: @Model.Count
+                </span>
+            </div>
+        </div>
+    }
+
+    <!-- Revision Table -->
+    <div class="glass-card overflow-hidden">
+        <div class="p-3 border-bottom border-secondary border-opacity-25 bg-dark d-flex justify-content-between align-items-center">
+            <h5 class="font-display fw-bold mb-0 text-light"><i class="bi bi-clock-history text-info me-2"></i>Archived Revision Records</h5>
+            <div class="badge bg-dark border border-secondary text-light font-mono px-3 py-2">
+                <i class="bi bi-clock me-1 text-info"></i> All Timestamps in Indian Standard Time (IST)
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 text-light">
+                <thead class="bg-dark bg-opacity-50 text-muted font-mono fs-8 text-uppercase">
+                    <tr>
+                        <th class="ps-3" style="width: 10%;">Version</th>
+                        <th style="width: 15%;">Change Type</th>
+                        <th style="width: 25%;">Timestamp (IST)</th>
+                        <th style="width: 15%;">Modified By</th>
+                        <th style="width: 20%;">Change Notes</th>
+                        <th style="width: 15%;" class="text-end pe-3">Snapshot</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model == null || !Model.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-5 text-muted">
+                                <i class="bi bi-clock-history fs-1 d-block mb-2 text-secondary"></i>
+                                No historical revisions recorded yet. Revisions are created automatically whenever a policy is created or updated.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var rev in Model.OrderByDescending(r => r.RevisionNumber))
+                        {
+                            var badgeColor = rev.ChangeType switch
+                            {
+                                "Created" => "bg-primary",
+                                "Updated" => "bg-info",
+                                "Published" => "bg-success",
+                                "Unpublished" => "bg-warning",
+                                "Activated" => "bg-success",
+                                "Deactivated" => "bg-danger",
+                                _ => "bg-secondary"
+                            };
+
+                            <tr>
+                                <td class="ps-3 font-mono fw-bold text-light">
+                                    <span class="badge bg-dark border border-secondary text-info px-2 py-1">
+                                        v@(rev.RevisionNumber)
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge @badgeColor bg-opacity-25 text-light border border-secondary border-opacity-50 px-2 py-1 fs-8">
+                                        @rev.ChangeType
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="fs-7 fw-semibold text-light">
+                                        @rev.ChangedAtUtc.ToPolicyIstDisplayString()
+                                    </div>
+                                </td>
+                                <td class="font-mono fs-8 text-light">
+                                    <i class="bi bi-person-fill text-muted me-1"></i> @rev.ChangedBy
+                                </td>
+                                <td class="fs-8 text-muted">
+                                    @(string.IsNullOrWhiteSpace(rev.Notes) ? "—" : rev.Notes)
+                                </td>
+                                <td class="text-end pe-3">
+                                    <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#revModal_@rev.Id">
+                                        <i class="bi bi-eye me-1"></i> View Snapshot
+                                    </button>
+
+                                    <!-- Revision Snapshot Modal -->
+                                    <div class="modal fade" id="revModal_@rev.Id" tabindex="-1" aria-labelledby="revModalLabel_@rev.Id" aria-hidden="true">
+                                        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                                            <div class="modal-content glass-card text-light border-secondary">
+                                                <div class="modal-header border-secondary border-opacity-25">
+                                                    <h5 class="modal-title font-display text-light" id="revModalLabel_@rev.Id">
+                                                        <i class="bi bi-archive me-2 text-info"></i> Revision Snapshot: v@(rev.RevisionNumber) — @rev.Title
+                                                    </h5>
+                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body text-start">
+                                                    <div class="p-3 bg-dark rounded border border-secondary border-opacity-50 mb-3 fs-8 font-mono text-muted">
+                                                        <div><strong>Changed At:</strong> @rev.ChangedAtUtc.ToPolicyIstDisplayString()</div>
+                                                        <div><strong>Changed By:</strong> @rev.ChangedBy</div>
+                                                        <div><strong>Change Type:</strong> @rev.ChangeType</div>
+                                                        <div><strong>Notes:</strong> @(string.IsNullOrWhiteSpace(rev.Notes) ? "None" : rev.Notes)</div>
+                                                    </div>
+
+                                                    <h6 class="font-display fw-bold text-light mb-2"><i class="bi bi-file-earmark-text text-primary me-2"></i>Rendered Content Snapshot</h6>
+                                                    <div class="p-4 bg-dark bg-opacity-50 rounded border border-secondary border-opacity-25 policy-rendered-preview mb-4">
+                                                        @Html.Raw(rev.ContentHtml)
+                                                    </div>
+
+                                                    <h6 class="font-display fw-bold text-light mb-2"><i class="bi bi-markdown text-info me-2"></i>Raw Markdown Source</h6>
+                                                    <textarea class="form-control bg-dark text-muted font-mono fs-8 p-3" rows="8" readonly style="resize: vertical;">@rev.ContentMarkdown</textarea>
+                                                </div>
+                                                <div class="modal-footer border-secondary border-opacity-25">
+                                                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+.policy-rendered-preview h1 { font-size: 1.5rem; font-weight: 700; color: #fff; margin-bottom: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; }
+.policy-rendered-preview h2 { font-size: 1.2rem; font-weight: 700; color: #60a5fa; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+.policy-rendered-preview h3 { font-size: 1rem; font-weight: 600; color: #93c5fd; margin-top: 1rem; margin-bottom: 0.5rem; }
+.policy-rendered-preview p { color: #cbd5e1; font-size: 0.88rem; line-height: 1.6; margin-bottom: 0.75rem; }
+.policy-rendered-preview ul, .policy-rendered-preview ol { color: #cbd5e1; font-size: 0.88rem; line-height: 1.6; margin-bottom: 0.75rem; padding-left: 1.5rem; }
+.policy-rendered-preview blockquote { border-left: 4px solid #3b82f6; padding-left: 1rem; color: #94a3b8; font-style: italic; margin-bottom: 0.75rem; }
+.policy-rendered-preview hr { border-color: rgba(255,255,255,0.15); margin: 1.25rem 0; }
+</style>

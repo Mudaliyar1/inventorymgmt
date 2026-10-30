@@ -108,30 +108,48 @@
             <div class="col-lg-7 col-md-7">
                 <div class="pz-card p-4 p-md-5 h-100">
                     <h3 class="pz-card-title mb-2" style="color: #17181B;">Send Us a Message</h3>
-                    <p class="fs-7 mb-4" style="color: #555B66;">Have questions about multi-branch setup, POS billing, or custom migrations? We respond within 2 business hours.</p>
+                    <p class="fs-7 mb-4" style="color: #555B66;">Have questions about multi-branch setup, POS billing, or custom migrations? Our team is here to help.</p>
 
                     <div id="contactFormAlert" class="d-none alert mb-4 fs-7 py-3 px-3 rounded-2" role="alert"></div>
 
                     <form id="publicContactForm" novalidate>
-                        <div class="mb-3">
-                            <label for="contactFullName" class="pz-form-label" style="color: #17181B;">Full Name <span class="text-danger">*</span></label>
-                            <input type="text" id="contactFullName" name="fullName" class="pz-form-control" placeholder="e.g. Rahul Sharma" required />
-                            <div class="text-danger fs-8 mt-1 d-none" id="contactFullNameError">Please enter your full name.</div>
+                        @Html.AntiForgeryToken()
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label for="contactFullName" class="pz-form-label" style="color: #17181B;">Full Name <span class="text-danger">*</span></label>
+                                <input type="text" id="contactFullName" name="fullName" class="pz-form-control" placeholder="e.g. Rahul Sharma" required />
+                                <div class="text-danger fs-8 mt-1 d-none" id="contactFullNameError">Please enter your full name.</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="contactEmail" class="pz-form-label" style="color: #17181B;">Work Email <span class="text-danger">*</span></label>
+                                <input type="email" id="contactEmail" name="email" class="pz-form-control" placeholder="rahul@yourcompany.com" required />
+                                <div class="text-danger fs-8 mt-1 d-none" id="contactEmailError">Please enter a valid work email address.</div>
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label for="contactEmail" class="pz-form-label" style="color: #17181B;">Work Email <span class="text-danger">*</span></label>
-                            <input type="email" id="contactEmail" name="email" class="pz-form-control" placeholder="rahul@yourcompany.com" required />
-                            <div class="text-danger fs-8 mt-1 d-none" id="contactEmailError">Please enter a valid work email address.</div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label for="contactShop" class="pz-form-label" style="color: #17181B;">Business / Company Name (Optional)</label>
+                                <input type="text" id="contactShop" name="businessName" class="pz-form-control" placeholder="e.g. Paramount Retail" />
+                            </div>
+                            <div class="col-md-6">
+                                <label for="contactPhone" class="pz-form-label" style="color: #17181B;">Phone Number (Optional)</label>
+                                <input type="tel" id="contactPhone" name="phone" class="pz-form-control" placeholder="e.g. +91 98765 43210" />
+                            </div>
                         </div>
+
                         <div class="mb-3">
-                            <label for="contactShop" class="pz-form-label" style="color: #17181B;">Business / Company Name (Optional)</label>
-                            <input type="text" id="contactShop" name="shopName" class="pz-form-control" placeholder="e.g. Paramount Retail" />
+                            <label for="contactSubject" class="pz-form-label" style="color: #17181B;">Subject <span class="text-danger">*</span></label>
+                            <input type="text" id="contactSubject" name="subject" class="pz-form-control" placeholder="e.g. Multi-branch billing & barcode setup inquiry" required />
+                            <div class="text-danger fs-8 mt-1 d-none" id="contactSubjectError">Please specify a subject for your inquiry.</div>
                         </div>
+
                         <div class="mb-4">
                             <label for="contactMessage" class="pz-form-label" style="color: #17181B;">How can we assist you? <span class="text-danger">*</span></label>
                             <textarea id="contactMessage" name="message" class="pz-form-control" rows="5" placeholder="Tell us about your inventory, store branches, or questions..." required></textarea>
                             <div class="text-danger fs-8 mt-1 d-none" id="contactMessageError">Please describe your question or requirements (at least 10 characters).</div>
                         </div>
+
                         <button type="submit" id="contactSubmitBtn" class="pz-btn-primary w-100 py-3 text-center justify-content-center text-decoration-none d-flex align-items-center gap-2">
                             <span id="contactBtnText">Send Message</span>
                             <i class="bi bi-send ms-1" id="contactBtnIcon"></i>
@@ -156,7 +174,7 @@
     PrimaryButtonUrl = Url.Action("Register", "Landing"),
     SecondaryButtonText = "View Pricing Plans",
     SecondaryButtonUrl = Url.Action("Pricing", "Landing"),
-    GuaranteeText = "14-Day Full Feature Trial • Zero Hidden Fees • Instant Setup"
+    GuaranteeText = "Free Onboarding Trial • Zero Hidden Fees • Instant Setup"
 })
 
 @section Scripts {
@@ -167,6 +185,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var nameInput = document.getElementById('contactFullName');
     var emailInput = document.getElementById('contactEmail');
+    var shopInput = document.getElementById('contactShop');
+    var phoneInput = document.getElementById('contactPhone');
+    var subjectInput = document.getElementById('contactSubject');
     var msgInput = document.getElementById('contactMessage');
     var alertBox = document.getElementById('contactFormAlert');
     var submitBtn = document.getElementById('contactSubmitBtn');
@@ -175,6 +196,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var nameErr = document.getElementById('contactFullNameError');
     var emailErr = document.getElementById('contactEmailError');
+    var subjectErr = document.getElementById('contactSubjectError');
     var msgErr = document.getElementById('contactMessageError');
 
     var emailRegex = new RegExp('^[^\\s\\x40]+' + String.fromCharCode(64) + '[^\\s\\x40]+\\.[^\\s\\x40]+$');
@@ -182,6 +204,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function resetErrors() {
         nameErr.classList.add('d-none');
         emailErr.classList.add('d-none');
+        subjectErr.classList.add('d-none');
         msgErr.classList.add('d-none');
         alertBox.className = 'd-none alert mb-4 fs-7 py-3 px-3 rounded-2';
         alertBox.innerHTML = '';
@@ -193,6 +216,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         var nameVal = (nameInput.value || '').trim();
         var emailVal = (emailInput.value || '').trim();
+        var subjectVal = (subjectInput.value || '').trim();
         var msgVal = (msgInput.value || '').trim();
 
         var hasError = false;
@@ -204,6 +228,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!emailVal || !emailRegex.test(emailVal)) {
             emailErr.classList.remove('d-none');
+            hasError = true;
+        }
+
+        if (!subjectVal || subjectVal.length < 3) {
+            subjectErr.classList.remove('d-none');
             hasError = true;
         }
 
@@ -223,19 +252,39 @@ document.addEventListener('DOMContentLoaded', function () {
         btnText.textContent = 'Sending Message...';
         btnIcon.className = 'spinner-border spinner-border-sm ms-1';
 
-        setTimeout(function () {
+        var formData = new FormData(form);
+
+        fetch('@Url.Action("SubmitContact", "Landing")', {
+            method: 'POST',
+            body: formData
+        })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
             submitBtn.disabled = false;
             btnText.textContent = 'Send Message';
             btnIcon.className = 'bi bi-send ms-1';
 
-            alertBox.className = 'alert alert-success mb-4 fs-7 py-3 px-3 rounded-2 d-flex align-items-start gap-2';
-            alertBox.innerHTML = '<i class="bi bi-check-circle-fill text-success flex-shrink-0 mt-1"></i> <div><strong>Message Dispatched Successfully!</strong><br/>Thank you, ' + escapeHtml(nameVal) + '. Our retail engineering desk has received your request and will follow up at ' + escapeHtml(emailVal) + ' within 2 hours.</div>';
+            if (data.success) {
+                alertBox.className = 'alert alert-success mb-4 fs-7 py-3 px-3 rounded-2 d-flex align-items-start gap-2 shadow-sm';
+                alertBox.innerHTML = '<i class="bi bi-check-circle-fill text-success fs-5 flex-shrink-0 mt-1"></i> <div><strong class="fs-7 text-dark">Message Received!</strong><br/><span class="text-secondary">' + escapeHtml(data.message) + '</span><br/><span class="badge bg-success-subtle text-success border border-success-subtle mt-2 fs-8 font-mono">Reference: ' + escapeHtml(data.reference) + '</span></div>';
+                form.reset();
+            } else {
+                alertBox.className = 'alert alert-danger mb-4 fs-7 py-3 px-3 rounded-2 d-flex align-items-center gap-2';
+                alertBox.innerHTML = '<i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i> <span>' + escapeHtml(data.message || 'Failed to submit inquiry.') + '</span>';
+            }
+        })
+        .catch(function(err) {
+            submitBtn.disabled = false;
+            btnText.textContent = 'Send Message';
+            btnIcon.className = 'bi bi-send ms-1';
 
-            form.reset();
-        }, 500);
+            alertBox.className = 'alert alert-danger mb-4 fs-7 py-3 px-3 rounded-2 d-flex align-items-center gap-2';
+            alertBox.innerHTML = '<i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i> <span>Connection error. Please check your network and try again.</span>';
+        });
     });
 
     function escapeHtml(str) {
+        if (!str) return '';
         var div = document.createElement('div');
         div.appendChild(document.createTextNode(str));
         return div.innerHTML;

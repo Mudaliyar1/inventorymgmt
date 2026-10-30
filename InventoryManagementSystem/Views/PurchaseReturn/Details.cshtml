@@ -23,7 +23,7 @@
             }
             <span class="badge-d @statusBadge fs-6 px-3 py-1">@r.Status</span>
         </div>
-        <p class="ph-sub">Created on @r.CreatedAt.ToString("dd-MMM-yyyy HH:mm") IST by <strong>@r.CreatedBy</strong></p>
+        <p class="ph-sub">Created on @r.CreatedAt.ToIst().ToString("dd-MMM-yyyy hh:mm tt IST") by <strong>@r.CreatedBy</strong></p>
     </div>
     <div class="ph-actions d-flex gap-2">
         <a asp-action="Index" class="btn-d btn-outline">

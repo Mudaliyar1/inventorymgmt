@@ -12,6 +12,8 @@ namespace InventoryManagementSystem.Interfaces
         Task<SubscriptionPackage?> GetTenantPackageAsync(string tenantId);
         Task<(bool Allowed, string Message)> CheckPackageLimitAsync(string tenantId, string resourceType);
         Task<TenantLicense> CreateTrialLicenseAsync(string tenantId, string packageId, int days = 14);
+        Task<TenantLicense> CreateTrialLicenseAsync(string tenantId, string packageId, System.TimeSpan trialDuration);
+        Task<TenantLicense> CreateTrialLicenseFromPackageAsync(string tenantId, string packageId);
         Task<bool> RenewOrExtendLicenseAsync(string tenantId, string packageId, int durationDays);
         Task<(bool Success, string Message, DateTime NewExpiry)> UpdateCustomPackageDurationAsync(string tenantId, string packageId, int days, int hours, int minutes, int seconds, bool isFromNow = true);
         Task<IEnumerable<SubscriptionPackage>> GetAllPackagesAsync();

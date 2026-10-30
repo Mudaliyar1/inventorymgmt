@@ -178,6 +178,7 @@
             <form method="post" action="@Url.Action("DeleteTenant", "PlatformAdmin")">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="tenantId" id="delTenantId" value="" />
+                <input type="hidden" name="returnUrl" value="@Context.Request.Path" />
                 <div class="modal-body p-4">
                     <div class="alert alert-danger border-danger text-light mb-3 fs-7">
                         <i class="bi bi-exclamation-triangle-fill text-danger me-2 fs-6"></i>
@@ -185,7 +186,12 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label text-light font-mono fw-bold fs-7">Enter SaaS Super Admin Password:</label>
-                        <input type="password" name="adminPassword" class="form-control bg-dark border-danger text-light py-2" required placeholder="Super Admin Password..." autocomplete="current-password" />
+                        <div class="input-group">
+                            <input type="password" id="tenantsAdminPasswordInput" name="adminPassword" class="form-control bg-dark border-danger text-light py-2" required placeholder="Super Admin Password..." autocomplete="current-password" />
+                            <button type="button" class="btn btn-outline-secondary border-danger text-light" onclick="toggleShopDeletePassword('tenantsAdminPasswordInput', this)" title="Show/Hide password">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer border-secondary justify-content-between">
@@ -201,10 +207,28 @@
 
 @section Scripts {
     <script>
+        function toggleShopDeletePassword(inputId, btn) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            const icon = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                if (icon) icon.className = 'bi bi-eye-slash';
+            } else {
+                input.type = 'password';
+                if (icon) icon.className = 'bi bi-eye';
+            }
+        }
+
         function openDeleteShopModal(id, name, code) {
             document.getElementById('delTenantId').value = id;
             document.getElementById('delTenantName').innerText = name;
             document.getElementById('delTenantCode').innerText = code;
+            const pwdInput = document.getElementById('tenantsAdminPasswordInput');
+            if (pwdInput) {
+                pwdInput.value = '';
+                pwdInput.type = 'password';
+            }
             const modalEl = document.getElementById('deleteTenantListModal');
             if (modalEl) {
                 const bsModal = bootstrap.Modal.getOrCreateInstance(modalEl);

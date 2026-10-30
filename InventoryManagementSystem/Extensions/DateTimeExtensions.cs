@@ -44,5 +44,40 @@ namespace InventoryManagementSystem.Extensions
         {
             return dateTime.ToIst().ToString(format);
         }
+
+        /// <summary>
+        /// Converts a nullable UTC DateTime to Indian Standard Time (IST, UTC+5:30).
+        /// </summary>
+        public static DateTime? ToIst(this DateTime? dateTime)
+        {
+            if (!dateTime.HasValue) return null;
+            return dateTime.Value.ToIst();
+        }
+
+        /// <summary>
+        /// Formats a nullable DateTime in Indian Standard Time (IST).
+        /// </summary>
+        public static string ToIstString(this DateTime? dateTime, string format = "dd MMM yyyy, hh:mm tt IST", string nullFallback = "—")
+        {
+            if (!dateTime.HasValue) return nullFallback;
+            return dateTime.Value.ToIstString(format);
+        }
+
+        /// <summary>
+        /// Formats a DateTime for public legal policy display in Indian Standard Time (e.g. "26 October 2026, 11:30 PM IST").
+        /// </summary>
+        public static string ToPolicyIstDisplayString(this DateTime dateTime)
+        {
+            return dateTime.ToIst().ToString("dd MMMM yyyy, hh:mm tt 'IST'");
+        }
+
+        /// <summary>
+        /// Formats a nullable DateTime for public legal policy display in Indian Standard Time.
+        /// </summary>
+        public static string ToPolicyIstDisplayString(this DateTime? dateTime, string nullFallback = "—")
+        {
+            if (!dateTime.HasValue) return nullFallback;
+            return dateTime.Value.ToPolicyIstDisplayString();
+        }
     }
 }

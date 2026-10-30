@@ -20,7 +20,7 @@
 <div class="ph">
     <div>
         <h1 class="ph-title"><i class="bi bi-file-earmark-text me-2" style="color:var(--primary)"></i>Purchase Order #@Model.OrderNumber</h1>
-        <p class="ph-sub">Issued by: <strong>@Model.CreatedBy</strong> · Created: <strong>@Model.CreatedAt.ToString("dd-MMM-yyyy HH:mm") IST</strong></p>
+        <p class="ph-sub">Issued by: <strong>@Model.CreatedBy</strong> · Created: <strong>@Model.CreatedAt.ToIst().ToString("dd-MMM-yyyy hh:mm tt IST")</strong></p>
     </div>
     <div class="ph-actions d-flex gap-2">
         @if (Model.Status == "Delivered" || Model.Status == "Completed" || Model.Status == "Accepted" || Model.Status == "Processing" || Model.Status == "Shipped")

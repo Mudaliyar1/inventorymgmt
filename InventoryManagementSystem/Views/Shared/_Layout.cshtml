@@ -5,6 +5,7 @@
 @inject InventoryManagementSystem.Interfaces.ISupplierService SupplierService
 @inject InventoryManagementSystem.Interfaces.ILicenseService LayoutLicenseService
 @inject InventoryManagementSystem.Data.MongoDbContext LayoutMongoContext
+@inject InventoryManagementSystem.Services.IPolicyService LayoutPolicyService
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -112,8 +113,8 @@
   InventoryManagementSystem.Models.Tenant? currentShopTenant = null;
   InventoryManagementSystem.Models.TenantLicense? currentShopLicense = null;
   bool isCurrentShopLicenseExpired = false;
-  int currentShopDaysRemaining = 999;
   bool isCurrentShopExpiringSoon = false;
+  string currentShopRemainingTimeDisplay = "";
 
   if (!string.IsNullOrEmpty(layoutTenantId) && !isSuperAdmin)
   {
@@ -121,14 +122,34 @@
       if (currentShopTenant != null)
       {
           currentShopLicense = await LayoutLicenseService.GetActiveLicenseAsync(currentShopTenant.Id);
+          var nowUtc = DateTime.UtcNow;
           isCurrentShopLicenseExpired = string.Equals(currentShopTenant.Status, "Expired", StringComparison.OrdinalIgnoreCase)
                                      || currentShopLicense == null
-                                     || currentShopLicense.ExpiryDate < DateTime.UtcNow
+                                     || currentShopLicense.ExpiryDate <= nowUtc
                                      || string.Equals(currentShopLicense?.Status, "Expired", StringComparison.OrdinalIgnoreCase);
-          if (currentShopLicense != null)
+
+          if (currentShopLicense != null && !isCurrentShopLicenseExpired)
           {
-              currentShopDaysRemaining = (int)Math.Ceiling((currentShopLicense.ExpiryDate - DateTime.UtcNow).TotalDays);
-              isCurrentShopExpiringSoon = !isCurrentShopLicenseExpired && currentShopDaysRemaining <= 7;
+              var remainingTime = currentShopLicense.ExpiryDate - nowUtc;
+              if (remainingTime <= TimeSpan.FromDays(7) && remainingTime > TimeSpan.Zero)
+              {
+                  isCurrentShopExpiringSoon = true;
+                  if (remainingTime.TotalDays >= 1)
+                  {
+                      int days = (int)Math.Ceiling(remainingTime.TotalDays);
+                      currentShopRemainingTimeDisplay = $"{days} day{(days > 1 ? "s" : "")}";
+                  }
+                  else if (remainingTime.TotalHours >= 1)
+                  {
+                      int hours = (int)Math.Ceiling(remainingTime.TotalHours);
+                      currentShopRemainingTimeDisplay = $"{hours} hour{(hours > 1 ? "s" : "")}";
+                  }
+                  else
+                  {
+                      int minutes = Math.Max(1, (int)Math.Ceiling(remainingTime.TotalMinutes));
+                      currentShopRemainingTimeDisplay = $"{minutes} minute{(minutes > 1 ? "s" : "")}";
+                  }
+              }
           }
       }
   }
@@ -171,6 +192,13 @@
         <span class="sb-text">Registered Shops</span>
       </a>
 
+      <a href="@Url.Action("PendingApprovals","PlatformAdmin")"
+         class="sb-link @(ctrl=="PlatformAdmin"&&act=="PendingApprovals"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Trial Approvals Queue" data-bs-placement="right">
+        <i class="bi bi-clock-history sb-icon" style="color:#f59e0b"></i>
+        <span class="sb-text">Trial Approvals</span>
+      </a>
+
       <a href="@Url.Action("CreateTenant","PlatformAdmin")"
          class="sb-link @(ctrl=="PlatformAdmin"&&act=="CreateTenant"?"active":"")"
          data-bs-toggle="tooltip" data-bs-title="Add New Shop" data-bs-placement="right">
@@ -180,6 +208,13 @@
 
       <!-- SUBSCRIPTION & BILLING -->
       <div class="sb-label">BILLING & PACKAGES</div>
+
+      <a href="@Url.Action("Revenue","PlatformAdmin")"
+         class="sb-link @(ctrl=="PlatformAdmin"&&act=="Revenue"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Revenue & Razorpay Payments" data-bs-placement="right">
+        <i class="bi bi-cash-stack sb-icon" style="color:var(--success)"></i>
+        <span class="sb-text">Revenue Dashboard</span>
+      </a>
 
       <a href="@Url.Action("RenewalRequests","PlatformAdmin")"
          class="sb-link @(ctrl=="PlatformAdmin"&&act=="RenewalRequests"?"active":"")"
@@ -202,11 +237,45 @@
         <span class="sb-text">Custom Packages</span>
       </a>
 
+      <a href="@Url.Action("CustomPricing","PlatformAdmin")"
+         class="sb-link @(ctrl=="PlatformAdmin"&&act=="CustomPricing"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Custom Package Pricing Configuration" data-bs-placement="right">
+        <i class="bi bi-calculator-fill sb-icon" style="color:#06b6d4"></i>
+        <span class="sb-text">Custom Pricing Config</span>
+      </a>
+
+      <a href="@Url.Action("CustomPackageInquiries","PlatformAdmin")"
+         class="sb-link @(ctrl=="PlatformAdmin"&&act=="CustomPackageInquiries"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Custom Package Calculator Inquiries" data-bs-placement="right">
+        <i class="bi bi-file-earmark-spreadsheet sb-icon" style="color:#ec4899"></i>
+        <span class="sb-text">Package Inquiries</span>
+      </a>
+
       <a href="@Url.Action("Payments","PlatformAdmin")"
          class="sb-link @(ctrl=="PlatformAdmin"&&act=="Payments"?"active":"")"
          data-bs-toggle="tooltip" data-bs-title="Revenue & Payments" data-bs-placement="right">
         <i class="bi bi-currency-dollar sb-icon" style="color:var(--success)"></i>
         <span class="sb-text">Payment Transactions</span>
+      </a>
+
+      <!-- INQUIRIES & COMMUNICATIONS -->
+      <div class="sb-label">INQUIRIES &amp; SUPPORT</div>
+
+      <a href="@Url.Action("ContactInquiries","PlatformAdmin")"
+         class="sb-link @(ctrl=="PlatformAdmin"&&act=="ContactInquiries"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Contact Us Inquiries" data-bs-placement="right">
+        <i class="bi bi-chat-left-dots-fill sb-icon" style="color:#3b82f6"></i>
+        <span class="sb-text">Contact Inquiries</span>
+      </a>
+
+      <!-- WEBSITE MANAGEMENT -->
+      <div class="sb-label">WEBSITE MANAGEMENT</div>
+
+      <a href="@Url.Action("Policies","PlatformAdmin")"
+         class="sb-link @(ctrl=="PlatformAdmin"&&(act=="Policies"||act=="CreatePolicy"||act=="EditPolicy"||act=="PolicyRevisions")?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Manage Legal &amp; Public Policies" data-bs-placement="right">
+        <i class="bi bi-file-earmark-ruled-fill sb-icon" style="color:#f59e0b"></i>
+        <span class="sb-text">Policies</span>
       </a>
 
       <!-- SYSTEM & SECURITY -->
@@ -721,55 +790,41 @@
     <main class="page-body" role="main">
       @if (isCurrentShopLicenseExpired && act != "LicenseExpired" && act != "Suspended")
       {
-          <div class="alert alert-danger border-danger border-opacity-50 mx-3 mt-3 mb-0 shadow-sm d-flex align-items-center justify-content-between flex-wrap gap-2 rounded-3" style="background:rgba(239,68,68,0.12);">
+          <div class="compact-sub-alert alert-compact-expired mx-3 mt-2 mb-2 px-3 py-1.5 rounded-2 d-flex align-items-center justify-content-between flex-wrap gap-2"
+               style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);color:#fca5a5;font-size:13px;line-height:1.4;">
               <div class="d-flex align-items-center gap-2">
-                  <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger text-light flex-shrink-0" style="width:30px;height:30px;">
-                      <i class="bi bi-clock-history fs-7"></i>
+                  <i class="bi bi-x-circle-fill text-danger flex-shrink-0" style="font-size:14px;"></i>
+                  <span>
+                      <strong>Subscription Plan Expired</strong> · Access expired on @(currentShopLicense != null ? currentShopLicense.ExpiryDate.AddMinutes(330).ToString("dd MMM yyyy, hh:mm tt IST") : "N/A"). @(isAdmin ? "Please renew to restore full store access." : "Please contact your store administrator to renew.")
                   </span>
-                  <div>
-                      <strong class="text-danger">Subscription Plan Expired!</strong>
-                      <span class="text-light fs-7 ms-1">
-                          Your shop's active license expired on @(currentShopLicense != null ? currentShopLicense.ExpiryDate.AddMinutes(330).ToString("dd MMM yyyy, hh:mm tt IST") : "N/A"). @(isAdmin ? "Please renew immediately to restore full store access." : "Please contact your store administrator to renew.")
-                      </span>
-                  </div>
               </div>
               <div class="d-flex align-items-center gap-2">
                   @if (isAdmin)
                   {
-                      <a href="@Url.Action("Renew", "Subscription")" class="btn btn-danger btn-sm fw-bold">
-                          <i class="bi bi-arrow-repeat me-1"></i> Renew Now
+                      <a href="@Url.Action("Renew", "Subscription")" class="btn btn-danger btn-sm py-0.5 px-2.5 fw-semibold" style="font-size:12px;border-radius:4px;">
+                          <i class="bi bi-arrow-repeat me-1"></i>Renew Now
                       </a>
                   }
-                  <a href="@Url.Action("LicenseExpired", "Home")" class="btn btn-outline-danger btn-sm">
-                      <i class="bi bi-eye me-1"></i> View Notice
-                  </a>
               </div>
           </div>
       }
       else if (isCurrentShopExpiringSoon && act != "LicenseExpired" && act != "Suspended")
       {
-          <div class="alert alert-warning border-warning border-opacity-50 mx-3 mt-3 mb-0 shadow-sm d-flex align-items-center justify-content-between flex-wrap gap-2 rounded-3" style="background:rgba(245,158,11,0.12);">
+          <div class="compact-sub-alert alert-compact-warning mx-3 mt-2 mb-2 px-3 py-1.5 rounded-2 d-flex align-items-center justify-content-between flex-wrap gap-2"
+               style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.22);color:#fbbf24;font-size:13px;line-height:1.4;">
               <div class="d-flex align-items-center gap-2">
-                  <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-warning text-dark flex-shrink-0" style="width:30px;height:30px;">
-                      <i class="bi bi-hourglass-bottom fs-7"></i>
+                  <i class="bi bi-exclamation-triangle-fill text-warning flex-shrink-0" style="font-size:14px;"></i>
+                  <span>
+                      Subscription expires in <strong>@currentShopRemainingTimeDisplay</strong> · Renew your plan to keep access to your shop features.
                   </span>
-                  <div>
-                      <strong class="text-warning">Subscription Expiring Soon!</strong>
-                      <span class="text-light fs-7 ms-1">
-                          You have only <strong>@(Math.Max(0, currentShopDaysRemaining)) day(s)</strong> remaining on your active plan (Expires: @(currentShopLicense != null ? currentShopLicense.ExpiryDate.AddMinutes(330).ToString("dd MMM yyyy, hh:mm tt IST") : "N/A")). Renew or upgrade now to retain seamless access to all your shop features.
-                      </span>
-                  </div>
               </div>
               <div class="d-flex align-items-center gap-2">
                   @if (isAdmin)
                   {
-                      <a href="@Url.Action("Renew", "Subscription")" class="btn btn-warning btn-sm fw-bold text-dark">
-                          <i class="bi bi-arrow-repeat me-1"></i> Extend License
+                      <a href="@Url.Action("Renew", "Subscription")" class="btn btn-warning btn-sm py-0.5 px-2.5 fw-semibold text-dark" style="font-size:12px;border-radius:4px;">
+                          <i class="bi bi-arrow-repeat me-1"></i>Renew Plan
                       </a>
                   }
-                  <a href="@Url.Action("MyPlan", "Subscription")" class="btn btn-outline-warning btn-sm">
-                      <i class="bi bi-eye me-1"></i> Plan Overview
-                  </a>
               </div>
           </div>
       }
@@ -842,13 +897,13 @@ else
     <!-- Refined Minimal Editorial Multi-Column Footer (Universal Across All Public Pages) -->
     <footer class="ecom-footer py-5 mt-auto">
       <div class="ecom-container">
-        <div class="row g-4 g-lg-5 mb-5">
+        <div class="row g-4 g-lg-5 mb-4">
           <!-- Col 1: Brand & Description -->
-          <div class="col-lg-4 col-md-12 text-start">
+          <div class="col-lg-3 col-md-6 col-12 text-start">
             <div class="d-flex align-items-center gap-2 mb-3">
               <span class="ecom-brand-text fs-4 fw-bold">SIMS</span>
             </div>
-            <p class="ecom-footer-desc mb-4">
+            <p class="ecom-footer-desc mb-3">
               The smart inventory management system engineered for modern retailers, repair workshops, and growing businesses to manage inventory, sales, and operations with complete precision.
             </p>
             <div class="ecom-status-badge">
@@ -891,36 +946,67 @@ else
             </ul>
           </div>
 
-          <!-- Col 5: Stay Updated / Newsletter -->
-          <div class="col-lg-2 col-md-3 col-12 text-start">
-            <h6 class="ecom-footer-heading">Stay Updated</h6>
-            <p class="ecom-footer-micro-desc mb-3">
-              Latest updates, inventory insights &amp; operational guides.
-            </p>
-            <form id="footerNewsletterForm" class="ecom-footer-newsletter mb-3" novalidate>
-              <div class="ecom-newsletter-field">
-                <input type="email" 
-                       id="footerNewsletterEmail" 
-                       name="newsletterEmail" 
-                       class="ecom-newsletter-input" 
-                       placeholder="Your email" 
-                       required 
-                       aria-label="Email address"
-                       aria-describedby="footerNewsletterMsg"
-                       autocomplete="email" />
-                <button type="submit" class="ecom-newsletter-btn" aria-label="Subscribe to newsletter">
-                  <i class="bi bi-arrow-right" aria-hidden="true"></i>
-                </button>
+          <!-- Col 5: Dedicated Policy Section -->
+          <div class="col-lg-3 col-md-4 col-6 text-start">
+            <h6 class="ecom-footer-heading">Policies &amp; Legal</h6>
+            @{
+                var dynamicFooterPolicies = await LayoutPolicyService.GetPublicPoliciesAsync();
+            }
+            <ul class="list-unstyled ecom-footer-links mb-0">
+                @if (dynamicFooterPolicies != null && dynamicFooterPolicies.Any())
+                {
+                    foreach (var fp in dynamicFooterPolicies.Where(p => p.ShowInFooter))
+                    {
+                        <li><a href="@Url.Action("Policy", "Landing", new { slug = fp.Slug })">@fp.Title</a></li>
+                    }
+                }
+                else
+                {
+                    <li><a href="@Url.Action("PrivacyPolicy", "Landing")">Privacy Policy</a></li>
+                    <li><a href="@Url.Action("Terms", "Landing")">Terms and Conditions</a></li>
+                    <li><a href="@Url.Action("RefundPolicy", "Landing")">Refund &amp; Cancellation</a></li>
+                    <li><a href="@Url.Action("SubscriptionPolicy", "Landing")">Subscription &amp; Billing</a></li>
+                    <li><a href="@Url.Action("CookiePolicy", "Landing")">Cookie Policy</a></li>
+                }
+            </ul>
+          </div>
+
+          <!-- Stay Updated / Newsletter -->
+          <div class="col-12 pt-3 border-top">
+            <div class="row align-items-center justify-content-between g-3">
+              <div class="col-md-5 text-start">
+                <h6 class="ecom-footer-heading mb-1">Stay Updated</h6>
+                <p class="ecom-footer-micro-desc mb-0">
+                  Latest updates, inventory insights &amp; operational guides.
+                </p>
               </div>
-              <div id="footerNewsletterMsg" 
-                   class="ecom-newsletter-msg" 
-                   role="status" 
-                   aria-live="polite"></div>
-            </form>
-            <div class="ecom-social-row">
-              <a href="javascript:void(0)" class="ecom-social-icon" aria-label="Twitter"><i class="bi bi-twitter-x"></i></a>
-              <a href="javascript:void(0)" class="ecom-social-icon" aria-label="LinkedIn"><i class="bi bi-linkedin"></i></a>
-              <a href="javascript:void(0)" class="ecom-social-icon" aria-label="Telegram"><i class="bi bi-telegram"></i></a>
+              <div class="col-md-7 d-flex flex-wrap align-items-center justify-content-md-end gap-3">
+                <form id="footerNewsletterForm" class="ecom-footer-newsletter d-inline-flex mb-0" novalidate style="max-width: 380px; width: 100%;">
+                  <div class="ecom-newsletter-field w-100">
+                    <input type="email" 
+                           id="footerNewsletterEmail" 
+                           name="newsletterEmail" 
+                           class="ecom-newsletter-input" 
+                           placeholder="Your email" 
+                           required 
+                           aria-label="Email address"
+                           aria-describedby="footerNewsletterMsg"
+                           autocomplete="email" />
+                    <button type="submit" class="ecom-newsletter-btn" aria-label="Subscribe to newsletter">
+                      <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                    </button>
+                  </div>
+                  <div id="footerNewsletterMsg" 
+                       class="ecom-newsletter-msg" 
+                       role="status" 
+                       aria-live="polite"></div>
+                </form>
+                <div class="ecom-social-row">
+                  <a href="javascript:void(0)" class="ecom-social-icon" aria-label="Twitter"><i class="bi bi-twitter-x"></i></a>
+                  <a href="javascript:void(0)" class="ecom-social-icon" aria-label="LinkedIn"><i class="bi bi-linkedin"></i></a>
+                  <a href="javascript:void(0)" class="ecom-social-icon" aria-label="Telegram"><i class="bi bi-telegram"></i></a>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -929,7 +1015,22 @@ else
           <span class="ecom-copyright">
             &copy; @DateTime.Now.Year SIMS Platform. All rights reserved.
           </span>
-          <div class="d-flex gap-4 ecom-bottom-links">
+          <div class="d-flex flex-wrap gap-3 ecom-bottom-links justify-content-center">
+            @if (dynamicFooterPolicies != null && dynamicFooterPolicies.Any())
+            {
+                foreach (var fp in dynamicFooterPolicies.Where(p => p.ShowInFooter).Take(5))
+                {
+                    <a href="@Url.Action("Policy", "Landing", new { slug = fp.Slug })">@fp.Title</a>
+                }
+            }
+            else
+            {
+                <a href="@Url.Action("PrivacyPolicy", "Landing")">Privacy Policy</a>
+                <a href="@Url.Action("Terms", "Landing")">Terms</a>
+                <a href="@Url.Action("RefundPolicy", "Landing")">Refund Policy</a>
+                <a href="@Url.Action("SubscriptionPolicy", "Landing")">Billing Policy</a>
+                <a href="@Url.Action("CookiePolicy", "Landing")">Cookie Policy</a>
+            }
             <a href="@Url.Action("Contact", "Landing")">Support Desk</a>
             <a href="@Url.Action("Pricing", "Landing")">Plans &amp; Pricing</a>
             <a href="@Url.Action("Login", "Account")">Sign In</a>

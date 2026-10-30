@@ -1,12 +1,14 @@
 @model StockTransactionViewModel
 @{
     ViewData["Title"] = "Stock Out — Mobile Shop";
+    var brands = ViewBag.Brands as List<string> ?? new List<string>();
+    var allProductsJson = ViewBag.AllActiveProductsJson as string ?? "[]";
 }
 
 <div class="d-flex align-items-center justify-content-between mb-4">
     <div>
         <h3 class="fw-bold mb-1"><i class="bi bi-arrow-up-circle me-2 text-danger"></i>Stock Out / Issue Device</h3>
-        <p class="text-muted small mb-0">Deduct quantity or issue out specific physical IMEIs</p>
+        <p class="text-muted small mb-0">Deduct quantity or issue out specific physical IMEIs with complete audit tracking</p>
     </div>
     <a href="@Url.Action("History","Stock")" class="btn btn-outline-secondary rounded-pill px-3">
         <i class="bi bi-clock-history me-1"></i> View Audit History
@@ -31,12 +33,26 @@
     <div class="tab-pane fade show active" id="out-imei-panel">
         <div class="card border-0 shadow-sm rounded-4">
             <div class="card-body p-4">
-                <form asp-action="StockOutDevice" method="post">
+                <form asp-action="StockOutDevice" method="post" id="stockOutDeviceForm">
                     @Html.AntiForgeryToken()
                     <div class="row g-3">
-                        <div class="col-md-6">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Select Brand <span class="text-secondary fw-normal">(Filter Models)</span></label>
+                            <select id="OutBrandSelect" class="form-select" onchange="onOutBrandChanged(this.value)">
+                                <option value="">-- All Brands --</option>
+                                @if (brands != null)
+                                {
+                                    foreach (var b in brands)
+                                    {
+                                        <option value="@b">@b</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
                             <label class="form-label small fw-semibold">Select Mobile Model <span class="text-danger">*</span></label>
-                            <select id="OutProductId" class="form-select" required>
+                            <select id="OutProductId" class="form-select" required onchange="onOutProductChanged(this.value)">
                                 <option value="">-- Select Product Model --</option>
                                 @if (Model.Products != null)
                                 {
@@ -47,18 +63,67 @@
                                 }
                             </select>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Select Physical IMEI <span class="text-danger">*</span></label>
-                            <select name="deviceId" id="DeviceSelect" class="form-select font-monospace" required disabled>
-                                <option value="">-- Select Model First --</option>
+
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Filter by Storage / Variant</label>
+                            <select id="OutVariantSelect" class="form-select" onchange="filterAvailableDevices()" disabled>
+                                <option value="">-- All Variants --</option>
                             </select>
                         </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Filter by Color</label>
+                            <select id="OutColorSelect" class="form-select" onchange="filterAvailableDevices()" disabled>
+                                <option value="">-- All Colors --</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-12">
+                            <label class="form-label small fw-semibold">Select Physical IMEI to Issue <span class="text-danger">*</span></label>
+                            <select name="deviceId" id="DeviceSelect" class="form-select font-monospace fw-bold" required disabled onchange="onDeviceSelected(this.value)">
+                                <option value="">-- Select Model First --</option>
+                            </select>
+                            <div class="form-text small text-muted">Displays only active physical units currently in physical inventory.</div>
+                        </div>
+
+                        <!-- LIVE DEVICE CARD PREVIEW -->
+                        <div class="col-12" id="DeviceDetailCard" style="display:none">
+                            <div class="p-3 rounded-4 bg-light border border-danger-subtle shadow-sm">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2 pb-2 border-bottom">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge bg-danger rounded-pill px-3 py-2 fs-7 fw-bold">Ready to Issue Out</span>
+                                        <span class="fw-bold fs-6 text-dark" id="CardDeviceTitle">Mobile Device</span>
+                                    </div>
+                                    <span class="badge bg-secondary-subtle text-secondary border px-2 py-1 small" id="CardDeviceStatus">Status: Available</span>
+                                </div>
+                                <div class="row g-2 small">
+                                    <div class="col-md-3">
+                                        <span class="text-muted d-block">Primary IMEI 1:</span>
+                                        <span class="font-monospace fw-bold text-danger fs-6" id="CardIMEI1">-</span>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <span class="text-muted d-block">Secondary IMEI 2:</span>
+                                        <span class="font-monospace fw-semibold text-secondary" id="CardIMEI2">-</span>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <span class="text-muted d-block">Variant &amp; Color:</span>
+                                        <span class="fw-bold text-dark" id="CardVariantColor">-</span>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <span class="text-muted d-block">Serial Number:</span>
+                                        <span class="font-monospace text-muted" id="CardSerialNumber">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="col-12">
-                            <label class="form-label small fw-semibold">Reason for Issue / Output <span class="text-danger">*</span></label>
+                            <label class="form-label small fw-semibold">Reason for Issue / Stock Out <span class="text-danger">*</span></label>
                             <select name="statusReason" required class="form-select">
                                 <option value="Sold">Direct Retail Sale</option>
-                                <option value="Reserved">Reserved for Order</option>
+                                <option value="Reserved">Reserved for Customer Order</option>
                                 <option value="UnderRepair">Sent for Repair / Workshop</option>
+                                <option value="CustomerReturn">Customer Replacement / Return</option>
                                 <option value="Damaged">Mark as Damaged / Scrap</option>
                             </select>
                         </div>
@@ -79,17 +144,67 @@
                 <form asp-action="StockOut" method="post">
                     @Html.AntiForgeryToken()
                     <div class="row g-3">
-                        <div class="col-md-6">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Select Brand <span class="text-secondary fw-normal">(Filter Items)</span></label>
+                            <select id="OutAccessoryBrandSelect" class="form-select" onchange="onOutAccessoryBrandChanged(this.value)">
+                                <option value="">-- All Brands --</option>
+                                @if (brands != null)
+                                {
+                                    foreach (var b in brands)
+                                    {
+                                        <option value="@b">@b</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-3">
                             <label class="form-label small fw-semibold">Select Accessory Product <span class="text-danger">*</span></label>
-                            <select asp-for="ProductId" asp-items="Model.Products" class="form-select" required>
+                            <select asp-for="ProductId" asp-items="Model.Products" class="form-select" id="OutAccessoryProductId" required onchange="onOutAccessoryChanged(this.value)">
                                 <option value="">-- Select Accessory Product --</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label small fw-semibold">Quantity to Remove <span class="text-danger">*</span></label>
-                            <input asp-for="Quantity" type="number" min="1" class="form-control" placeholder="e.g. 5" required>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Storage / Variant</label>
+                            <select id="OutAccessoryVariantSelect" class="form-select" onchange="onOutAccessoryVariantChanged(this.value)">
+                                <option value="">-- All / Base Variant --</option>
+                            </select>
+                            <input type="hidden" name="VariantId" id="OutAccessoryVariantId" />
+                            <input type="hidden" name="VariantName" id="OutAccessoryVariantName" />
                         </div>
-                        <div class="col-12">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Color</label>
+                            <select id="OutAccessoryColorSelect" class="form-select" onchange="onOutAccessoryColorChanged(this.value)">
+                                <option value="">-- All / Base Color --</option>
+                            </select>
+                            <input type="hidden" name="ColorId" id="OutAccessoryColorId" />
+                            <input type="hidden" name="ColorName" id="OutAccessoryColorName" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Quantity to Remove <span class="text-danger">*</span></label>
+                            <input asp-for="Quantity" type="number" min="1" class="form-control font-monospace fw-bold" placeholder="e.g. 5" required>
+                        </div>
+
+                        <!-- Accessory Live Stock Banner -->
+                        <div class="col-12" id="OutAccessoryBanner" style="display:none">
+                            <div class="p-3 rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-2" style="background:rgba(239, 68, 68, 0.08);border:1px solid rgba(239, 68, 68, 0.25)">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div style="width:36px;height:36px;border-radius:10px;background:#ef4444;color:#fff;display:flex;align-items:center;justify-content:center">
+                                        <i class="bi bi-boxes"></i>
+                                    </div>
+                                    <div>
+                                        <span class="fw-bold text-danger" id="OutAccessoryTitle">Accessory Product</span>
+                                        <div class="small text-muted" id="OutAccessoryDetails">Current Inventory Status</div>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 rounded-pill fs-7 fw-bold" id="OutAccessoryStockBadge">
+                                        <i class="bi bi-box-seam me-1"></i> Available Stock: 0 Units
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-8">
                             <label class="form-label small fw-semibold">Reason / Note <span class="text-danger">*</span></label>
                             <input asp-for="Reason" class="form-control" placeholder="e.g. Direct Sale, Damaged Item, Display Sample" required>
                         </div>
@@ -106,39 +221,295 @@
 
 @section Scripts {
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+let availableDevicesCache = [];
+const allActiveProducts = @Html.Raw(allProductsJson);
+
+function populateProductDropdown(selectEl, products, placeholder, selectedValue) {
+    if (!selectEl) return;
+    let html = `<option value="">${placeholder}</option>`;
+    products.forEach(p => {
+        const isSel = (p.id === selectedValue) ? ' selected' : '';
+        html += `<option value="${p.id}"${isSel}>${p.displayText}</option>`;
+    });
+    selectEl.innerHTML = html;
+}
+
+function onOutBrandChanged(brand) {
     const prodSelect = document.getElementById('OutProductId');
-    const devSelect = document.getElementById('DeviceSelect');
-
-    if (prodSelect && devSelect) {
-        prodSelect.addEventListener('change', async function () {
-            const pid = this.value;
-            if (!pid) {
-                devSelect.innerHTML = '<option value="">-- Select Model First --</option>';
-                devSelect.disabled = true;
-                return;
-            }
-
-            devSelect.innerHTML = '<option value="">Loading available IMEIs...</option>';
-            devSelect.disabled = true;
-
-            try {
-                const res = await fetch(`/Stock/GetAvailableDevicesForProduct?productId=${pid}`);
-                const data = await res.json();
-
-                if (data && data.length > 0) {
-                    devSelect.innerHTML = '<option value="">-- Select Available IMEI --</option>' +
-                        data.map(d => `<option value="${d.id}">${d.displayText}</option>`).join('');
-                    devSelect.disabled = false;
-                } else {
-                    devSelect.innerHTML = '<option value="">No available IMEIs found in stock</option>';
-                    devSelect.disabled = true;
-                }
-            } catch (err) {
-                devSelect.innerHTML = '<option value="">Error loading IMEIs</option>';
-            }
-        });
+    const currentVal = prodSelect.value;
+    let filtered = allActiveProducts;
+    if (brand) {
+        filtered = allActiveProducts.filter(p => (p.brand || '').toLowerCase() === brand.toLowerCase());
     }
-});
+    const matchCurrent = filtered.some(p => p.id === currentVal);
+    populateProductDropdown(prodSelect, filtered, '-- Select Product Model --', matchCurrent ? currentVal : '');
+    if (!matchCurrent) {
+        prodSelect.value = '';
+        onOutProductChanged('');
+    }
+}
+
+function onOutAccessoryBrandChanged(brand) {
+    const prodSelect = document.getElementById('OutAccessoryProductId');
+    const currentVal = prodSelect.value;
+    let filtered = allActiveProducts;
+    if (brand) {
+        filtered = allActiveProducts.filter(p => (p.brand || '').toLowerCase() === brand.toLowerCase());
+    }
+    const matchCurrent = filtered.some(p => p.id === currentVal);
+    populateProductDropdown(prodSelect, filtered, '-- Select Accessory Product --', matchCurrent ? currentVal : '');
+    if (!matchCurrent) {
+        prodSelect.value = '';
+        onOutAccessoryChanged('');
+    }
+}
+
+async function onOutProductChanged(pid) {
+    const devSelect = document.getElementById('DeviceSelect');
+    const varSelect = document.getElementById('OutVariantSelect');
+    const colorSelect = document.getElementById('OutColorSelect');
+    const detailCard = document.getElementById('DeviceDetailCard');
+
+    if (detailCard) detailCard.style.display = 'none';
+
+    if (pid) {
+        const prodObj = allActiveProducts.find(p => p.id === pid);
+        if (prodObj && prodObj.brand) {
+            const brandSelect = document.getElementById('OutBrandSelect');
+            if (brandSelect && brandSelect.value !== prodObj.brand) {
+                brandSelect.value = prodObj.brand;
+            }
+        }
+    }
+
+    if (!pid) {
+        devSelect.innerHTML = '<option value="">-- Select Model First --</option>';
+        devSelect.disabled = true;
+        varSelect.innerHTML = '<option value="">-- All Variants --</option>';
+        varSelect.disabled = true;
+        colorSelect.innerHTML = '<option value="">-- All Colors --</option>';
+        colorSelect.disabled = true;
+        availableDevicesCache = [];
+        return;
+    }
+
+    devSelect.innerHTML = '<option value="">Loading available IMEIs...</option>';
+    devSelect.disabled = true;
+
+    try {
+        // Fetch devices and variants in parallel
+        const [devRes, varRes] = await Promise.all([
+            fetch(`/Stock/GetAvailableDevicesForProduct?productId=${encodeURIComponent(pid)}`),
+            fetch(`/Product/GetProductVariants?productId=${encodeURIComponent(pid)}`)
+        ]);
+
+        availableDevicesCache = await devRes.json();
+        const variants = await varRes.json();
+
+        // Populate Variants filter
+        if (variants && variants.length > 0) {
+            let varOpts = '<option value="">-- All Variants --</option>';
+            variants.forEach(v => {
+                varOpts += `<option value="${v.displayVariant}">${v.displayVariant}</option>`;
+            });
+            varSelect.innerHTML = varOpts;
+            varSelect.disabled = false;
+
+            // Collect unique colors
+            const allColors = new Set();
+            variants.forEach(v => {
+                if (v.colors) v.colors.forEach(c => allColors.add(c.name));
+            });
+            let colorOpts = '<option value="">-- All Colors --</option>';
+            allColors.forEach(c => {
+                colorOpts += `<option value="${c}">${c}</option>`;
+            });
+            colorSelect.innerHTML = colorOpts;
+            colorSelect.disabled = false;
+        } else {
+            varSelect.innerHTML = '<option value="">-- All Variants --</option>';
+            varSelect.disabled = true;
+            colorSelect.innerHTML = '<option value="">-- All Colors --</option>';
+            colorSelect.disabled = true;
+        }
+
+        renderDeviceOptions(availableDevicesCache);
+    } catch (err) {
+        console.error('Error loading devices for product:', err);
+        devSelect.innerHTML = '<option value="">Error loading IMEIs</option>';
+        devSelect.disabled = true;
+    }
+}
+
+function filterAvailableDevices() {
+    const selectedVar = document.getElementById('OutVariantSelect').value;
+    const selectedColor = document.getElementById('OutColorSelect').value;
+
+    let filtered = availableDevicesCache;
+
+    if (selectedVar) {
+        filtered = filtered.filter(d => d.variant === selectedVar);
+    }
+    if (selectedColor) {
+        filtered = filtered.filter(d => d.color === selectedColor);
+    }
+
+    renderDeviceOptions(filtered);
+}
+
+function renderDeviceOptions(devices) {
+    const devSelect = document.getElementById('DeviceSelect');
+    const detailCard = document.getElementById('DeviceDetailCard');
+    if (detailCard) detailCard.style.display = 'none';
+
+    if (devices && devices.length > 0) {
+        devSelect.innerHTML = `<option value="">-- Select Available IMEI (${devices.length} Available) --</option>` +
+            devices.map(d => {
+                const varColor = (d.variant || d.color) ? ` [${d.variant || ''} ${d.color || ''}]` : '';
+                const sn = d.serialNumber ? ` (SN: ${d.serialNumber})` : '';
+                return `<option value="${d.id}">IMEI: ${d.imei1}${varColor}${sn}</option>`;
+            }).join('');
+        devSelect.disabled = false;
+    } else {
+        devSelect.innerHTML = '<option value="">No available IMEIs found for this selection</option>';
+        devSelect.disabled = true;
+    }
+}
+
+function onDeviceSelected(deviceId) {
+    const detailCard = document.getElementById('DeviceDetailCard');
+    if (!deviceId) {
+        if (detailCard) detailCard.style.display = 'none';
+        return;
+    }
+
+    const device = availableDevicesCache.find(d => d.id === deviceId);
+    if (!device) {
+        if (detailCard) detailCard.style.display = 'none';
+        return;
+    }
+
+    if (detailCard) {
+        detailCard.style.display = 'block';
+        const modelSelect = document.getElementById('OutProductId');
+        const modelName = modelSelect.options[modelSelect.selectedIndex]?.text || 'Mobile Device';
+
+        document.getElementById('CardDeviceTitle').innerText = modelName;
+        document.getElementById('CardIMEI1').innerText = device.imei1 || '-';
+        document.getElementById('CardIMEI2').innerText = device.imei2 || 'None (Single SIM)';
+        document.getElementById('CardVariantColor').innerText = `${device.variant || 'Standard'} · ${device.color || 'Standard'}`;
+        document.getElementById('CardSerialNumber').innerText = device.serialNumber || 'None';
+    }
+}
+
+let outAccessoryVariantsCache = [];
+
+async function onOutAccessoryChanged(pid) {
+    const banner = document.getElementById('OutAccessoryBanner');
+    const varSelect = document.getElementById('OutAccessoryVariantSelect');
+    const colorSelect = document.getElementById('OutAccessoryColorSelect');
+
+    document.getElementById('OutAccessoryVariantId').value = '';
+    document.getElementById('OutAccessoryVariantName').value = '';
+    document.getElementById('OutAccessoryColorId').value = '';
+    document.getElementById('OutAccessoryColorName').value = '';
+
+    if (!pid) {
+        if (banner) banner.style.display = 'none';
+        if (varSelect) varSelect.innerHTML = '<option value="">-- All / Base Variant --</option>';
+        if (colorSelect) colorSelect.innerHTML = '<option value="">-- All / Base Color --</option>';
+        return;
+    }
+
+    const prodObj = allActiveProducts.find(p => p.id === pid);
+    if (prodObj && prodObj.brand) {
+        const brandSelect = document.getElementById('OutAccessoryBrandSelect');
+        if (brandSelect && brandSelect.value !== prodObj.brand) {
+            brandSelect.value = prodObj.brand;
+        }
+    }
+
+    try {
+        const res = await fetch(`/Product/GetProductVariants?productId=${encodeURIComponent(pid)}`);
+        outAccessoryVariantsCache = await res.json();
+        const prodSelect = document.getElementById('OutAccessoryProductId');
+        const prodName = prodSelect.options[prodSelect.selectedIndex]?.text || 'Accessory Item';
+
+        if (outAccessoryVariantsCache && outAccessoryVariantsCache.length > 0) {
+            let varOpts = '<option value="">-- All / Base Variant --</option>';
+            outAccessoryVariantsCache.forEach(v => {
+                varOpts += `<option value="${v.variantId}">${v.displayVariant} (Stock: ${v.availableStock || 0})</option>`;
+            });
+            if (varSelect) varSelect.innerHTML = varOpts;
+        } else {
+            if (varSelect) varSelect.innerHTML = '<option value="">-- All / Base Variant --</option>';
+            if (colorSelect) colorSelect.innerHTML = '<option value="">-- All / Base Color --</option>';
+        }
+
+        if (banner) {
+            banner.style.display = 'block';
+            document.getElementById('OutAccessoryTitle').innerText = prodName;
+            const totalStock = outAccessoryVariantsCache.reduce((sum, v) => sum + (v.availableStock || 0), 0);
+            document.getElementById('OutAccessoryStockBadge').innerHTML = `<i class="bi bi-box-seam me-1"></i> Available Stock: ${totalStock} Units`;
+        }
+    } catch (e) {
+        console.warn('Error loading accessory info:', e);
+    }
+}
+
+function onOutAccessoryVariantChanged(variantId) {
+    const colorSelect = document.getElementById('OutAccessoryColorSelect');
+    const banner = document.getElementById('OutAccessoryBanner');
+    document.getElementById('OutAccessoryColorId').value = '';
+    document.getElementById('OutAccessoryColorName').value = '';
+
+    const selectedVariant = outAccessoryVariantsCache.find(v => v.variantId === variantId);
+    if (!selectedVariant) {
+        document.getElementById('OutAccessoryVariantId').value = '';
+        document.getElementById('OutAccessoryVariantName').value = '';
+        if (colorSelect) colorSelect.innerHTML = '<option value="">-- All / Base Color --</option>';
+        return;
+    }
+
+    document.getElementById('OutAccessoryVariantId').value = selectedVariant.variantId || '';
+    document.getElementById('OutAccessoryVariantName').value = selectedVariant.displayVariant || '';
+
+    if (selectedVariant.colors && selectedVariant.colors.length > 0) {
+        let colorOpts = '<option value="">-- All / Base Color --</option>';
+        selectedVariant.colors.forEach(c => {
+            colorOpts += `<option value="${c.colorId || c.name}">${c.name} (Stock: ${c.availableStock || 0})</option>`;
+        });
+        if (colorSelect) colorSelect.innerHTML = colorOpts;
+    } else {
+        if (colorSelect) colorSelect.innerHTML = '<option value="">-- All / Base Color --</option>';
+    }
+
+    if (banner) {
+        banner.style.display = 'block';
+        const prodSelect = document.getElementById('OutAccessoryProductId');
+        const prodName = prodSelect.options[prodSelect.selectedIndex]?.text || 'Accessory Item';
+        document.getElementById('OutAccessoryTitle').innerText = `${prodName} — ${selectedVariant.displayVariant}`;
+        document.getElementById('OutAccessoryStockBadge').innerHTML = `<i class="bi bi-box-seam me-1"></i> Variant Stock: ${selectedVariant.availableStock || 0} Units`;
+    }
+}
+
+function onOutAccessoryColorChanged(colorVal) {
+    const variantId = document.getElementById('OutAccessoryVariantSelect')?.value;
+    const selectedVariant = outAccessoryVariantsCache.find(v => v.variantId === variantId);
+    if (!selectedVariant) return;
+
+    const selectedColor = selectedVariant.colors?.find(c => (c.colorId && c.colorId === colorVal) || c.name === colorVal);
+    if (selectedColor) {
+        document.getElementById('OutAccessoryColorId').value = selectedColor.colorId || '';
+        document.getElementById('OutAccessoryColorName').value = selectedColor.name || '';
+        const badge = document.getElementById('OutAccessoryStockBadge');
+        if (badge) {
+            badge.innerHTML = `<i class="bi bi-box-seam me-1"></i> ${selectedColor.name} Stock: ${selectedColor.availableStock || 0} Units`;
+        }
+    } else {
+        document.getElementById('OutAccessoryColorId').value = '';
+        document.getElementById('OutAccessoryColorName').value = '';
+    }
+}
 </script>
 }

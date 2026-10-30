@@ -3,6 +3,8 @@
     Layout = "_Layout";
     var packages = (IEnumerable<InventoryManagementSystem.Models.SubscriptionPackage>)ViewBag.Packages;
     var selectedPackageId = (string)ViewBag.SelectedPackageId;
+    var selectedMode = (string)ViewBag.SelectedMode ?? "trial";
+    var selectedBillingCycle = (string)ViewBag.SelectedBillingCycle ?? "Monthly";
 }
 
 <div class="pz-page-wrap">
@@ -14,7 +16,7 @@
             <h1 class="pz-section-title">Create your business account</h1>
             <span class="pz-heading-accent" aria-hidden="true"></span>
             <p class="pz-section-sub">
-                Start your 14-day full feature trial. No credit card required. Experience synchronized inventory, product tracking, and POS billing instantly.
+                Select your package and verify your email to start your free trial. No credit card required. Experience synchronized inventory, device tracking, and POS billing instantly.
             </p>
         </div>
 
@@ -28,20 +30,46 @@
                         <span class="badge rounded-circle p-2" style="width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; background: #17181B; color: #FFFFFF;">1</span>
                         <h4 class="pz-card-title mb-0 fs-6" style="color: #17181B;">Select Subscription Package</h4>
                     </div>
-                    <div>
-                        <label class="pz-form-label" style="color: #17181B;">Subscription Tier <span class="text-danger">*</span></label>
-                        <select name="packageId" class="pz-form-select" required style="background-color: #FFFFFF !important; color: #17181B !important;">
-                            @if (packages != null)
-                            {
-                                foreach (var p in packages)
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="pz-form-label" style="color: #17181B;">Subscription Tier <span class="text-danger">*</span></label>
+                            <select name="packageId" id="packageSelect" class="pz-form-select" required style="background-color: #FFFFFF !important; color: #17181B !important;">
+                                @if (packages != null)
                                 {
-                                    <option value="@p.Id" selected="@(p.Id == selectedPackageId)">
-                                        @p.Name — ₹@p.MonthlyPrice.ToString("N0")/month (@p.Description)
-                                    </option>
+                                    foreach (var p in packages)
+                                    {
+                                        <option value="@p.Id" selected="@(p.Id == selectedPackageId)" data-trial="@(p.HasTrial ? "true" : "false")" data-monthly="@p.MonthlyPrice" data-yearly="@(p.YearlyPrice > 0 ? p.YearlyPrice : (p.MonthlyPrice * 10))" data-trial-display="@p.GetTrialDisplay()">
+                                            @p.Name — ₹@p.MonthlyPrice.ToString("N0")/mo (@(p.MonthlyPrice <= 0 ? (p.HasTrial ? p.GetTrialDisplay() + " Free Trial" : "Free Plan") : (p.HasTrial ? p.GetTrialDisplay() + " Free Trial" : "Direct Subscription")))
+                                        </option>
+                                    }
                                 }
-                            }
-                        </select>
-                        <div class="form-text fs-8 mt-1" style="color: #555B66;">Includes a 14-day full-access trial period before any billing begins.</div>
+                            </select>
+                        </div>
+                        <div class="col-md-6" id="modeSelectGroup">
+                            <label class="pz-form-label" style="color: #17181B;">Onboarding Mode <span class="text-danger">*</span></label>
+                            <select name="mode" id="modeSelect" class="pz-form-select" style="background-color: #FFFFFF !important; color: #17181B !important;">
+                                <option value="trial" selected="@(selectedMode == "trial")">Start Free Trial (Admin Review)</option>
+                                <option value="paid" selected="@(selectedMode == "paid")">Pay Now &amp; Activate Instantly (Razorpay)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6" id="billingCycleGroup">
+                            <label class="pz-form-label" style="color: #17181B;">Billing Frequency</label>
+                            <select name="billingCycle" id="billingCycleSelect" class="pz-form-select" style="background-color: #FFFFFF !important; color: #17181B !important;">
+                                <option value="Monthly" selected="@(selectedBillingCycle == "Monthly")">Monthly Billing</option>
+                                <option value="Yearly" selected="@(selectedBillingCycle == "Yearly")">Yearly Billing (Save up to 20%)</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <div class="p-3 rounded-3" style="background: #F8F9FA; border: 1px solid #E5E7EB;">
+                                <div class="d-flex align-items-center gap-2 text-dark fs-8 fw-semibold" id="modeInfoTitle">
+                                    <i class="bi bi-shield-check text-primary"></i>
+                                    <span>Free-Trial Onboarding Security</span>
+                                </div>
+                                <div class="text-muted fs-8 mt-1" id="modeInfoDesc">
+                                    Your free trial clock begins immediately after your shop account is approved by our administrator. No credit card required.
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -143,3 +171,67 @@
 
     </div>
 </div>
+
+@section Scripts {
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const packageSelect = document.getElementById("packageSelect");
+        const modeSelect = document.getElementById("modeSelect");
+        const billingCycleGroup = document.getElementById("billingCycleGroup");
+        const modeInfoTitle = document.getElementById("modeInfoTitle");
+        const modeInfoDesc = document.getElementById("modeInfoDesc");
+        const submitBtn = document.querySelector(".pz-btn-primary span");
+
+        function syncPackageAndMode() {
+            if (!packageSelect || !modeSelect) return;
+            const selectedOpt = packageSelect.options[packageSelect.selectedIndex];
+            if (!selectedOpt) return;
+
+            const hasTrial = selectedOpt.getAttribute("data-trial") === "true";
+            const monthlyPrice = parseFloat(selectedOpt.getAttribute("data-monthly") || "0");
+            const trialDisplay = selectedOpt.getAttribute("data-trial-display") || "Free Trial";
+
+            if (monthlyPrice <= 0) {
+                // Completely Free tier: No payment required, approval only
+                modeSelect.innerHTML = '<option value="trial" selected>Free Account (Admin Review)</option>';
+                if (billingCycleGroup) billingCycleGroup.style.display = "none";
+                modeInfoTitle.innerHTML = '<i class="bi bi-gift-fill text-success"></i><span>100% Free Plan</span>';
+                modeInfoDesc.innerText = 'This package is free of charge (' + trialDisplay + '). Your store account will be activated once approved by our administrator. No payment required.';
+                if (submitBtn) submitBtn.innerText = 'Register Free Business Account';
+                return;
+            }
+
+            if (!hasTrial) {
+                // Paid tier without trial: Direct Razorpay checkout only
+                modeSelect.innerHTML = '<option value="paid" selected>Pay Now & Activate Instantly (Razorpay)</option>';
+                if (billingCycleGroup) billingCycleGroup.style.display = "block";
+                modeInfoTitle.innerHTML = '<i class="bi bi-lightning-charge-fill text-success"></i><span>Direct Subscription via Razorpay</span>';
+                modeInfoDesc.innerText = 'Pay securely online via UPI, Cards, NetBanking, or EMI. Your account and license will activate immediately without manual approval!';
+                if (submitBtn) submitBtn.innerText = 'Proceed to Secure Checkout';
+                return;
+            }
+
+            // Paid tier with trial: Customer can choose between Free Trial or Instant Pay
+            const currentMode = modeSelect.value || "trial";
+            modeSelect.innerHTML = '<option value="trial"' + (currentMode === "trial" ? ' selected' : '') + '>Start ' + trialDisplay + ' Free Trial (Admin Review)</option>' +
+                                   '<option value="paid"' + (currentMode === "paid" ? ' selected' : '') + '>Pay Now & Activate Instantly (Razorpay)</option>';
+
+            if (modeSelect.value === "paid") {
+                if (billingCycleGroup) billingCycleGroup.style.display = "block";
+                modeInfoTitle.innerHTML = '<i class="bi bi-lightning-charge-fill text-success"></i><span>Direct Activation via Razorpay</span>';
+                modeInfoDesc.innerText = 'Pay securely online via UPI, Cards, NetBanking, or EMI. Your account and license will activate immediately without manual approval!';
+                if (submitBtn) submitBtn.innerText = 'Proceed to Secure Checkout';
+            } else {
+                if (billingCycleGroup) billingCycleGroup.style.display = "none";
+                modeInfoTitle.innerHTML = '<i class="bi bi-shield-check text-primary"></i><span>Free-Trial Onboarding Security</span>';
+                modeInfoDesc.innerText = 'Your ' + trialDisplay + ' free trial clock begins immediately after your shop account is approved by our administrator. No credit card required.';
+                if (submitBtn) submitBtn.innerText = 'Register Business & Launch System';
+            }
+        }
+
+        packageSelect.addEventListener("change", syncPackageAndMode);
+        modeSelect.addEventListener("change", syncPackageAndMode);
+        syncPackageAndMode();
+    });
+</script>
+}

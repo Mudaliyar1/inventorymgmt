@@ -324,6 +324,33 @@ namespace InventoryManagementSystem.Extensions
             {
                 Console.WriteLine($"[SEEDING NOTICE] Primary tenant license assignment notice: {ex.Message}");
             }
+
+            try
+            {
+                // Correct any tenant license where a 30-day paid purchase was stacked on top of an existing trial license
+                var devarshTenants = await context.Tenants
+                    .Find(t => t.ShopName.ToLower() == "devarsh" || t.OwnerName.ToLower() == "devarsh")
+                    .ToListAsync();
+
+                foreach (var dt in devarshTenants)
+                {
+                    var license = await context.TenantLicenses
+                        .Find(l => l.TenantId == dt.Id && l.Status == "Active")
+                        .FirstOrDefaultAsync();
+
+                    if (license != null && license.ExpiryDate > license.StartDate.AddDays(40))
+                    {
+                        license.ExpiryDate = license.StartDate.AddDays(30);
+                        license.UpdatedAt = DateTime.UtcNow;
+                        await context.TenantLicenses.ReplaceOneAsync(l => l.Id == license.Id, license);
+                        Console.WriteLine($"[LICENSE REPAIR] Adjusted tenant {dt.ShopName} license expiry from stacked date to 30 days: {license.ExpiryDate}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[LICENSE REPAIR NOTICE] {ex.Message}");
+            }
         }
     }
 }

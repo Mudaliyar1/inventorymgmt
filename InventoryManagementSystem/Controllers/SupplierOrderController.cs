@@ -315,13 +315,6 @@ namespace InventoryManagementSystem.Controllers
                     return RedirectToAction(nameof(Create), new { selectedSupplierId = supplierId });
                 }
 
-                if (p.CurrentStock > 0 && input.Quantity > p.CurrentStock)
-                {
-                    TempData["ToastMessage"] = $"Cannot order {input.Quantity} units of '{p.Name}'. Available supplier stock is only {p.CurrentStock} units.";
-                    TempData["ToastType"] = "danger";
-                    return RedirectToAction(nameof(Create), new { selectedSupplierId = supplierId });
-                }
-
                 var item = new SupplierOrderItem
                 {
                     ProductId = p.Id,
@@ -386,6 +379,15 @@ namespace InventoryManagementSystem.Controllers
                             }
                         }
                     }
+                }
+
+                // Accurate Variant / Color Stock Verification
+                if (item.AvailableStock > 0 && input.Quantity > item.AvailableStock)
+                {
+                    var optTitle = !string.IsNullOrWhiteSpace(item.Color) ? $"{p.Name} ({item.Variant} · {item.Color})" : $"{p.Name} ({item.Variant})";
+                    TempData["ToastMessage"] = $"Cannot order {input.Quantity} units of '{optTitle}'. Available supplier stock is only {item.AvailableStock} units.";
+                    TempData["ToastType"] = "danger";
+                    return RedirectToAction(nameof(Create), new { selectedSupplierId = supplierId });
                 }
 
                 item.Subtotal = item.Quantity * item.UnitPrice;

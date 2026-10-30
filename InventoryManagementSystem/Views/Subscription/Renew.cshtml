@@ -238,6 +238,17 @@
                     </div>
                 </div>
 
+                @if (currentPackage != null && currentPackage.MonthlyPrice <= 0)
+                {
+                    <div class="alert alert-info border-info bg-dark text-info mb-4 d-flex align-items-center gap-3">
+                        <i class="bi bi-gift-fill fs-3 flex-shrink-0 text-warning"></i>
+                        <div>
+                            <div class="fw-bold text-light">Your shop is currently on a Free Trial plan (@currentPackage.Name)</div>
+                            <div class="fs-8 text-secondary">Free trial plans cannot be renewed online. Please select one of our premium subscription packages below to upgrade your shop.</div>
+                        </div>
+                    </div>
+                }
+
                 <form method="post" action="@Url.Action("Renew", "Subscription")" id="renewalRequestForm">
                     @Html.AntiForgeryToken()
 
@@ -247,20 +258,20 @@
                             <i class="bi bi-tags-fill text-warning me-1"></i>Select Subscription Package to Renew:
                         </label>
                         <select name="packageId" id="packageSelect" class="form-select bg-dark border-secondary text-light py-2" onchange="onPackageSelectChange(this)">
-                            @if (selectedPackage != null)
+                            @if (selectedPackage != null && selectedPackage.MonthlyPrice > 0)
                             {
                                 <option value="@selectedPackage.Id" selected="selected">
                                     @selectedPackage.Name — ₹@selectedPackage.MonthlyPrice.ToString("N0")/mo @(isCustom ? "(Custom Plan)" : "")
                                 </option>
                             }
-                            @foreach (var pkg in publicPackages.Where(p => selectedPackage == null || p.Id != selectedPackage.Id))
+                            @foreach (var pkg in publicPackages.Where(p => (selectedPackage == null || p.Id != selectedPackage.Id) && p.MonthlyPrice > 0))
                             {
                                 <option value="@pkg.Id">
                                     @pkg.Name — ₹@pkg.MonthlyPrice.ToString("N0")/mo
                                 </option>
                             }
                         </select>
-                        <div class="form-text text-muted fs-8">You can retain your current package or request an upgrade.</div>
+                        <div class="form-text text-muted fs-8">Select a premium package to activate or extend your subscription.</div>
                     </div>
 
                     <!-- Requested Duration & Cycle -->
@@ -309,45 +320,80 @@
                         <input type="hidden" name="durationMonths" id="durationMonthsInput" value="1" />
                     </div>
 
-                    <!-- Contact Phone & Preferred Payment Mode -->
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label text-light fw-bold fs-7">
-                                <i class="bi bi-telephone-fill text-success me-1"></i>Contact Phone:
-                            </label>
-                            <input type="tel" name="contactPhone" class="form-control bg-dark border-secondary text-light py-2" value="@(tenant?.Phone ?? "")" placeholder="Store contact phone number" required />
+                    @if (platformSettings?.EnableManualRenewalRequests == true)
+                    {
+                        <!-- Contact Phone & Preferred Payment Mode -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label text-light fw-bold fs-7">
+                                    <i class="bi bi-telephone-fill text-success me-1"></i>Contact Phone:
+                                </label>
+                                <input type="tel" name="contactPhone" class="form-control bg-dark border-secondary text-light py-2" value="@(tenant?.Phone ?? "")" placeholder="Store contact phone number" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-light fw-bold fs-7">
+                                    <i class="bi bi-credit-card-fill text-info me-1"></i>Payment Mode Preference:
+                                </label>
+                                <select name="paymentMode" class="form-select bg-dark border-secondary text-light py-2">
+                                    <option value="UPI / Online QR">UPI / Online QR Transfer</option>
+                                    <option value="Bank Transfer / NEFT">Bank Transfer (NEFT / IMPS)</option>
+                                    <option value="Credit / Debit Card">Credit / Debit Card</option>
+                                    <option value="Invoice Requested">Generate Corporate Invoice</option>
+                                    <option value="Cheque / Cash">Direct / Offline</option>
+                                </select>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label text-light fw-bold fs-7">
-                                <i class="bi bi-credit-card-fill text-info me-1"></i>Payment Mode Preference:
-                            </label>
-                            <select name="paymentMode" class="form-select bg-dark border-secondary text-light py-2">
-                                <option value="UPI / Online QR">UPI / Online QR Transfer</option>
-                                <option value="Bank Transfer / NEFT">Bank Transfer (NEFT / IMPS)</option>
-                                <option value="Credit / Debit Card">Credit / Debit Card</option>
-                                <option value="Invoice Requested">Generate Corporate Invoice</option>
-                                <option value="Cheque / Cash">Direct / Offline</option>
-                            </select>
-                        </div>
-                    </div>
 
-                    <!-- Request Message / Notes -->
-                    <div class="mb-4">
-                        <label class="form-label text-light fw-bold fs-7">
-                            <i class="bi bi-chat-left-text-fill text-warning me-1"></i>Message or Notes for SaaS Administrator:
-                        </label>
-                        <textarea name="requestMessage" rows="3" class="form-control bg-dark border-secondary text-light" placeholder="E.g., Please renew our license for 6 months. Payment transferred via UPI Ref #12345678, or please send invoice to our billing email..."></textarea>
-                        <div class="form-text text-muted fs-8">Provide any payment reference IDs, transaction numbers, or custom renewal requirements.</div>
+                        <!-- Request Message / Notes -->
+                        <div class="mb-4">
+                            <label class="form-label text-light fw-bold fs-7">
+                                <i class="bi bi-chat-left-text-fill text-warning me-1"></i>Message or Notes for SaaS Administrator:
+                            </label>
+                            <textarea name="requestMessage" rows="3" class="form-control bg-dark border-secondary text-light" placeholder="E.g., Please renew our license for 6 months. Payment transferred via UPI Ref #12345678, or please send invoice to our billing email..."></textarea>
+                            <div class="form-text text-muted fs-8">Provide any payment reference IDs, transaction numbers, or custom renewal requirements.</div>
+                        </div>
+                    }
+
+                    <!-- Reassurance Alert for Renewal -->
+                    <div id="renewal-reassurance-alert" class="alert alert-info border-0 shadow-sm p-3 mb-3 rounded-3 d-none" style="background: rgba(14, 165, 233, 0.15); border-left: 4px solid #0284c7 !important;">
+                        <div class="d-flex align-items-start gap-2">
+                            <i class="bi bi-shield-check fs-5 text-info flex-shrink-0"></i>
+                            <div>
+                                <strong class="d-block text-light fw-bold mb-1">Payment not confirmed yet?</strong>
+                                <span class="small text-secondary">If money was deducted from your account, please allow us a few moments to verify the transaction with Razorpay. SIMS will process your subscription or investigate any activation issue automatically.</span>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Action Submit Buttons -->
-                    <div class="d-flex gap-3 justify-content-end align-items-center pt-3 border-top border-secondary border-opacity-25">
+                    <div class="d-flex flex-wrap gap-3 justify-content-between align-items-center pt-3 border-top border-secondary border-opacity-25">
                         <a href="@Url.Action("Plans", "Subscription")" class="btn btn-outline-secondary px-4 py-2">
                             Cancel
                         </a>
-                        <button type="submit" class="btn btn-warning fw-bold px-5 py-2 shadow">
-                            <i class="bi bi-send-fill me-2"></i> Submit Renewal Request
-                        </button>
+                        <div class="d-flex flex-wrap gap-2">
+                            @if (selectedPackage != null && selectedPackage.MonthlyPrice > 0)
+                            {
+                                <button type="button" id="btn-pay-razorpay" class="btn btn-primary fw-bold px-4 py-2 shadow d-flex align-items-center gap-2" style="background:#0284c7;border-color:#0284c7;">
+                                    <i class="bi bi-lightning-charge-fill"></i>
+                                    <span>Pay Online via Razorpay (Instant Activation)</span>
+                                </button>
+                            }
+                            else
+                            {
+                                <a href="@Url.Action("Plans", "Subscription")" class="btn btn-primary fw-bold px-4 py-2 shadow d-flex align-items-center gap-2">
+                                    <i class="bi bi-grid-fill"></i>
+                                    <span>Explore Paid Plans</span>
+                                </a>
+                            }
+
+                            @if (platformSettings?.EnableManualRenewalRequests == true)
+                            {
+                                <button type="submit" class="btn btn-warning fw-bold px-4 py-2 shadow d-flex align-items-center gap-2">
+                                    <i class="bi bi-send-fill"></i>
+                                    <span>Submit Offline / Manual Request</span>
+                                </button>
+                            }
+                        </div>
                     </div>
                 </form>
             </div>
@@ -356,6 +402,7 @@
 </div>
 
 @section Scripts {
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script>
         function updateDurationMonths(months) {
             document.getElementById('durationMonthsInput').value = months;
@@ -366,6 +413,110 @@
             if (pkgId) {
                 window.location.href = '@Url.Action("Renew", "Subscription")?packageId=' + encodeURIComponent(pkgId);
             }
+        }
+
+        const payBtn = document.getElementById('btn-pay-razorpay');
+        if (payBtn) {
+            payBtn.addEventListener('click', async function (e) {
+                e.preventDefault();
+                const btn = this;
+                const originalHtml = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Preparing Razorpay Order...';
+
+            try {
+                const packageSelect = document.querySelector('select[name="packageId"]');
+                const packageId = packageSelect ? packageSelect.value : '@(selectedPackage?.Id ?? "")';
+                const cycleRadio = document.querySelector('input[name="requestedCycle"]:checked');
+                const billingCycle = cycleRadio ? cycleRadio.value : 'Monthly';
+
+                const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+                const csrfToken = tokenInput ? tokenInput.value : '';
+
+                const formData = new FormData();
+                formData.append('packageId', packageId);
+                formData.append('billingCycle', billingCycle);
+                formData.append('__RequestVerificationToken', csrfToken);
+
+                const response = await fetch('@Url.Action("InitiateRazorpayRenewal", "Subscription")', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (!data.success) {
+                    alert('Could not start Razorpay payment: ' + (data.message || 'Unknown error'));
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                    return;
+                }
+
+                // Launch Razorpay Checkout Modal
+                const options = {
+                    key: data.keyId,
+                    amount: data.amountInPaise,
+                    currency: data.currency,
+                    name: 'SIMS SaaS Platform',
+                    description: data.packageName + ' Renewal (' + data.billingCycle + ')',
+                    order_id: data.orderId,
+                    handler: async function (paymentResponse) {
+                        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verifying payment & activating license...';
+                        
+                        const verifyForm = new FormData();
+                        verifyForm.append('razorpay_order_id', paymentResponse.razorpay_order_id);
+                        verifyForm.append('razorpay_payment_id', paymentResponse.razorpay_payment_id);
+                        verifyForm.append('razorpay_signature', paymentResponse.razorpay_signature);
+                        verifyForm.append('__RequestVerificationToken', csrfToken);
+
+                        const verifyRes = await fetch('@Url.Action("VerifyRazorpayRenewal", "Subscription")', {
+                            method: 'POST',
+                            body: verifyForm
+                        });
+
+                        const verifyData = await verifyRes.json();
+                        if (verifyData.success) {
+                            alert('Payment successful! Your license has been renewed immediately. Receipt #' + verifyData.receiptNumber);
+                            window.location.href = '@Url.Action("MyPlan", "Subscription")';
+                        } else {
+                            alert('Payment was processed but activation requires attention: ' + verifyData.message);
+                            window.location.reload();
+                        }
+                    },
+                    prefill: {
+                        name: data.customerName,
+                        email: data.customerEmail,
+                        contact: data.customerPhone
+                    },
+                    theme: {
+                        color: '#0284c7'
+                    },
+                    modal: {
+                        ondismiss: function () {
+                            btn.disabled = false;
+                            btn.innerHTML = originalHtml;
+                            const alertEl = document.getElementById('renewal-reassurance-alert');
+                            if (alertEl) alertEl.classList.remove('d-none');
+                            if (data.orderId) {
+                                const fd = new FormData();
+                                fd.append('orderId', data.orderId);
+                                fd.append('reason', 'Customer closed or dismissed Razorpay popup on renewal page.');
+                                fetch('@Url.Action("RecordCheckoutCancellation", "Subscription")', {
+                                    method: 'POST',
+                                    body: fd
+                                }).catch(function (e) { console.warn('Could not record cancellation:', e); });
+                            }
+                        }
+                    }
+                };
+
+                const rzp = new Razorpay(options);
+                rzp.open();
+            } catch (err) {
+                console.error('Razorpay renewal error:', err);
+                alert('An unexpected error occurred while initiating payment. Please try again.');
+                btn.disabled = false;
+            }
+            });
         }
     </script>
 }

@@ -1,0 +1,453 @@
+@model InventoryManagementSystem.Models.CustomPricingConfiguration
+@{
+    ViewData["Title"] = "Custom Pricing Configuration — Super Admin";
+    var allFeatures = ViewBag.AllFeatures as List<InventoryManagementSystem.Models.FeatureDefinition> ?? new List<InventoryManagementSystem.Models.FeatureDefinition>();
+    var groupedFeatures = ViewBag.GroupedFeatures as Dictionary<string, List<InventoryManagementSystem.Models.FeatureDefinition>> ?? new Dictionary<string, List<InventoryManagementSystem.Models.FeatureDefinition>>();
+}
+
+<div class="container-fluid px-4 py-3">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <span class="badge bg-primary px-3 py-2 text-uppercase font-mono fw-bold fs-7 rounded-pill mb-2">Super Admin Platform</span>
+            <h1 class="h3 font-display fw-bold mb-1 text-light">Custom Package Pricing Configuration</h1>
+            <p class="text-muted fs-7 mb-0">Configure unit rates, inventory tiers, and modular feature pricing for the public quote calculator.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="@Url.Action("CustomPackageInquiries", "PlatformAdmin")" class="btn btn-outline-info">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i> View Inquiries
+            </a>
+            <a href="@Url.Action("Pricing", "Landing")#custom-package-calculator" target="_blank" class="btn btn-outline-light">
+                <i class="bi bi-box-arrow-up-right me-1"></i> Public Calculator
+            </a>
+        </div>
+    </div>
+
+    <form method="post" action="@Url.Action("SaveCustomPricing", "PlatformAdmin")" id="formCustomPricing">
+        @Html.AntiForgeryToken()
+
+        <div class="row g-4">
+            <!-- Left Col: Pricing Parameters & Tiers -->
+            <div class="col-lg-8">
+                
+                <!-- Status & Availability Card -->
+                <div class="glass-card p-4 mb-4 border-start border-primary border-4">
+                    <h5 class="font-display fw-bold text-light mb-3"><i class="bi bi-toggles me-2 text-primary"></i>Calculator Activation &amp; Quoting</h5>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="form-check form-switch p-3 bg-dark-subtle rounded-3 border border-secondary border-opacity-25">
+                                <input class="form-check-input ms-0 me-3" type="checkbox" id="IsEnabled" name="IsEnabled" value="true" @(Model.IsEnabled ? "checked" : "") style="width: 44px; height: 22px;">
+                                <label class="form-check-label fw-bold text-light" for="IsEnabled">
+                                    Enable Calculator on Public Pricing Page
+                                </label>
+                                <div class="text-muted fs-8 mt-1">When turned off, the calculator displays a maintenance message.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch p-3 bg-dark-subtle rounded-3 border border-secondary border-opacity-25">
+                                <input class="form-check-input ms-0 me-3" type="checkbox" id="AllowCustomQuotes" name="AllowCustomQuotes" value="true" @(Model.AllowCustomQuotes ? "checked" : "") style="width: 44px; height: 22px;">
+                                <label class="form-check-label fw-bold text-light" for="AllowCustomQuotes">
+                                    Allow Public Quote Submissions
+                                </label>
+                                <div class="text-muted fs-8 mt-1">Allows prospective customers to submit their custom quote to Super Admin.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 1. Baseline & Seat Rates Card -->
+                <div class="glass-card p-4 mb-4">
+                    <h5 class="font-display fw-bold text-light mb-3"><i class="bi bi-people-fill me-2 text-info"></i>Base Price &amp; User Rates</h5>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label text-muted fs-8 text-uppercase fw-bold">Base Monthly Subscription (₹)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark text-muted border-secondary border-opacity-50">₹</span>
+                                <input type="number" step="0.01" class="form-control bg-dark text-light border-secondary border-opacity-50" id="BaseMonthlyPrice" name="BaseMonthlyPrice" value="@Model.BaseMonthlyPrice" required />
+                            </div>
+                            <div class="text-muted fs-9 mt-1">Platform baseline cost included in every custom plan.</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted fs-8 text-uppercase fw-bold">Admin Seat Rate (₹ / Admin / Mo)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark text-muted border-secondary border-opacity-50">₹</span>
+                                <input type="number" step="0.01" class="form-control bg-dark text-light border-secondary border-opacity-50" id="AdminUnitPrice" name="AdminUnitPrice" value="@Model.AdminUnitPrice" required />
+                            </div>
+                            <div class="text-muted fs-9 mt-1">Cost per authorized Shop Administrator.</div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label text-muted fs-8 text-uppercase fw-bold">Employee Seat Rate (₹ / Staff / Mo)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark text-muted border-secondary border-opacity-50">₹</span>
+                                <input type="number" step="0.01" class="form-control bg-dark text-light border-secondary border-opacity-50" id="EmployeeUnitPrice" name="EmployeeUnitPrice" value="@Model.EmployeeUnitPrice" required />
+                            </div>
+                            <div class="text-muted fs-9 mt-1">Cost per cashier / technician login.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted fs-8 text-uppercase fw-bold">Supplier Unit Rate (₹ / Supplier / Mo)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark text-muted border-secondary border-opacity-50">₹</span>
+                                <input type="number" step="0.01" class="form-control bg-dark text-light border-secondary border-opacity-50" id="SupplierUnitPrice" name="SupplierUnitPrice" value="@Model.SupplierUnitPrice" required />
+                            </div>
+                            <div class="text-muted fs-9 mt-1">Cost per vendor directory record.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-muted fs-8 text-uppercase fw-bold">Annual Billing Discount (%)</label>
+                            <div class="input-group">
+                                <input type="number" step="0.1" min="0" max="100" class="form-control bg-dark text-light border-secondary border-opacity-50" id="AnnualDiscountPercent" name="AnnualDiscountPercent" value="@Model.AnnualDiscountPercent" required />
+                                <span class="input-group-text bg-dark text-muted border-secondary border-opacity-50">%</span>
+                            </div>
+                            <div class="text-muted fs-9 mt-1">Discount applied to annual billing total.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Product Inventory Pricing Model & Tiers Card -->
+                <div class="glass-card p-4 mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h5 class="font-display fw-bold text-light mb-0"><i class="bi bi-boxes me-2 text-warning"></i>Product Catalog Inventory Pricing</h5>
+                            <span class="text-muted fs-8">Support massive inventories (1M+ units) without exponential billing spikes.</span>
+                        </div>
+                        <div>
+                            <select class="form-select form-select-sm bg-dark text-light border-warning" id="ProductPricingModel" name="ProductPricingModel" onchange="toggleProductModel(this.value)">
+                                <option value="Tiered" selected="@(Model.ProductPricingModel == "Tiered")">Tier-Based Pricing (Recommended)</option>
+                                <option value="PerUnit" selected="@(Model.ProductPricingModel == "PerUnit")">Per-Unit Pricing</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Per Unit Input (shown if PerUnit model selected) -->
+                    <div id="perUnitModelWrap" class="mb-3 @(Model.ProductPricingModel == "PerUnit" ? "" : "d-none")">
+                        <label class="form-label text-muted fs-8 text-uppercase fw-bold">Per Product Unit Rate (₹ / Product / Mo)</label>
+                        <div class="input-group" style="max-width: 300px;">
+                            <span class="input-group-text bg-dark text-muted border-secondary border-opacity-50">₹</span>
+                            <input type="number" step="0.001" class="form-control bg-dark text-light border-secondary border-opacity-50" id="ProductUnitPrice" name="ProductUnitPrice" value="@Model.ProductUnitPrice" />
+                        </div>
+                    </div>
+
+                    <!-- Tiered Model Table (shown if Tiered selected) -->
+                    <div id="tieredModelWrap" class="@(Model.ProductPricingModel == "PerUnit" ? "d-none" : "")">
+                        <div class="table-responsive">
+                            <table class="table table-dark table-sm align-middle fs-8" id="productTiersTable">
+                                <thead>
+                                    <tr class="text-muted text-uppercase">
+                                        <th>Tier Label</th>
+                                        <th>Min Units</th>
+                                        <th>Max Units</th>
+                                        <th>Flat Monthly Price (₹)</th>
+                                        <th>Per Unit Rate (₹)</th>
+                                        <th style="width: 40px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (Model.ProductTiers != null && Model.ProductTiers.Any())
+                                    {
+                                        for (int i = 0; i < Model.ProductTiers.Count; i++)
+                                        {
+                                            var tier = Model.ProductTiers[i];
+                                            <tr>
+                                                <td>
+                                                    <input type="text" name="tierName" class="form-control form-control-sm bg-dark text-light border-secondary" value="@tier.TierName" required />
+                                                </td>
+                                                <td>
+                                                    <input type="number" name="tierMin" class="form-control form-control-sm bg-dark text-light border-secondary" value="@tier.MinProducts" min="0" required />
+                                                </td>
+                                                <td>
+                                                    <input type="number" name="tierMax" class="form-control form-control-sm bg-dark text-light border-secondary" value="@tier.MaxProducts" min="1" required />
+                                                </td>
+                                                <td>
+                                                    <input type="number" step="0.01" name="tierFlat" class="form-control form-control-sm bg-dark text-light border-secondary" value="@tier.FlatPrice" min="0" required />
+                                                </td>
+                                                <td>
+                                                    <input type="number" step="0.001" name="tierPerUnit" class="form-control form-control-sm bg-dark text-light border-secondary" value="@tier.PerUnitRate" min="0" required />
+                                                </td>
+                                                <td>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeTierRow(this)" title="Remove Tier"><i class="bi bi-trash"></i></button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-warning mt-2" onclick="addTierRow()">
+                            <i class="bi bi-plus-circle me-1"></i> Add Inventory Tier
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3. Modular Feature Additional Charges Card -->
+                <div class="glass-card p-4 mb-4">
+                    <h5 class="font-display fw-bold text-light mb-1"><i class="bi bi-grid-fill me-2 text-success"></i>Modular Feature Charges</h5>
+                    <p class="text-muted fs-8 mb-3">Optional monthly charges for specialized modules. Features set to ₹0 are included free.</p>
+
+                    <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+                        <table class="table table-dark table-sm align-middle fs-8">
+                            <thead class="sticky-top bg-dark">
+                                <tr class="text-muted text-uppercase">
+                                    <th>Feature Key</th>
+                                    <th>Feature Name</th>
+                                    <th>Category</th>
+                                    <th style="width: 180px;">Monthly Charge (₹)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var feat in allFeatures.OrderBy(f => f.Category).ThenBy(f => f.DisplayOrder))
+                                {
+                                    decimal currentRate = 0m;
+                                    if (Model.FeatureRates != null && Model.FeatureRates.TryGetValue(feat.FeatureKey, out var r))
+                                    {
+                                        currentRate = r;
+                                    }
+
+                                    <tr>
+                                        <td>
+                                            <input type="hidden" name="featureKey" value="@feat.FeatureKey" />
+                                            <code>@feat.FeatureKey</code>
+                                        </td>
+                                        <td class="fw-semibold text-light">@feat.FeatureName</td>
+                                        <td><span class="badge bg-secondary bg-opacity-50">@feat.Category</span></td>
+                                        <td>
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text bg-dark text-muted border-secondary border-opacity-50">₹</span>
+                                                <input type="number" step="0.01" min="0" name="featurePrice" class="form-control form-control-sm bg-dark text-light border-secondary border-opacity-50 feat-charge-input" value="@currentRate" />
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 4. Calculator Range Validation Card -->
+                <div class="glass-card p-4 mb-4">
+                    <h5 class="font-display fw-bold text-light mb-1"><i class="bi bi-shield-check me-2 text-danger"></i>Allowed Quantity Input Ranges</h5>
+                    <p class="text-muted fs-8 mb-3">Set minimum and maximum allowed inputs on the public calculator to prevent overflow or invalid quotes.</p>
+
+                    <div class="row g-3 fs-8">
+                        <div class="col-md-3">
+                            <label class="form-label text-muted text-uppercase fw-bold">Admins Range</label>
+                            <div class="d-flex gap-2 align-items-center">
+                                <input type="number" name="MinAdmins" class="form-control form-control-sm bg-dark text-light border-secondary" value="@Model.MinAdmins" min="1" placeholder="Min" />
+                                <span class="text-muted">to</span>
+                                <input type="number" name="MaxAdmins" class="form-control form-control-sm bg-dark text-light border-secondary" value="@Model.MaxAdmins" min="1" placeholder="Max" />
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label text-muted text-uppercase fw-bold">Employees Range</label>
+                            <div class="d-flex gap-2 align-items-center">
+                                <input type="number" name="MinEmployees" class="form-control form-control-sm bg-dark text-light border-secondary" value="@Model.MinEmployees" min="1" placeholder="Min" />
+                                <span class="text-muted">to</span>
+                                <input type="number" name="MaxEmployees" class="form-control form-control-sm bg-dark text-light border-secondary" value="@Model.MaxEmployees" min="1" placeholder="Max" />
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label text-muted text-uppercase fw-bold">Products Range</label>
+                            <div class="d-flex gap-2 align-items-center">
+                                <input type="number" name="MinProducts" class="form-control form-control-sm bg-dark text-light border-secondary" value="@Model.MinProducts" min="0" placeholder="Min" />
+                                <span class="text-muted">to</span>
+                                <input type="number" name="MaxProducts" class="form-control form-control-sm bg-dark text-light border-secondary" value="@Model.MaxProducts" min="1" placeholder="Max" />
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label text-muted text-uppercase fw-bold">Suppliers Range</label>
+                            <div class="d-flex gap-2 align-items-center">
+                                <input type="number" name="MinSuppliers" class="form-control form-control-sm bg-dark text-light border-secondary" value="@Model.MinSuppliers" min="0" placeholder="Min" />
+                                <span class="text-muted">to</span>
+                                <input type="number" name="MaxSuppliers" class="form-control form-control-sm bg-dark text-light border-secondary" value="@Model.MaxSuppliers" min="1" placeholder="Max" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-3 mt-4">
+                    <button type="submit" class="btn btn-primary px-4 py-2 fw-bold shadow-sm">
+                        <i class="bi bi-check2-circle me-1"></i> Save Custom Pricing Rules
+                    </button>
+                    <a href="@Url.Action("CustomPricing", "PlatformAdmin")" class="btn btn-outline-secondary px-4 py-2">
+                        Reset Changes
+                    </a>
+                </div>
+
+            </div>
+
+            <!-- Right Col: Live Interactive Sample Preview Box -->
+            <div class="col-lg-4">
+                <div class="glass-card p-4 position-sticky" style="top: 20px;">
+                    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary border-opacity-25">
+                        <h5 class="font-display fw-bold text-light mb-0"><i class="bi bi-calculator me-1 text-primary"></i>Live Sample Preview</h5>
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Real-Time</span>
+                    </div>
+
+                    <p class="fs-8 text-muted">Test sample configurations against your current rules before saving.</p>
+
+                    <!-- Sample inputs -->
+                    <div class="mb-2">
+                        <label class="form-label text-muted fs-9 text-uppercase mb-1">Admins</label>
+                        <input type="number" class="form-control form-control-sm bg-dark text-light border-secondary" id="previewAdmins" value="10" oninput="updateAdminPreview()" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label text-muted fs-9 text-uppercase mb-1">Employees</label>
+                        <input type="number" class="form-control form-control-sm bg-dark text-light border-secondary" id="previewEmployees" value="100" oninput="updateAdminPreview()" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label text-muted fs-9 text-uppercase mb-1">Products</label>
+                        <input type="number" class="form-control form-control-sm bg-dark text-light border-secondary" id="previewProducts" value="1000000" oninput="updateAdminPreview()" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted fs-9 text-uppercase mb-1">Suppliers</label>
+                        <input type="number" class="form-control form-control-sm bg-dark text-light border-secondary" id="previewSuppliers" value="500" oninput="updateAdminPreview()" />
+                    </div>
+
+                    <!-- Output Breakdown Card -->
+                    <div class="p-3 bg-dark rounded-3 border border-secondary border-opacity-25 mb-3">
+                        <div class="d-flex justify-content-between fs-8 text-muted mb-1">
+                            <span>Base Subscription:</span>
+                            <span id="prevBase" class="text-light">₹0</span>
+                        </div>
+                        <div class="d-flex justify-content-between fs-8 text-muted mb-1">
+                            <span>Admins Cost:</span>
+                            <span id="prevAdminsCost" class="text-light">₹0</span>
+                        </div>
+                        <div class="d-flex justify-content-between fs-8 text-muted mb-1">
+                            <span>Employees Cost:</span>
+                            <span id="prevEmployeesCost" class="text-light">₹0</span>
+                        </div>
+                        <div class="d-flex justify-content-between fs-8 text-muted mb-1">
+                            <span>Product Inventory:</span>
+                            <span id="prevProductsCost" class="text-light">₹0</span>
+                        </div>
+                        <div class="d-flex justify-content-between fs-8 text-muted mb-1">
+                            <span>Suppliers Cost:</span>
+                            <span id="prevSuppliersCost" class="text-light">₹0</span>
+                        </div>
+                        <hr class="border-secondary my-2" />
+                        <div class="d-flex justify-content-between align-items-baseline mb-1">
+                            <span class="fw-bold fs-7 text-light">Estimated Monthly:</span>
+                            <span class="fs-4 font-display fw-bold text-success" id="prevMonthly">₹0</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-baseline">
+                            <span class="fs-8 text-muted">Estimated Annual:</span>
+                            <span class="fs-6 font-display fw-bold text-info" id="prevYearly">₹0</span>
+                        </div>
+                    </div>
+
+                    <div class="text-muted fs-9 text-center">
+                        <i class="bi bi-info-circle me-1"></i> Preview recalculates dynamically using inputs on this form.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+function toggleProductModel(model) {
+    var tieredWrap = document.getElementById('tieredModelWrap');
+    var perUnitWrap = document.getElementById('perUnitModelWrap');
+    if (model === 'PerUnit') {
+        tieredWrap.classList.add('d-none');
+        perUnitWrap.classList.remove('d-none');
+    } else {
+        tieredWrap.classList.remove('d-none');
+        perUnitWrap.classList.add('d-none');
+    }
+    updateAdminPreview();
+}
+
+function removeTierRow(btn) {
+    var tr = btn.closest('tr');
+    var table = document.getElementById('productTiersTable').getElementsByTagName('tbody')[0];
+    if (table.rows.length <= 1) {
+        alert('At least one inventory tier is required.');
+        return;
+    }
+    tr.remove();
+    updateAdminPreview();
+}
+
+function addTierRow() {
+    var table = document.getElementById('productTiersTable').getElementsByTagName('tbody')[0];
+    var newRow = table.insertRow();
+    newRow.innerHTML = `
+        <td><input type="text" name="tierName" class="form-control form-control-sm bg-dark text-light border-secondary" value="Custom Scale" required /></td>
+        <td><input type="number" name="tierMin" class="form-control form-control-sm bg-dark text-light border-secondary" value="1000001" min="0" required /></td>
+        <td><input type="number" name="tierMax" class="form-control form-control-sm bg-dark text-light border-secondary" value="5000000" min="1" required /></td>
+        <td><input type="number" step="0.01" name="tierFlat" class="form-control form-control-sm bg-dark text-light border-secondary" value="9999" min="0" required /></td>
+        <td><input type="number" step="0.001" name="tierPerUnit" class="form-control form-control-sm bg-dark text-light border-secondary" value="0" min="0" required /></td>
+        <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="removeTierRow(this)" title="Remove Tier"><i class="bi bi-trash"></i></button></td>
+    `;
+    updateAdminPreview();
+}
+
+function updateAdminPreview() {
+    var basePrice = parseFloat(document.getElementById('BaseMonthlyPrice').value) || 0;
+    var adminRate = parseFloat(document.getElementById('AdminUnitPrice').value) || 0;
+    var empRate = parseFloat(document.getElementById('EmployeeUnitPrice').value) || 0;
+    var supRate = parseFloat(document.getElementById('SupplierUnitPrice').value) || 0;
+    var annualDiscount = parseFloat(document.getElementById('AnnualDiscountPercent').value) || 0;
+    var model = document.getElementById('ProductPricingModel').value;
+
+    var sAdmins = parseInt(document.getElementById('previewAdmins').value) || 0;
+    var sEmployees = parseInt(document.getElementById('previewEmployees').value) || 0;
+    var sProducts = parseInt(document.getElementById('previewProducts').value) || 0;
+    var sSuppliers = parseInt(document.getElementById('previewSuppliers').value) || 0;
+
+    var adminsCost = sAdmins * adminRate;
+    var employeesCost = sEmployees * empRate;
+    var suppliersCost = sSuppliers * supRate;
+
+    var productsCost = 0;
+    if (model === 'PerUnit') {
+        var pUnitRate = parseFloat(document.getElementById('ProductUnitPrice').value) || 0;
+        productsCost = sProducts * pUnitRate;
+    } else {
+        // Evaluate tiers
+        var table = document.getElementById('productTiersTable').getElementsByTagName('tbody')[0];
+        var tiers = [];
+        for (var i = 0; i < table.rows.length; i++) {
+            var row = table.rows[i];
+            var tMax = parseInt(row.querySelector('input[name="tierMax"]').value) || 0;
+            var tFlat = parseFloat(row.querySelector('input[name="tierFlat"]').value) || 0;
+            var tPerUnit = parseFloat(row.querySelector('input[name="tierPerUnit"]').value) || 0;
+            tiers.push({ max: tMax, flat: tFlat, perUnit: tPerUnit });
+        }
+        tiers.sort(function(a, b) { return a.max - b.max; });
+        var matched = tiers[tiers.length - 1];
+        for (var j = 0; j < tiers.length; j++) {
+            if (sProducts <= tiers[j].max) {
+                matched = tiers[j];
+                break;
+            }
+        }
+        if (matched) {
+            productsCost = matched.flat + (sProducts * matched.perUnit);
+        }
+    }
+
+    var monthlyTotal = basePrice + adminsCost + employeesCost + productsCost + suppliersCost;
+    var discountMult = 1 - (Math.min(Math.max(annualDiscount, 0), 100) / 100);
+    var yearlyTotal = monthlyTotal * 12 * discountMult;
+
+    document.getElementById('prevBase').textContent = '₹' + basePrice.toLocaleString('en-IN');
+    document.getElementById('prevAdminsCost').textContent = '₹' + Math.round(adminsCost).toLocaleString('en-IN');
+    document.getElementById('prevEmployeesCost').textContent = '₹' + Math.round(employeesCost).toLocaleString('en-IN');
+    document.getElementById('prevProductsCost').textContent = '₹' + Math.round(productsCost).toLocaleString('en-IN');
+    document.getElementById('prevSuppliersCost').textContent = '₹' + Math.round(suppliersCost).toLocaleString('en-IN');
+
+    document.getElementById('prevMonthly').textContent = '₹' + Math.round(monthlyTotal).toLocaleString('en-IN');
+    document.getElementById('prevYearly').textContent = '₹' + Math.round(yearlyTotal).toLocaleString('en-IN');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    updateAdminPreview();
+    var inputs = document.querySelectorAll('#formCustomPricing input');
+    inputs.forEach(function(inp) {
+        inp.addEventListener('input', updateAdminPreview);
+    });
+});
+</script>
+}

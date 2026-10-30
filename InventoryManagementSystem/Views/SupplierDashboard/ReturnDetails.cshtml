@@ -7,7 +7,7 @@
 <div class="ph">
     <div>
         <h1 class="ph-title"><i class="bi bi-box-seam me-2" style="color:var(--danger)"></i>Return Claim Details #@Model.ReturnNumber</h1>
-        <p class="ph-sub">Submitted by Admin on @Model.CreatedAt.ToString("dd-MMM-yyyy hh:mm tt")</p>
+        <p class="ph-sub">Submitted by Admin on @Model.CreatedAt.ToIst().ToString("dd-MMM-yyyy hh:mm tt IST")</p>
     </div>
     <div class="ph-actions">
         <a href="@Url.Action("Returns","SupplierDashboard")" class="btn-d btn-outline">

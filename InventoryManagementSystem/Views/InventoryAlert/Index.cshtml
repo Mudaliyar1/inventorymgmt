@@ -137,7 +137,7 @@
                     </div>
 
                     <div class="col-12 d-flex justify-content-between align-items-center mt-3">
-                        <span class="text-muted small">Last Updated: @settings.UpdatedAt.ToLocalTime().ToString("g") by @settings.UpdatedBy</span>
+                        <span class="text-muted small">Last Updated: @settings.UpdatedAt.ToIstString("dd-MMM-yyyy hh:mm tt IST") by @settings.UpdatedBy</span>
                         <button type="submit" class="btn-d btn-primary btn-sm-d"><i class="bi bi-save me-1"></i> Save Configuration</button>
                     </div>
                 </div>
@@ -234,7 +234,7 @@
                             _ => "bg-warning-subtle text-warning border border-warning-subtle"
                         };
 
-                        var istTime = TimeZoneInfo.ConvertTimeFromUtc(log.SentAt, TimeZoneInfo.FindSystemTimeZoneById("India Standard Time")).ToString("MMM dd, HH:mm:ss") + " IST";
+                        var istTime = log.SentAt.ToIstString("MMM dd, HH:mm:ss IST");
 
                         <tr>
                             <td class="font-monospace small text-light">@istTime</td>

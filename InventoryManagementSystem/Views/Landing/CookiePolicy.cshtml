@@ -1,0 +1,129 @@
+@{
+    ViewData["Title"] = "Cookie Policy — SIMS Smart Inventory Management System";
+    Layout = "_Layout";
+    var settings = ViewBag.Settings as InventoryManagementSystem.Models.PlatformSettings;
+    var platformName = settings?.PlatformName ?? "SIMS SaaS Platform";
+    var contactEmail = settings?.ContactEmail ?? "support@sims.com";
+    var officeAddress = settings?.OfficeAddress ?? "123 Business Hub, Mumbai, India";
+}
+
+<div class="pz-page-wrap pb-5">
+    <div class="pz-container" style="max-width: 1040px;">
+
+        <!-- Header -->
+        <div class="pz-section-head mb-4 text-center">
+            <span class="pz-accent-eyebrow">LEGAL &amp; PRIVACY</span>
+            <h1 class="pz-section-title">Cookie Policy</h1>
+            <span class="pz-heading-accent" aria-hidden="true"></span>
+            <p class="pz-section-sub">
+                Clear and transparent disclosure of the essential cookies and local browser storage mechanisms used to operate the SIMS software.
+            </p>
+        </div>
+        <div class="row g-4">
+            <!-- Sidebar -->
+            <div class="col-lg-4 col-md-5">
+                <div class="pz-card p-4 position-sticky" style="top: 90px;">
+                    <h5 class="fw-bold fs-7 mb-3 text-uppercase text-muted" style="letter-spacing: 0.05em;">Table of Contents</h5>
+                    <nav class="nav flex-column gap-2 fs-8">
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#ck-what"><i class="bi bi-chevron-right me-1 text-primary"></i> 1. What Are Cookies?</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#ck-used"><i class="bi bi-chevron-right me-1 text-primary"></i> 2. Cookies Used by SIMS</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#ck-notused"><i class="bi bi-chevron-right me-1 text-primary"></i> 3. What We Do NOT Use</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#ck-controls"><i class="bi bi-chevron-right me-1 text-primary"></i> 4. User Controls &amp; Disabling</a>
+                        <a class="nav-link px-0 text-decoration-none text-dark fw-semibold" href="#ck-contact"><i class="bi bi-chevron-right me-1 text-primary"></i> 5. Questions &amp; Support</a>
+                    </nav>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-lg-8 col-md-7">
+                <div class="pz-card p-4 p-lg-5">
+
+                    <!-- Section 1 -->
+                    <section id="ck-what" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">1. What Are Cookies?</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            Cookies are small text files placed on your computer or mobile device when you browse websites. They are widely used to maintain secure user sessions, remember preferences, and ensure online services function properly and securely.
+                        </p>
+                    </section>
+
+                    <!-- Section 2 -->
+                    <section id="ck-used" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">2. Cookies Strictly Used by SIMS</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            SIMS employs only <strong>strictly necessary</strong> cookies and functional state tokens required for core SaaS operation:
+                        </p>
+
+                        <div class="table-responsive mb-3">
+                            <table class="table table-bordered fs-8">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Cookie Name</th>
+                                        <th>Type</th>
+                                        <th>Purpose</th>
+                                        <th>Duration</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>.AspNetCore.Cookies</code></td>
+                                        <td><span class="badge bg-primary">Essential Security</span></td>
+                                        <td>Encrypted session token identifying your authenticated user login, tenant boundaries, and authorized staff role.</td>
+                                        <td>Session / Sliding Expiry</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>.AspNetCore.Antiforgery.*</code></td>
+                                        <td><span class="badge bg-secondary">Security Token</span></td>
+                                        <td>Cross-Site Request Forgery (CSRF) protection token that verifies forms submitted (e.g. POS sales, inventory updates) originate genuinely from your browser.</td>
+                                        <td>Session</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>sims_ui_prefs</code></td>
+                                        <td><span class="badge bg-info text-dark">Functional Preference</span></td>
+                                        <td>Stores client UI display choices such as billing cycle toggle (Monthly vs Yearly) or sidebar collapse state.</td>
+                                        <td>Persistent (30 Days)</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <!-- Section 3 -->
+                    <section id="ck-notused" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">3. What We Do NOT Use</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            Unlike consumer ad-supported portals, SIMS is a dedicated business software system:
+                        </p>
+                        <ul class="fs-7 text-muted ps-3 mb-0">
+                            <li class="mb-2">We <strong>do not</strong> use third-party behavioral advertising cookies (e.g., Google AdSense, Meta Pixel).</li>
+                            <li class="mb-2">We <strong>do not</strong> track your browsing activity across other websites.</li>
+                            <li class="mb-2">We <strong>do not</strong> share cookie session data with external data brokers.</li>
+                        </ul>
+                    </section>
+
+                    <!-- Section 4 -->
+                    <section id="ck-controls" class="mb-5 pb-4 border-bottom">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">4. Managing &amp; Disabling Cookies</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            You can control or block cookies through your web browser settings (Chrome, Edge, Firefox, Safari). However, because all cookies used by SIMS are strictly necessary for login authentication and CSRF security, disabling cookies will prevent sign-in and cause software features to malfunction.
+                        </p>
+                    </section>
+
+                    <!-- Section 5 -->
+                    <section id="ck-contact">
+                        <h2 class="h4 fw-bold mb-3" style="color: #17181B;">5. Questions &amp; Support</h2>
+                        <p class="fs-7 text-muted leading-relaxed">
+                            If you have questions about our technical cookie implementation, please contact:
+                        </p>
+                        <div class="p-3 bg-light rounded-3 border fs-8">
+                            <div><strong>Platform:</strong> @platformName</div>
+                            <div><strong>Email:</strong> <a href="mailto:@contactEmail" class="text-decoration-none">@contactEmail</a></div>
+                            <div><strong>Address:</strong> @officeAddress</div>
+                        </div>
+                    </section>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

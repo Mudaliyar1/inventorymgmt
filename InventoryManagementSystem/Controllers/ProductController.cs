@@ -581,8 +581,28 @@ namespace InventoryManagementSystem.Controllers
             var updatedVariants = await ProcessVariantsAsync(model.Variants, model.ProductImages);
             if (updatedVariants.Any())
             {
+                // Preserve actual database-audited stock from existing variants & colors to prevent direct catalog stock tampering
+                foreach (var uv in updatedVariants)
+                {
+                    var existingV = existingProduct.Variants?.FirstOrDefault(x => x.VariantId == uv.VariantId);
+                    if (existingV != null)
+                    {
+                        uv.CurrentStock = existingV.CurrentStock;
+                        uv.InitialStock = existingV.InitialStock;
+                        foreach (var uc in uv.Colors)
+                        {
+                            var existingC = existingV.Colors?.FirstOrDefault(x => x.ColorId == uc.ColorId || x.Name.Equals(uc.Name, StringComparison.OrdinalIgnoreCase));
+                            if (existingC != null)
+                            {
+                                uc.CurrentStock = existingC.CurrentStock;
+                                uc.InitialStock = existingC.InitialStock;
+                            }
+                        }
+                    }
+                }
+
                 existingProduct.Variants = updatedVariants;
-                int variantStockSum = updatedVariants.Sum(v => v.CurrentStock > 0 ? v.CurrentStock : v.InitialStock);
+                int variantStockSum = updatedVariants.Sum(v => v.CurrentStock);
                 if (variantStockSum > 0 || existingProduct.CurrentStock == 0)
                 {
                     existingProduct.CurrentStock = variantStockSum;
@@ -696,7 +716,9 @@ namespace InventoryManagementSystem.Controllers
                         code = c.Code,
                         imageUrl = !string.IsNullOrEmpty(c.ImageUrl) ? c.ImageUrl : product.ImageUrl,
                         imageUrls = c.ImageUrls != null && c.ImageUrls.Any() ? c.ImageUrls : product.ImageUrls,
-                        availableStock = stockCount
+                        availableStock = stockCount,
+                        purchasePrice = c.PurchasePrice > 0 ? c.PurchasePrice : (v.PurchasePrice > 0 ? v.PurchasePrice : product.PurchasePrice),
+                        sellingPrice = c.SellingPrice > 0 ? c.SellingPrice : (v.SellingPrice > 0 ? v.SellingPrice : product.SellingPrice)
                     });
                 }
 

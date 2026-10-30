@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using Microsoft.Extensions.DependencyInjection;
+using InventoryManagementSystem.Extensions;
 
 namespace InventoryManagementSystem.Services
 {
@@ -30,36 +31,139 @@ namespace InventoryManagementSystem.Services
                 .SortByDescending(l => l.ExpiryDate)
                 .FirstOrDefaultAsync();
 
-            if (license != null && license.ExpiryDate < DateTime.UtcNow && !license.ExpirationEmailSent)
+            if (license != null && license.ExpiryDate <= DateTime.UtcNow)
             {
-                license.ExpirationEmailSent = true;
-                license.Status = "Expired";
-                license.UpdatedAt = DateTime.UtcNow;
-                await _context.TenantLicenses.ReplaceOneAsync(l => l.Id == license.Id, license);
-
-                _ = Task.Run(async () =>
+                var previousStatus = license.Status;
+                if (license.Status != "Expired")
                 {
+                    license.Status = "Expired";
+                    license.UpdatedAt = DateTime.UtcNow;
+                    await _context.TenantLicenses.ReplaceOneAsync(l => l.Id == license.Id, license);
+
                     try
                     {
-                        var tenant = await _context.Tenants.Find(t => t.Id == tenantId || t.TenantCode == tenantId).FirstOrDefaultAsync();
-                        if (tenant != null && !string.IsNullOrWhiteSpace(tenant.ContactEmail))
-                        {
-                            using var scope = _serviceProvider.CreateScope();
-                            var emailService = scope.ServiceProvider.GetService<IEmailService>();
-                            if (emailService != null)
-                            {
-                                await emailService.SendLicenseExpiredEmailAsync(tenant.ContactEmail, tenant.ShopName, tenant.OwnerName, license.ExpiryDate);
-                            }
-                        }
+                        await _context.Tenants.UpdateOneAsync(
+                            t => t.Id == tenantId,
+                            Builders<Tenant>.Update.Set(t => t.Status, "Expired").Set(t => t.UpdatedAt, DateTime.UtcNow));
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"[EMAIL ERROR] Auto-expiration email error: {ex.Message}");
+                        Console.WriteLine($"[LICENSE NOTICE] Tenant status update error: {ex.Message}");
                     }
-                });
+                }
+
+                if (!license.ExpirationEmailSent)
+                {
+                    _ = TriggerExpiryEmailNotificationAsync(license, previousStatus);
+                }
             }
 
             return license;
+        }
+
+        private async Task TriggerExpiryEmailNotificationAsync(TenantLicense license, string previousStatus)
+        {
+            try
+            {
+                if (license == null || license.ExpirationEmailSent) return;
+
+                bool alreadySent = await _context.SubscriptionNotificationLogs
+                    .Find(n => n.LicenseId == license.Id && (n.NotificationType == "TrialExpired" || n.NotificationType == "SubscriptionExpired") && n.Status == "Sent")
+                    .AnyAsync();
+
+                if (alreadySent)
+                {
+                    license.ExpirationEmailSent = true;
+                    await _context.TenantLicenses.UpdateOneAsync(l => l.Id == license.Id, Builders<TenantLicense>.Update.Set(l => l.ExpirationEmailSent, true));
+                    return;
+                }
+
+                var tenant = await _context.Tenants.Find(t => t.Id == license.TenantId).FirstOrDefaultAsync();
+                if (tenant == null) return;
+
+                string contactEmail = tenant.ContactEmail;
+                string contactName = !string.IsNullOrWhiteSpace(tenant.OwnerName) ? tenant.OwnerName : tenant.ShopName;
+
+                if (string.IsNullOrWhiteSpace(contactEmail))
+                {
+                    var adminUser = await _context.Users
+                        .Find(u => u.TenantId == tenant.Id && (u.Role == "ShopAdmin" || u.Role == "Admin"))
+                        .FirstOrDefaultAsync();
+                    if (adminUser != null && !string.IsNullOrWhiteSpace(adminUser.Email))
+                    {
+                        contactEmail = adminUser.Email;
+                        if (string.IsNullOrWhiteSpace(contactName))
+                        {
+                            contactName = !string.IsNullOrWhiteSpace(adminUser.FullName) ? adminUser.FullName : adminUser.Username;
+                        }
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(contactEmail)) return;
+
+                using var scope = _serviceProvider.CreateScope();
+                var emailService = scope.ServiceProvider.GetService<IEmailService>();
+                if (emailService == null) return;
+
+                var settingsService = scope.ServiceProvider.GetService<IPlatformSettingsService>();
+                string baseUrl = "https://sims-saas.com";
+                if (settingsService != null)
+                {
+                    try
+                    {
+                        var settings = await settingsService.GetSettingsAsync();
+                        if (!string.IsNullOrWhiteSpace(settings.SystemUrl))
+                        {
+                            baseUrl = settings.SystemUrl.TrimEnd('/');
+                        }
+                    }
+                    catch { }
+                }
+
+                string pricingUrl = $"{baseUrl}/Landing/Pricing";
+
+                var pkg = !string.IsNullOrEmpty(license.PackageId)
+                    ? await _context.SubscriptionPackages.Find(p => p.Id == license.PackageId).FirstOrDefaultAsync()
+                    : null;
+
+                bool isTrial = previousStatus == "Trial" || (pkg != null && pkg.MonthlyPrice == 0 && string.IsNullOrEmpty(license.LastPaymentId));
+                string notifType = isTrial ? "TrialExpired" : "SubscriptionExpired";
+
+                bool success = false;
+                string? errorMsg = null;
+
+                if (isTrial)
+                {
+                    (success, errorMsg) = await emailService.SendTrialExpiredEmailAsync(contactEmail, contactName, license.ExpiryDate, pricingUrl);
+                }
+                else
+                {
+                    (success, errorMsg) = await emailService.SendSubscriptionExpiredEmailAsync(contactEmail, contactName, license.ExpiryDate, pricingUrl);
+                }
+
+                var notifLog = new SubscriptionNotificationLog
+                {
+                    TenantId = tenant.Id,
+                    LicenseId = license.Id,
+                    NotificationType = notifType,
+                    RecipientEmail = contactEmail,
+                    TriggerAtUtc = DateTime.UtcNow,
+                    SentAtUtc = success ? DateTime.UtcNow : null,
+                    Status = success ? "Sent" : "Failed",
+                    ErrorMessage = errorMsg
+                };
+                await _context.SubscriptionNotificationLogs.InsertOneAsync(notifLog);
+
+                if (success)
+                {
+                    license.ExpirationEmailSent = true;
+                    await _context.TenantLicenses.UpdateOneAsync(l => l.Id == license.Id, Builders<TenantLicense>.Update.Set(l => l.ExpirationEmailSent, true));
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[LICENSE SERVICE] Error triggering expiry email: {ex.Message}");
+            }
         }
 
         public async Task<bool> IsLicenseValidAsync(string tenantId)
@@ -164,28 +268,81 @@ namespace InventoryManagementSystem.Services
 
         public async Task<TenantLicense> CreateTrialLicenseAsync(string tenantId, string packageId, int days = 14)
         {
+            return await CreateTrialLicenseAsync(tenantId, packageId, TimeSpan.FromDays(days));
+        }
+
+        public async Task<TenantLicense> CreateTrialLicenseAsync(string tenantId, string packageId, TimeSpan trialDuration)
+        {
+            var now = DateTime.UtcNow;
             var license = new TenantLicense
             {
                 TenantId = tenantId,
                 PackageId = packageId,
-                StartDate = DateTime.UtcNow,
-                ExpiryDate = DateTime.UtcNow.AddDays(days),
+                StartDate = now,
+                ExpiryDate = now.Add(trialDuration),
                 Status = "Trial",
                 AutoRenew = false,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = now,
+                UpdatedAt = now
             };
 
             await _context.TenantLicenses.InsertOneAsync(license);
+
+            try
+            {
+                await _context.Tenants.UpdateOneAsync(
+                    t => t.Id == tenantId,
+                    Builders<Tenant>.Update.Set(t => t.Status, "Trial").Set(t => t.PackageId, packageId).Set(t => t.UpdatedAt, now));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[LICENSE NOTICE] Tenant status update error: {ex.Message}");
+            }
+
             return license;
+        }
+
+        public async Task<TenantLicense> CreateTrialLicenseFromPackageAsync(string tenantId, string packageId)
+        {
+            var duration = TimeSpan.FromDays(14);
+            if (!string.IsNullOrEmpty(packageId))
+            {
+                var pkg = await _context.SubscriptionPackages.Find(p => p.Id == packageId).FirstOrDefaultAsync();
+                if (pkg != null)
+                {
+                    duration = pkg.GetTrialTimeSpan();
+                    if (duration <= TimeSpan.Zero)
+                    {
+                        duration = TimeSpan.FromDays(14);
+                    }
+                }
+            }
+            return await CreateTrialLicenseAsync(tenantId, packageId, duration);
         }
 
         public async Task<bool> RenewOrExtendLicenseAsync(string tenantId, string packageId, int durationDays)
         {
             var existing = await GetActiveLicenseAsync(tenantId);
+            var tenant = await _context.Tenants.Find(t => t.Id == tenantId).FirstOrDefaultAsync();
+
+            bool isUpgradeFromTrial = existing == null || existing.Status == "Trial" || tenant?.IsPaidCustomer != true;
+            bool isPackageChange = existing != null && existing.PackageId != packageId;
+
             if (existing != null)
             {
-                var newStart = existing.ExpiryDate > DateTime.UtcNow ? existing.ExpiryDate : DateTime.UtcNow;
+                DateTime newStart;
+                if (isUpgradeFromTrial || isPackageChange || existing.ExpiryDate <= DateTime.UtcNow)
+                {
+                    // Paid plan purchase or package change starts fresh from current time
+                    newStart = DateTime.UtcNow;
+                    existing.StartDate = DateTime.UtcNow;
+                }
+                else
+                {
+                    // Same paid package renewal extends existing active paid validity
+                    newStart = existing.ExpiryDate;
+                }
+
                 existing.PackageId = packageId;
                 existing.ExpiryDate = newStart.AddDays(durationDays);
                 existing.Status = "Active";
@@ -194,11 +351,11 @@ namespace InventoryManagementSystem.Services
                 await _context.TenantLicenses.ReplaceOneAsync(l => l.Id == existing.Id, existing);
 
                 // Also update Tenant PackageId
-                var tenant = await _context.Tenants.Find(t => t.Id == tenantId).FirstOrDefaultAsync();
                 if (tenant != null)
                 {
                     tenant.PackageId = packageId;
                     tenant.Status = "Active";
+                    tenant.IsPaidCustomer = true;
                     tenant.UpdatedAt = DateTime.UtcNow;
                     await _context.Tenants.ReplaceOneAsync(t => t.Id == tenant.Id, tenant);
                 }
@@ -319,7 +476,7 @@ namespace InventoryManagementSystem.Services
             pkg.AssignedTenantId = tenantId;
             await _context.SubscriptionPackages.ReplaceOneAsync(p => p.Id == pkg.Id, pkg);
 
-            return (true, $"Custom duration applied successfully. Expiry set to {newExpiry:yyyy-MM-dd HH:mm:ss} UTC.", newExpiry);
+            return (true, $"Custom duration applied successfully. Expiry set to {newExpiry.ToIstString("dd-MMM-yyyy hh:mm:ss tt IST")}.", newExpiry);
         }
 
         public async Task<IEnumerable<SubscriptionPackage>> GetAllPackagesAsync()

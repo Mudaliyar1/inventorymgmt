@@ -19,6 +19,9 @@ namespace InventoryManagementSystem.Models
         [BsonElement("LogoUrl")]
         public string LogoUrl { get; set; } = string.Empty;
 
+        [BsonElement("SystemUrl")]
+        public string SystemUrl { get; set; } = "https://sims-saas.com";
+
         [BsonElement("ContactEmail")]
         public string ContactEmail { get; set; } = "support@sims.com";
 
@@ -60,6 +63,43 @@ namespace InventoryManagementSystem.Models
 
         [BsonElement("ShopDashboardMaintenanceEndTime")]
         public DateTime? ShopDashboardMaintenanceEndTime { get; set; }
+
+        // Offline / Manual Renewal Requests Toggle (When false, only Razorpay online payment is shown)
+        [BsonElement("EnableManualRenewalRequests")]
+        public bool EnableManualRenewalRequests { get; set; } = false;
+
+        // Payment Recovery & Temporary Checkout Retention Settings
+        [BsonElement("TemporaryCheckoutRetentionValue")]
+        public int TemporaryCheckoutRetentionValue { get; set; } = 3;
+
+        [BsonElement("TemporaryCheckoutRetentionUnit")]
+        public string TemporaryCheckoutRetentionUnit { get; set; } = "Hours"; // "Minutes", "Hours", "Days"
+
+        [BsonElement("PendingVerificationRetentionHours")]
+        public int PendingVerificationRetentionHours { get; set; } = 24;
+
+        [BsonElement("EnableCustomerFollowUpMessages")]
+        public bool EnableCustomerFollowUpMessages { get; set; } = true;
+
+        [BsonElement("ArchiveBeforeCleanup")]
+        public bool ArchiveBeforeCleanup { get; set; } = true;
+
+        [BsonElement("AutoRestoreLatePayments")]
+        public bool AutoRestoreLatePayments { get; set; } = true;
+
+        [BsonElement("CustomerReassuranceMessageDurationMinutes")]
+        public int CustomerReassuranceMessageDurationMinutes { get; set; } = 60;
+
+        public TimeSpan GetTemporaryCheckoutRetentionTimeSpan()
+        {
+            int val = TemporaryCheckoutRetentionValue > 0 ? TemporaryCheckoutRetentionValue : 3;
+            return (TemporaryCheckoutRetentionUnit?.ToLowerInvariant()) switch
+            {
+                "minutes" => TimeSpan.FromMinutes(Math.Max(5, val)),
+                "days" => TimeSpan.FromDays(Math.Max(1, val)),
+                _ => TimeSpan.FromHours(Math.Max(1, val))
+            };
+        }
 
         [BsonElement("LastUpdated")]
         public DateTime LastUpdated { get; set; } = DateTime.UtcNow;

@@ -51,15 +51,40 @@
                     </div>
                 </div>
 
-                <div class="row g-2 mb-3">
-                    <div class="col-6">
-                        <label class="fg-label">Trial Period (Days)</label>
-                        <input asp-for="TrialDays" type="number" class="fg-control" placeholder="14" />
+                <div class="mb-3 p-3 rounded" style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(255,255,255,0.08);">
+                    <div class="form-check form-switch mb-2">
+                        <input asp-for="HasTrial" class="form-check-input" type="checkbox" id="hasTrialSwitch" onchange="toggleTrialControls()" />
+                        <label class="form-check-label text-light fs-7 fw-bold" for="hasTrialSwitch">
+                            <i class="bi bi-clock-history text-info me-1"></i> Enable Free Trial
+                        </label>
                     </div>
-                    <div class="col-6">
-                        <label class="fg-label">Display Order</label>
-                        <input asp-for="DisplayOrder" type="number" class="fg-control" placeholder="1" />
+                    
+                    <div id="trialSettingsRow" class="row g-2 pt-2 border-top border-secondary">
+                        <div class="col-6">
+                            <label class="fg-label">Trial Duration <span class="text-danger">*</span></label>
+                            <input asp-for="TrialDuration" type="number" min="1" max="100000" class="fg-control" placeholder="14" id="trialDurationInput" />
+                            <span asp-validation-for="TrialDuration" class="text-danger fs-7"></span>
+                        </div>
+                        <div class="col-6">
+                            <label class="fg-label">Duration Unit <span class="text-danger">*</span></label>
+                            <select asp-for="TrialDurationUnit" class="fg-control" id="trialUnitSelect" style="background-color: #1e293b; color: #fff;">
+                                <option value="Seconds">Seconds (Testing)</option>
+                                <option value="Minutes">Minutes</option>
+                                <option value="Hours">Hours</option>
+                                <option value="Days">Days</option>
+                            </select>
+                        </div>
+                        <div class="col-12 mt-2">
+                            <label class="fg-label">Custom Trial Text / Label <small class="text-muted">(Optional, e.g. "14 Days", "1 Month Trial", "Special 30-Day Pass")</small></label>
+                            <input asp-for="TrialText" type="text" class="fg-control" placeholder="Leave blank to use Duration + Unit automatically" />
+                            <small class="text-muted fs-8">Displays on public pricing and onboarding pages instead of default number format.</small>
+                        </div>
                     </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="fg-label">Display Order</label>
+                    <input asp-for="DisplayOrder" type="number" class="fg-control" placeholder="1" />
                 </div>
 
                 <h6 class="fw-bold text-info fs-7 uppercase font-mono mt-4 mb-3">Resource Capacity Limits</h6>
@@ -372,8 +397,27 @@
             modal.show();
         }
 
+        function toggleTrialControls() {
+            const enabled = document.getElementById('hasTrialSwitch')?.checked;
+            const row = document.getElementById('trialSettingsRow');
+            const durInput = document.getElementById('trialDurationInput');
+            const unitSelect = document.getElementById('trialUnitSelect');
+            if (row) {
+                if (enabled) {
+                    row.style.display = 'flex';
+                    durInput?.removeAttribute('disabled');
+                    unitSelect?.removeAttribute('disabled');
+                } else {
+                    row.style.display = 'none';
+                    durInput?.setAttribute('disabled', 'true');
+                    unitSelect?.setAttribute('disabled', 'true');
+                }
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
             updateFeatureCounter();
+            toggleTrialControls();
         });
     </script>
 }

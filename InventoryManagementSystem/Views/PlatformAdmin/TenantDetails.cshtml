@@ -13,6 +13,7 @@
     var salesCount = (int)(ViewBag.SalesCount ?? 0);
     var renewalRequests = (List<InventoryManagementSystem.Models.LicenseRenewalRequest>)ViewBag.RenewalRequests ?? new List<InventoryManagementSystem.Models.LicenseRenewalRequest>();
     var pendingRenewal = renewalRequests.FirstOrDefault(r => r.Status == "Pending");
+    var notificationLogs = (List<InventoryManagementSystem.Models.SubscriptionNotificationLog>)ViewBag.NotificationLogs ?? new List<InventoryManagementSystem.Models.SubscriptionNotificationLog>();
 }
 
 <div class="container-fluid px-4 py-3">
@@ -25,7 +26,7 @@
                 <span class="badge bg-primary font-mono ms-2 fs-7">@Model.TenantCode</span>
                 <span class="badge @(Model.Status == "Active" ? "bg-success" : Model.Status == "Trial" ? "bg-warning" : "bg-danger") ms-2 fs-7">@Model.Status</span>
             </h1>
-            <p class="text-muted fs-7 mb-0">Registered on @(Model.CreatedAt != default ? Model.CreatedAt.ToString("MMMM dd, yyyy — hh:mm tt") : "N/A")</p>
+            <p class="text-muted fs-7 mb-0">Registered on @(Model.CreatedAt != default ? Model.CreatedAt.ToIst().ToString("MMMM dd, yyyy — hh:mm tt IST") : "N/A")</p>
         </div>
         <div class="d-flex gap-2">
             <form method="post" action="@Url.Action("ToggleTenantStatus", "PlatformAdmin")">
@@ -65,7 +66,12 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label text-light font-mono fw-bold fs-7">Enter SaaS Super Admin Password:</label>
-                            <input type="password" name="adminPassword" class="form-control bg-dark border-danger text-light py-2" required placeholder="Super Admin Password..." autocomplete="current-password" />
+                            <div class="input-group">
+                                <input type="password" id="detailsAdminPasswordInput" name="adminPassword" class="form-control bg-dark border-danger text-light py-2" required placeholder="Super Admin Password..." autocomplete="current-password" />
+                                <button type="button" class="btn btn-outline-secondary border-danger text-light" onclick="toggleShopDeletePassword('detailsAdminPasswordInput', this)" title="Show/Hide password">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer border-secondary justify-content-between">
@@ -560,11 +566,101 @@
                     </div>
                 </div>
             }
+
+            <!-- Subscription & Trial Notification History Card -->
+            <div class="glass-card p-4 mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="font-display fw-bold text-info mb-0">
+                        <i class="bi bi-envelope-paper me-2"></i>Email Notifications History
+                    </h5>
+                    <span class="badge bg-secondary font-mono">@notificationLogs.Count Recorded</span>
+                </div>
+                <p class="text-muted fs-8 mb-3">
+                    Idempotent tracking for trial reminders, paid subscription reminders, and automated expiry alerts (All times in IST).
+                </p>
+
+                @if (notificationLogs.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover align-middle mb-0 fs-8">
+                            <thead>
+                                <tr class="text-muted font-mono">
+                                    <th>Event Type</th>
+                                    <th>Status</th>
+                                    <th>Trigger / Sent (IST)</th>
+                                    <th class="text-end">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var log in notificationLogs)
+                                {
+                                    <tr>
+                                        <td>
+                                            <strong class="text-light font-mono d-block">@log.NotificationType</strong>
+                                            <small class="text-muted">@log.RecipientEmail</small>
+                                        </td>
+                                        <td>
+                                            @if (log.Status == "Sent")
+                                            {
+                                                <span class="badge bg-success font-mono">Sent</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger font-mono" title="@log.ErrorMessage">Failed</span>
+                                            }
+                                        </td>
+                                        <td class="font-mono text-muted">
+                                            @(log.SentAtUtc.HasValue ? log.SentAtUtc.Value.ToPolicyIstDisplayString() : log.TriggerAtUtc.ToPolicyIstDisplayString())
+                                        </td>
+                                        <td class="text-end">
+                                            <form method="post" action="@Url.Action("RetrySubscriptionNotification", "PlatformAdmin")" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="logId" value="@log.Id" />
+                                                <button type="submit" class="btn btn-sm btn-outline-warning py-0 px-2 fs-9" title="Manually retry sending this notification">
+                                                    <i class="bi bi-arrow-repeat"></i> Retry
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    @if (!string.IsNullOrWhiteSpace(log.ErrorMessage) && log.Status == "Failed")
+                                    {
+                                        <tr>
+                                            <td colspan="4" class="p-2 bg-danger bg-opacity-10 text-danger fs-9 font-mono">
+                                                <i class="bi bi-exclamation-triangle-fill me-1"></i> Delivery Failure: @log.ErrorMessage
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-3 text-muted fs-8">
+                        <i class="bi bi-mailbox2 fs-4 d-block mb-1 text-secondary"></i>
+                        No subscription reminder or expiry emails have been triggered yet for this shop.
+                    </div>
+                }
+            </div>
         </div>
     </div>
 </div>
 
 <script>
+    function toggleShopDeletePassword(inputId, btn) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        const icon = btn.querySelector('i');
+        if (input.type === 'password') {
+            input.type = 'text';
+            if (icon) icon.className = 'bi bi-eye-slash';
+        } else {
+            input.type = 'password';
+            if (icon) icon.className = 'bi bi-eye';
+        }
+    }
+
     function setDurationPreset(d, h, m, s) {
         document.getElementById('dur_days').value = d;
         document.getElementById('dur_hours').value = h;
