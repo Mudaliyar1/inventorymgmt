@@ -29,16 +29,6 @@
                 <i class="bi bi-arrow-return-left me-1"></i> Return Purchase
             </a>
         }
-        @if (Model.Status == "Delivered" || Model.Status == "Completed" || Model.Status == "Rejected" || Model.Status == "Cancelled")
-        {
-            <form method="post" action="@Url.Action("Delete")" class="d-inline" onsubmit="return confirm('Are you sure you want to delete purchase order history entry #@Model.OrderNumber?\n\nNote: Product stock will NOT be changed.');">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="id" value="@Model.Id" />
-                <button type="submit" class="btn-d btn-danger">
-                    <i class="bi bi-trash me-1"></i> Delete Order History
-                </button>
-            </form>
-        }
         <a href="@Url.Action("Index")" class="btn-d btn-outline">
             <i class="bi bi-arrow-left me-1"></i> Order Management
         </a>

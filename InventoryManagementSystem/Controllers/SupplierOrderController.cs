@@ -413,12 +413,29 @@ namespace InventoryManagementSystem.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> SubmitOrder(SupplierOrder order)
         {
-            if (order == null || string.IsNullOrWhiteSpace(order.SupplierId) || order.Items == null || !order.Items.Any())
+            if (order == null || string.IsNullOrWhiteSpace(order.SupplierId))
             {
                 TempData["ToastMessage"] = "Order submission failed. Empty purchase order.";
                 TempData["ToastType"] = "danger";
                 return RedirectToAction(nameof(Create));
             }
+
+            // Exclude any removed items (Quantity <= 0) and re-verify totals
+            order.Items = order.Items?.Where(i => i.Quantity > 0).ToList() ?? new List<SupplierOrderItem>();
+            if (!order.Items.Any())
+            {
+                TempData["ToastMessage"] = "Order submission failed. All items were removed from the purchase order.";
+                TempData["ToastType"] = "danger";
+                return RedirectToAction(nameof(Create), new { selectedSupplierId = order.SupplierId });
+            }
+
+            foreach (var item in order.Items)
+            {
+                item.Subtotal = item.Quantity * item.UnitPrice;
+            }
+            order.TotalQuantity = order.Items.Sum(i => i.Quantity);
+            order.Subtotal = order.Items.Sum(i => i.Subtotal);
+            order.GrandTotal = order.Subtotal;
 
             var supplier = await _supplierService.GetSupplierByIdAsync(order.SupplierId);
             if (supplier == null)
@@ -451,7 +468,7 @@ namespace InventoryManagementSystem.Controllers
                 return RedirectToAction(nameof(Details), new { id = createdOrder.Id });
             }
 
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Create), new { selectedSupplierId = order.SupplierId });
         }
 
         [HttpGet]

@@ -782,6 +782,22 @@ namespace InventoryManagementSystem.Controllers
                 return RedirectToAction(nameof(OrderDetails), new { id = orderId });
             }
 
+            // Server-side validation: Expected Delivery Date must be today or a future date
+            if (expectedDeliveryDate.HasValue)
+            {
+                var todayIst = DateTime.UtcNow.AddHours(5.5).Date;
+                if (expectedDeliveryDate.Value.Date < todayIst)
+                {
+                    TempData["ToastMessage"] = "Expected delivery date must be today or a future date. Past dates are not allowed.";
+                    TempData["ToastType"] = "warning";
+                    return RedirectToAction(nameof(OrderDetails), new { id = orderId });
+                }
+            }
+            else if (newStatus == SupplierOrderStatus.Accepted)
+            {
+                expectedDeliveryDate = DateTime.UtcNow.AddHours(5.5).Date.AddDays(1);
+            }
+
             var (success, message) = await _supplierOrderService.UpdateOrderStatusAsync(orderId, newStatus, User.Identity?.Name ?? "Supplier", supplierNotes, expectedDeliveryDate);
             TempData["ToastMessage"] = message;
             TempData["ToastType"] = success ? "success" : "danger";

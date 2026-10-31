@@ -226,13 +226,16 @@ namespace InventoryManagementSystem.Services
             // Generate unique PO-YYYYMMDD-XXXX number
             order.OrderNumber = await _orderRepository.GetNextOrderNumberAsync();
 
-            // Populate & snapshot item details and validate stock limit
+            // Filter out any items with quantity <= 0
+            order.Items = order.Items?.Where(i => i.Quantity > 0).ToList() ?? new List<SupplierOrderItem>();
+            if (!order.Items.Any()) return (false, "Purchase Order must contain at least one product item with quantity > 0.", null);
+
+            // Populate & snapshot item details and validate accurate stock limit
             int totalQty = 0;
             decimal subtotal = 0;
 
             foreach (var item in order.Items)
             {
-                if (item.Quantity <= 0) item.Quantity = 1;
                 var product = await _productRepository.GetByIdAsync(item.ProductId);
                 if (product == null)
                 {
@@ -242,11 +245,6 @@ namespace InventoryManagementSystem.Services
                 if (product.SupplierId != order.SupplierId)
                 {
                     return (false, $"Product '{product.Name}' does not belong to supplier '{supplier.CompanyName}'.", null);
-                }
-
-                if (product.CurrentStock > 0 && item.Quantity > product.CurrentStock)
-                {
-                    return (false, $"Cannot order {item.Quantity} units of '{product.Name}'. Supplier available stock is only {product.CurrentStock} units.", null);
                 }
 
                 item.ProductName = product.Name;
@@ -275,10 +273,13 @@ namespace InventoryManagementSystem.Services
                     item.ImageUrl = product.ImageUrl;
                 }
 
-                // If product has variants, match the variant & color to ensure IDs, specs, and specific image
+                // If product has variants, match the variant & color to ensure IDs, specs, specific image, and accurate stock
+                ProductVariant? matchingVariant = null;
+                ProductColor? matchingColor = null;
+
                 if (product.Variants != null && product.Variants.Any())
                 {
-                    var matchingVariant = FindMatchingVariant(product, item);
+                    matchingVariant = FindMatchingVariant(product, item);
                     if (matchingVariant != null)
                     {
                         if (string.IsNullOrWhiteSpace(item.VariantId))
@@ -295,7 +296,7 @@ namespace InventoryManagementSystem.Services
 
                         if (matchingVariant.Colors != null && matchingVariant.Colors.Any())
                         {
-                            var matchingColor = FindMatchingColor(matchingVariant, item);
+                            matchingColor = FindMatchingColor(matchingVariant, item);
                             if (matchingColor != null)
                             {
                                 if (string.IsNullOrWhiteSpace(item.ColorId))
@@ -309,6 +310,17 @@ namespace InventoryManagementSystem.Services
                             }
                         }
                     }
+                }
+
+                // Accurate stock check based on specific color, variant, or product stock
+                int availableStock = matchingColor?.CurrentStock 
+                    ?? matchingVariant?.CurrentStock 
+                    ?? product.CurrentStock;
+
+                if (availableStock > 0 && item.Quantity > availableStock)
+                {
+                    var optTitle = !string.IsNullOrWhiteSpace(item.Color) ? $"{product.Name} ({item.Variant} · {item.Color})" : $"{product.Name} ({item.Variant})";
+                    return (false, $"Cannot order {item.Quantity} units of '{optTitle}'. Supplier available stock is only {availableStock} units.", null);
                 }
 
                 if (item.UnitPrice <= 0)

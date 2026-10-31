@@ -4,22 +4,75 @@
     var supplier = ViewBag.Supplier as InventoryManagementSystem.Models.Supplier;
 }
 
+<style>
+    .cart-qty-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        background: var(--bg-card);
+        color: var(--text-primary);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 700;
+        transition: all 0.15s;
+    }
+    .cart-qty-btn:hover:not(:disabled) {
+        background: var(--primary);
+        color: #fff;
+        border-color: var(--primary);
+    }
+    .cart-qty-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+    .cart-num-input {
+        width: 76px !important;
+        min-width: 76px !important;
+        height: 32px !important;
+        font-weight: 700 !important;
+        font-size: 14px !important;
+        text-align: center !important;
+        padding: 2px 4px !important;
+        border-radius: 8px !important;
+        border: 1px solid var(--border) !important;
+        background: var(--bg) !important;
+        color: var(--text-primary) !important;
+    }
+    .cart-num-input::-webkit-inner-spin-button,
+    .cart-num-input::-webkit-outer-spin-button {
+        -webkit-appearance: none !important;
+        margin: 0 !important;
+    }
+    .cart-num-input {
+        -moz-appearance: textfield !important;
+    }
+    .cart-num-input:focus {
+        border-color: var(--primary) !important;
+        outline: none !important;
+        box-shadow: 0 0 0 2px var(--primary-dim) !important;
+    }
+</style>
+
 <!-- Page Header -->
 <div class="ph">
     <div>
-        <h1 class="ph-title"><i class="bi bi-clipboard-check me-2" style="color:var(--primary)"></i>Review Purchase Order</h1>
-        <p class="ph-sub">Verify order items, subtotals, vendor information, and expected delivery before confirming</p>
+        <h1 class="ph-title"><i class="bi bi-clipboard-check me-2" style="color:var(--primary)"></i>Review Purchase Order &amp; Checkout</h1>
+        <p class="ph-sub">Verify order items, adjust quantities (+/-), review vendor information and confirm order</p>
     </div>
     <div class="ph-actions">
         <a href="@Url.Action("Create", new { selectedSupplierId = Model.SupplierId })" class="btn-d btn-outline">
-            <i class="bi bi-arrow-left me-1"></i> Modify Items Basket
+            <i class="bi bi-arrow-left me-1"></i> Add More Products
         </a>
     </div>
 </div>
 
-<form asp-action="SubmitOrder" method="post">
+<form asp-action="SubmitOrder" method="post" id="reviewOrderForm">
     @Html.AntiForgeryToken()
-    <input type="hidden" asp-for="SupplierId" />
+    <input type="hidden" asp-for="SupplierId" id="revSupplierId" />
     <input type="hidden" asp-for="SupplierName" />
     <input type="hidden" asp-for="SupplierVendorName" />
     <input type="hidden" asp-for="SupplierCompanyName" />
@@ -27,77 +80,116 @@
     <input type="hidden" asp-for="SupplierPhone" />
 
     <div class="row g-4 mb-4">
-        <!-- Left Column: Order Items Basket -->
+        <!-- Left Column: Interactive Order Items Basket -->
         <div class="col-lg-8">
             <div class="card-d card-p-lg">
-                <div class="s-title mb-3"><i class="bi bi-cart-check me-2" style="color:var(--primary)"></i>Order Items Basket (@Model.TotalQuantity Units)</div>
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div class="s-title mb-0">
+                        <i class="bi bi-cart-check me-2" style="color:var(--primary)"></i>Order Items Basket 
+                        (<span id="revHeaderUnits">@Model.TotalQuantity</span> Units)
+                    </div>
+                    <span class="badge-d badge-primary" id="revItemsCountBadge">@Model.Items.Count Items</span>
+                </div>
 
                 <div class="tbl-scroll rounded border overflow-hidden mb-3" style="border-color:var(--border)!important">
-                    <table class="tbl mb-0">
+                    <table class="tbl mb-0" id="reviewItemsTable">
                         <thead>
                             <tr>
                                 <th class="ps-4">Product</th>
                                 <th>Brand / Variant</th>
                                 <th>Supplier Stock</th>
                                 <th>Unit Price (₹)</th>
-                                <th>Requested Qty</th>
+                                <th style="width:180px">Order Quantity (+/-)</th>
                                 <th class="text-end pe-4">Subtotal (₹)</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="reviewTbody">
                             @for (int i = 0; i < Model.Items.Count; i++)
                             {
                                 var item = Model.Items[i];
-                                <tr>
+                                var itemKey = $"{item.ProductId}_{item.VariantId ?? ""}_{item.ColorId ?? ""}";
+                                <tr class="review-item-row" data-key="@itemKey">
                                     <td class="ps-4">
-                                        <input type="hidden" name="Items[@i].ProductId" value="@item.ProductId" />
-                                        <input type="hidden" name="Items[@i].ProductName" value="@item.ProductName" />
-                                        <input type="hidden" name="Items[@i].Brand" value="@item.Brand" />
-                                        <input type="hidden" name="Items[@i].Model" value="@item.Model" />
-                                        <input type="hidden" name="Items[@i].VariantId" value="@item.VariantId" />
-                                        <input type="hidden" name="Items[@i].ColorId" value="@item.ColorId" />
-                                        <input type="hidden" name="Items[@i].Variant" value="@item.Variant" />
-                                        <input type="hidden" name="Items[@i].Color" value="@item.Color" />
-                                        <input type="hidden" name="Items[@i].Ram" value="@item.Ram" />
-                                        <input type="hidden" name="Items[@i].Storage" value="@item.Storage" />
-                                        <input type="hidden" name="Items[@i].ImageUrl" value="@item.ImageUrl" />
-                                        <input type="hidden" name="Items[@i].UnitPrice" value="@item.UnitPrice" />
-                                        <input type="hidden" name="Items[@i].Quantity" value="@item.Quantity" />
-                                        <input type="hidden" name="Items[@i].AvailableStock" value="@item.AvailableStock" />
+                                        <input type="hidden" name="Items.Index" value="@i" class="row-index-input" />
+                                        <input type="hidden" name="Items[@i].ProductId" value="@item.ProductId" class="row-field-productid" />
+                                        <input type="hidden" name="Items[@i].ProductName" value="@item.ProductName" class="row-field-productname" />
+                                        <input type="hidden" name="Items[@i].Brand" value="@item.Brand" class="row-field-brand" />
+                                        <input type="hidden" name="Items[@i].Model" value="@item.Model" class="row-field-model" />
+                                        <input type="hidden" name="Items[@i].VariantId" value="@item.VariantId" class="row-field-variantid" />
+                                        <input type="hidden" name="Items[@i].ColorId" value="@item.ColorId" class="row-field-colorid" />
+                                        <input type="hidden" name="Items[@i].Variant" value="@item.Variant" class="row-field-variant" />
+                                        <input type="hidden" name="Items[@i].Color" value="@item.Color" class="row-field-color" />
+                                        <input type="hidden" name="Items[@i].Ram" value="@item.Ram" class="row-field-ram" />
+                                        <input type="hidden" name="Items[@i].Storage" value="@item.Storage" class="row-field-storage" />
+                                        <input type="hidden" name="Items[@i].ImageUrl" value="@item.ImageUrl" class="row-field-imageurl" />
+                                        <input type="hidden" name="Items[@i].UnitPrice" value="@item.UnitPrice" class="row-field-unitprice" />
+                                        <input type="hidden" name="Items[@i].AvailableStock" value="@item.AvailableStock" class="row-field-stock" />
 
-                                        <div style="font-weight:700;color:var(--text-primary)">@item.ProductName</div>
-                                        <div style="font-size:11px;color:var(--text-muted)">Color: @item.Color</div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            @if (!string.IsNullOrEmpty(item.ImageUrl))
+                                            {
+                                                <img src="@item.ImageUrl" alt="@item.ProductName" style="width:36px;height:36px;object-fit:contain;border-radius:6px;background:var(--bg);border:1px solid var(--border)" />
+                                            }
+                                            <div>
+                                                <div style="font-weight:700;color:var(--text-primary)">@item.ProductName</div>
+                                                <div style="font-size:11px;color:var(--text-muted)">Color: <strong class="text-secondary">@item.Color</strong></div>
+                                            </div>
+                                        </div>
                                     </td>
                                     <td>
                                         <div style="font-weight:600;color:var(--text-primary)">@item.Brand</div>
                                         <div style="font-size:11px;color:var(--text-muted)">@item.DisplayVariant</div>
                                     </td>
                                     <td>
-                                        <span class="badge-d @(item.AvailableStock <= 0 ? "badge-danger" : (item.Quantity > item.AvailableStock ? "badge-warning" : "badge-gray"))" style="font-size:11px">
+                                        <span class="badge-d @(item.AvailableStock <= 0 ? "badge-danger" : "badge-info")" style="font-size:11px">
                                             @item.AvailableStock Units
                                         </span>
                                     </td>
                                     <td style="font-weight:600">₹@item.UnitPrice.ToString("N2")</td>
-                                    <td style="font-weight:700">
-                                        @item.Quantity Units
-                                        @if (item.Quantity > item.AvailableStock)
-                                        {
-                                            <div class="text-warning mt-1" style="font-size:11px;font-weight:700">
-                                                <i class="bi bi-exclamation-triangle-fill me-1"></i> Exceeds stock (@item.AvailableStock available)
-                                            </div>
-                                        }
+                                    <td>
+                                        <!-- Editable Stepper (plus, minus, manual numeric entry without clipping) -->
+                                        <div class="d-flex align-items-center gap-1">
+                                            <button type="button" class="cart-qty-btn btn-row-minus" onclick="adjustReviewQty(this, -1)">-</button>
+                                            <input type="number" class="fg-control cart-num-input row-field-qty" name="Items[@i].Quantity" value="@item.Quantity" min="1" max="@item.AvailableStock"
+                                                   oninput="onReviewQtyInput(this)"
+                                                   onblur="onReviewQtyBlur(this)" />
+                                            <button type="button" class="cart-qty-btn btn-row-plus" onclick="adjustReviewQty(this, 1)">+</button>
+                                            <button type="button" class="btn btn-link text-danger p-0 ms-2" onclick="removeReviewRow(this)" title="Remove this item from order">
+                                                <i class="bi bi-trash3" style="font-size:15px"></i>
+                                            </button>
+                                        </div>
+                                        <div class="row-stock-warn text-warning mt-1" style="font-size:11px;font-weight:700;display:@(item.Quantity > item.AvailableStock ? "block" : "none")">
+                                            <i class="bi bi-exclamation-triangle-fill me-1"></i> Exceeds stock (@item.AvailableStock max)
+                                        </div>
                                     </td>
-                                    <td class="text-end pe-4" style="font-weight:800;color:var(--success)">₹@item.Subtotal.ToString("N2")</td>
+                                    <td class="text-end pe-4" style="font-weight:800;color:var(--success)">
+                                        <span class="row-subtotal-span">₹@item.Subtotal.ToString("N2")</span>
+                                    </td>
                                 </tr>
                             }
                         </tbody>
                     </table>
                 </div>
 
-                <div class="p-3 rounded mb-3" style="background:var(--bg);border:1px solid var(--border)">
+                <!-- Empty State if all products are removed -->
+                <div id="reviewEmptyBox" class="p-4 text-center text-muted" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:10px">
+                    <i class="bi bi-cart-x text-warning d-block mb-2" style="font-size:36px"></i>
+                    <h5 style="color:var(--text-primary)">Your Order Basket is Empty</h5>
+                    <p class="mb-3">You removed all products from this purchase order.</p>
+                    <a href="@Url.Action("Create", new { selectedSupplierId = Model.SupplierId })" class="btn-d btn-primary">
+                        <i class="bi bi-plus-lg me-1"></i> Return to Product Catalog &amp; Add Items
+                    </a>
+                </div>
+
+                <!-- Order Totals Box -->
+                <div id="reviewTotalsBox" class="p-3 rounded mb-3" style="background:var(--bg);border:1px solid var(--border)">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <span style="font-size:14px;color:var(--text-muted)">Total Ordered Devices:</span>
+                        <span style="font-size:16px;font-weight:700;color:var(--text-primary)" id="revTotalDevices">@Model.TotalQuantity Units</span>
+                    </div>
                     <div class="d-flex align-items-center justify-content-between">
                         <span style="font-size:16px;font-weight:800;color:var(--text-primary)">Order Subtotal Amount:</span>
-                        <span style="font-size:22px;font-weight:800;color:var(--success)">₹@Model.Subtotal.ToString("N2")</span>
+                        <span style="font-size:22px;font-weight:800;color:var(--success)" id="revGrandSubtotal">₹@Model.Subtotal.ToString("N2")</span>
                     </div>
                 </div>
             </div>
@@ -135,10 +227,282 @@
                     </div>
                 </div>
 
-                <button type="submit" class="btn-d btn-primary w-100 btn-lg-d">
-                    <i class="bi bi-check2-circle me-1"></i> Confirm & Issue Purchase Order
+                <button type="submit" class="btn-d btn-primary w-100 btn-lg-d" id="btnConfirmSubmit">
+                    <i class="bi bi-check2-circle me-1"></i> Confirm &amp; Issue Purchase Order (<span id="revBtnUnits">@Model.TotalQuantity</span> Units)
                 </button>
             </div>
         </div>
     </div>
 </form>
+
+<script>
+    const supplierId = '@Model.SupplierId';
+    const storageKey = supplierId ? `sims_po_cart_${supplierId}` : 'sims_po_cart_default';
+
+    // Synchronize rows on page load with sessionStorage so refreshes preserve deleted/reduced products
+    function initializeReviewFromStorage() {
+        if (!storageKey) return;
+        const storedJson = sessionStorage.getItem(storageKey);
+        if (storedJson) {
+            try {
+                const storedItems = JSON.parse(storedJson);
+                if (Array.isArray(storedItems)) {
+                    const rows = document.querySelectorAll('#reviewTbody tr.review-item-row');
+                    rows.forEach(row => {
+                        const rowKey = row.getAttribute('data-key');
+                        const match = storedItems.find(i => (i.itemKey || `${i.productId}_${i.variantId || ''}_${i.colorId || ''}`) === rowKey);
+                        if (!match || match.quantity <= 0) {
+                            // Item was previously removed or reduced to 0 -> remove row!
+                            row.remove();
+                        } else {
+                            // Update quantity input to match storage
+                            const qtyInput = row.querySelector('.row-field-qty');
+                            if (qtyInput) {
+                                qtyInput.value = match.quantity;
+                            }
+                        }
+                    });
+                    reindexReviewRows();
+                }
+            } catch (e) {
+                console.warn('Failed parsing cart from sessionStorage:', e);
+            }
+        }
+        recalculateReviewTotals();
+        syncReviewToStorage();
+    }
+
+    // Re-index remaining inputs so ASP.NET Core collection model binding (Items[0], Items[1], ...) never breaks
+    function reindexReviewRows() {
+        const rows = document.querySelectorAll('#reviewTbody tr.review-item-row');
+        rows.forEach((row, i) => {
+            const indexInput = row.querySelector('.row-index-input');
+            if (indexInput) {
+                indexInput.value = i;
+            }
+
+            const fieldMap = [
+                ['.row-field-productid', 'ProductId'],
+                ['.row-field-productname', 'ProductName'],
+                ['.row-field-brand', 'Brand'],
+                ['.row-field-model', 'Model'],
+                ['.row-field-variantid', 'VariantId'],
+                ['.row-field-colorid', 'ColorId'],
+                ['.row-field-variant', 'Variant'],
+                ['.row-field-color', 'Color'],
+                ['.row-field-ram', 'Ram'],
+                ['.row-field-storage', 'Storage'],
+                ['.row-field-imageurl', 'ImageUrl'],
+                ['.row-field-unitprice', 'UnitPrice'],
+                ['.row-field-stock', 'AvailableStock'],
+                ['.row-field-qty', 'Quantity']
+            ];
+
+            fieldMap.forEach(([sel, prop]) => {
+                const el = row.querySelector(sel);
+                if (el) {
+                    el.name = `Items[${i}].${prop}`;
+                }
+            });
+        });
+    }
+
+    // Persist current table state into sessionStorage so refreshing or navigating back remembers changes
+    function syncReviewToStorage() {
+        if (!storageKey) return;
+        const rows = document.querySelectorAll('#reviewTbody tr.review-item-row');
+        const cartItems = [];
+
+        rows.forEach(row => {
+            const qtyInput = row.querySelector('.row-field-qty');
+            const qty = parseInt(qtyInput ? qtyInput.value : 0, 10) || 0;
+            if (qty <= 0) return;
+
+            const rowKey = row.getAttribute('data-key');
+            const productId = row.querySelector('.row-field-productid')?.value || '';
+            const productName = row.querySelector('.row-field-productname')?.value || '';
+            const brand = row.querySelector('.row-field-brand')?.value || '';
+            const variantId = row.querySelector('.row-field-variantid')?.value || '';
+            const colorId = row.querySelector('.row-field-colorid')?.value || '';
+            const variant = row.querySelector('.row-field-variant')?.value || '';
+            const color = row.querySelector('.row-field-color')?.value || '';
+            const unitPrice = parseFloat(row.querySelector('.row-field-unitprice')?.value || 0) || 0;
+            const availableStock = parseInt(row.querySelector('.row-field-stock')?.value || 999999, 10) || 999999;
+
+            cartItems.push({
+                itemKey: rowKey,
+                productId: productId,
+                variantId: variantId,
+                colorId: colorId,
+                productName: productName,
+                brand: brand,
+                variant: variant,
+                color: color,
+                unitPrice: unitPrice,
+                quantity: qty,
+                availableStock: availableStock
+            });
+        });
+
+        sessionStorage.setItem(storageKey, JSON.stringify(cartItems));
+    }
+
+    function recalculateReviewTotals() {
+        const rows = document.querySelectorAll('#reviewTbody tr.review-item-row');
+        let grandTotalUnits = 0;
+        let grandSubtotal = 0;
+        let activeItems = 0;
+
+        rows.forEach(row => {
+            const qtyInput = row.querySelector('.row-field-qty');
+            const priceInput = row.querySelector('.row-field-unitprice');
+            const stockInput = row.querySelector('.row-field-stock');
+            const subtotalSpan = row.querySelector('.row-subtotal-span');
+            const warnEl = row.querySelector('.row-stock-warn');
+            const btnMinus = row.querySelector('.btn-row-minus');
+            const btnPlus = row.querySelector('.btn-row-plus');
+
+            const qty = parseInt(qtyInput ? qtyInput.value : 0, 10) || 0;
+            const price = parseFloat(priceInput ? priceInput.value : 0) || 0;
+            const stock = parseInt(stockInput ? stockInput.value : 999999, 10) || 999999;
+
+            const lineTotal = qty * price;
+            if (subtotalSpan) {
+                subtotalSpan.innerText = `₹${lineTotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            }
+
+            if (warnEl) {
+                warnEl.style.display = (stock > 0 && qty > stock) ? 'block' : 'none';
+            }
+
+            if (btnMinus) btnMinus.disabled = (qty <= 1);
+            if (btnPlus) btnPlus.disabled = (stock > 0 && qty >= stock);
+
+            grandTotalUnits += qty;
+            grandSubtotal += lineTotal;
+            if (qty > 0) activeItems++;
+        });
+
+        const headerUnits = document.getElementById('revHeaderUnits');
+        const totalDevices = document.getElementById('revTotalDevices');
+        const grandSubtotalEl = document.getElementById('revGrandSubtotal');
+        const btnUnits = document.getElementById('revBtnUnits');
+        const badge = document.getElementById('revItemsCountBadge');
+        const emptyBox = document.getElementById('reviewEmptyBox');
+        const totalsBox = document.getElementById('reviewTotalsBox');
+        const submitBtn = document.getElementById('btnConfirmSubmit');
+
+        if (headerUnits) headerUnits.innerText = grandTotalUnits;
+        if (totalDevices) totalDevices.innerText = `${grandTotalUnits} Units`;
+        if (grandSubtotalEl) grandSubtotalEl.innerText = `₹${grandSubtotal.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        if (btnUnits) btnUnits.innerText = grandTotalUnits;
+        if (badge) badge.innerText = `${activeItems} Items`;
+
+        if (activeItems === 0) {
+            if (emptyBox) emptyBox.style.display = 'block';
+            if (totalsBox) totalsBox.style.display = 'none';
+            if (submitBtn) submitBtn.disabled = true;
+        } else {
+            if (emptyBox) emptyBox.style.display = 'none';
+            if (totalsBox) totalsBox.style.display = 'block';
+            if (submitBtn) submitBtn.disabled = false;
+        }
+    }
+
+    function adjustReviewQty(btn, delta) {
+        const row = btn.closest('tr');
+        if (!row) return;
+
+        const input = row.querySelector('.row-field-qty');
+        const stockInput = row.querySelector('.row-field-stock');
+        if (!input) return;
+
+        let cur = parseInt(input.value, 10) || 0;
+        let next = cur + delta;
+        if (next < 1) next = 1;
+
+        const maxStock = parseInt(stockInput ? stockInput.value : 999999, 10) || 999999;
+        if (maxStock > 0 && next > maxStock) {
+            next = maxStock;
+            alert(`Cannot order more than available supplier stock (${maxStock} units).`);
+        }
+
+        input.value = next;
+        recalculateReviewTotals();
+        syncReviewToStorage();
+    }
+
+    function onReviewQtyInput(input) {
+        if (!input) return;
+        const row = input.closest('tr');
+        const stockInput = row?.querySelector('.row-field-stock');
+        const raw = input.value;
+
+        // Allow backspacing while typing multiple digits
+        if (raw === '' || raw === null) {
+            return;
+        }
+
+        let val = parseInt(raw, 10);
+        if (isNaN(val) || val < 1) val = 1;
+
+        const maxStock = parseInt(stockInput ? stockInput.value : 999999, 10) || 999999;
+        if (maxStock > 0 && val > maxStock) {
+            val = maxStock;
+            input.value = maxStock;
+        }
+
+        recalculateReviewTotals();
+        syncReviewToStorage();
+    }
+
+    function onReviewQtyBlur(input) {
+        if (!input) return;
+        const row = input.closest('tr');
+        const stockInput = row?.querySelector('.row-field-stock');
+        let val = parseInt(input.value, 10);
+        if (isNaN(val) || val < 1) val = 1;
+
+        const maxStock = parseInt(stockInput ? stockInput.value : 999999, 10) || 999999;
+        if (maxStock > 0 && val > maxStock) val = maxStock;
+
+        input.value = val;
+        recalculateReviewTotals();
+        syncReviewToStorage();
+    }
+
+    function removeReviewRow(btn) {
+        const tr = btn.closest('tr');
+        if (tr) {
+            tr.remove();
+        }
+        reindexReviewRows();
+        syncReviewToStorage();
+        recalculateReviewTotals();
+    }
+
+    document.getElementById('reviewOrderForm')?.addEventListener('submit', function (e) {
+        const rows = document.querySelectorAll('#reviewTbody tr.review-item-row');
+        let total = 0;
+        rows.forEach(r => {
+            const qtyInput = r.querySelector('.row-field-qty');
+            total += (parseInt(qtyInput ? qtyInput.value : 0, 10) || 0);
+        });
+
+        if (total <= 0) {
+            e.preventDefault();
+            alert('Your purchase order basket is empty. Please keep at least one product with quantity > 0.');
+            return false;
+        }
+
+        // Clear supplier cart session storage so basket is empty after completing order
+        if (storageKey) {
+            sessionStorage.removeItem(storageKey);
+            sessionStorage.removeItem('sims_po_cart_default');
+        }
+    });
+
+    // Run synchronization from sessionStorage on load
+    document.addEventListener('DOMContentLoaded', initializeReviewFromStorage);
+    initializeReviewFromStorage();
+</script>

@@ -21,16 +21,6 @@
         <p class="ph-sub">Issued by SIMS Mobile Shop · Date: <strong>@Model.CreatedAt.ToIst().ToString("dd-MMM-yyyy hh:mm tt IST")</strong></p>
     </div>
     <div class="ph-actions d-flex gap-2">
-        @if (Model.Status == "Delivered" || Model.Status == "Completed" || Model.Status == "Rejected" || Model.Status == "Cancelled")
-        {
-            <form method="post" action="@Url.Action("DeleteOrder")" class="d-inline" onsubmit="return confirm('Are you sure you want to delete purchase order history entry #@Model.OrderNumber?\n\nNote: Product stock will NOT be changed.');">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="orderId" value="@Model.Id" />
-                <button type="submit" class="btn-d btn-danger">
-                    <i class="bi bi-trash me-1"></i> Delete Order History
-                </button>
-            </form>
-        }
         <a href="@Url.Action("Orders")" class="btn-d btn-outline">
             <i class="bi bi-arrow-left me-1"></i> Back to Orders
         </a>
@@ -193,8 +183,14 @@
                     </div>
 
                     <div class="fg mb-3">
-                        <label class="fg-label">Expected Delivery Date</label>
-                        <input type="date" name="expectedDeliveryDate" value="@(Model.ExpectedDeliveryDate?.ToString("yyyy-MM-dd"))" class="fg-control" />
+                        <label class="fg-label">Expected Delivery Date <span class="text-danger">*</span></label>
+                        <input type="date" name="expectedDeliveryDate" id="supplierExpectedDeliveryDate" 
+                               min="@(DateTime.UtcNow.AddHours(5.5).ToString("yyyy-MM-dd"))" 
+                               value="@(Model.ExpectedDeliveryDate.HasValue && Model.ExpectedDeliveryDate.Value.Date >= DateTime.UtcNow.AddHours(5.5).Date ? Model.ExpectedDeliveryDate.Value.ToString("yyyy-MM-dd") : DateTime.UtcNow.AddHours(5.5).AddDays(1).ToString("yyyy-MM-dd"))" 
+                               class="fg-control" required />
+                        <div class="form-text mt-1 text-muted" style="font-size:11px">
+                            <i class="bi bi-calendar-check me-1 text-primary"></i>Only today or future delivery dates are allowed. Past dates cannot be selected.
+                        </div>
                     </div>
 
                     <div class="fg mb-3">
@@ -206,6 +202,55 @@
                         <i class="bi bi-check2-circle me-1"></i> Update Order Status
                     </button>
                 </form>
+
+                <script>
+                    document.addEventListener('DOMContentLoaded', function () {
+                        const dateInput = document.getElementById('supplierExpectedDeliveryDate');
+                        if (dateInput) {
+                            const now = new Date();
+                            const year = now.getFullYear();
+                            const month = String(now.getMonth() + 1).padStart(2, '0');
+                            const day = String(now.getDate()).padStart(2, '0');
+                            const todayStr = `${year}-${month}-${day}`;
+                            dateInput.min = todayStr;
+
+                            if (!dateInput.value || dateInput.value < todayStr) {
+                                const tomorrow = new Date(now);
+                                tomorrow.setDate(tomorrow.getDate() + 1);
+                                const tYear = tomorrow.getFullYear();
+                                const tMonth = String(tomorrow.getMonth() + 1).padStart(2, '0');
+                                const tDay = String(tomorrow.getDate()).padStart(2, '0');
+                                dateInput.value = `${tYear}-${tMonth}-${tDay}`;
+                            }
+
+                            dateInput.addEventListener('change', function () {
+                                if (this.value && this.value < todayStr) {
+                                    alert('Expected Delivery Date must be today or a future date. Past dates are not allowed.');
+                                    this.value = todayStr;
+                                }
+                            });
+                        }
+
+                        const updateForm = document.getElementById('supplierExpectedDeliveryDate')?.closest('form');
+                        if (updateForm) {
+                            updateForm.addEventListener('submit', function (e) {
+                                if (dateInput && dateInput.value) {
+                                    const now = new Date();
+                                    const year = now.getFullYear();
+                                    const month = String(now.getMonth() + 1).padStart(2, '0');
+                                    const day = String(now.getDate()).padStart(2, '0');
+                                    const todayStr = `${year}-${month}-${day}`;
+                                    if (dateInput.value < todayStr) {
+                                        e.preventDefault();
+                                        alert('Expected Delivery Date must be today or a future date. Past dates cannot be selected.');
+                                        dateInput.focus();
+                                        return false;
+                                    }
+                                }
+                            });
+                        }
+                    });
+                </script>
             }
 
             <hr class="s-divider" />
