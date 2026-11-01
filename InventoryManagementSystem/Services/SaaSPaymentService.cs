@@ -118,7 +118,44 @@ namespace InventoryManagementSystem.Services
                 Details = $"Customer initialized Razorpay checkout order for {package.Name} ({billingCycle}). Retention expiry set to {expiresAt.AddMinutes(330):dd MMM yyyy, hh:mm:ss tt IST}."
             });
 
-            // 1. Persistent pending record in MongoDB BEFORE contacting payment gateway
+            // 1. Proactively cancel any previous uncompleted/pending checkouts for this shop or registration session
+            try
+            {
+                var pendingFilterBuilder = Builders<SaaSPaymentTransaction>.Filter;
+                var tenantFilter = !string.IsNullOrEmpty(tenantId)
+                    ? pendingFilterBuilder.Eq(t => t.TenantId, tenantId)
+                    : (!string.IsNullOrEmpty(registrationToken)
+                        ? pendingFilterBuilder.Eq(t => t.RegistrationToken, registrationToken)
+                        : pendingFilterBuilder.Eq(t => t.CustomerEmail, customerEmail));
+
+                var prevPendingFilter = pendingFilterBuilder.And(
+                    pendingFilterBuilder.In(t => t.PaymentStatus, new[] { "Created", "Pending" }),
+                    tenantFilter
+                );
+
+                var prevPendingUpdate = Builders<SaaSPaymentTransaction>.Update
+                    .Set(t => t.PaymentStatus, "Cancelled")
+                    .Set(t => t.ActivationStatus, "Cancelled")
+                    .Set(t => t.IsCustomerCancelled, true)
+                    .Set(t => t.CustomerCancelledAt, DateTime.UtcNow)
+                    .Push(t => t.StateTransitions, new PaymentStateTransition
+                    {
+                        TimestampUtc = DateTime.UtcNow,
+                        TimestampIst = DateTime.UtcNow.AddMinutes(330).ToString("dd MMM yyyy, hh:mm:ss tt IST"),
+                        FromStatus = "Pending",
+                        ToStatus = "Cancelled",
+                        Trigger = "SupersededByNewCheckout",
+                        Details = "Previous uncompleted checkout session cancelled as customer initiated a new checkout attempt."
+                    });
+
+                await _context.SaaSPaymentTransactions.UpdateManyAsync(prevPendingFilter, prevPendingUpdate);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "[PAYMENT] Notice while superseding previous pending checkouts: {Msg}", ex.Message);
+            }
+
+            // 2. Persistent pending record in MongoDB BEFORE contacting payment gateway
             await _context.SaaSPaymentTransactions.InsertOneAsync(transaction);
 
             // 2. Create Razorpay order
@@ -270,25 +307,45 @@ namespace InventoryManagementSystem.Services
                 return (false, $"Cannot activate subscription: payment status is '{transaction.PaymentStatus}'. Must be 'Paid'.");
             }
 
-            // Idempotency: Prevent duplicate activation
-            if (transaction.ActivationStatus == "Activated")
+            // Strict Atomic Concurrency Guard:
+            // Transition atomically from (Paid + Not Activated + Not ActivationPending) -> ActivationPending
+            // This guarantees that concurrent webhooks, background reconcilers, and browser callbacks never execute license extension twice!
+            var lockFilter = Builders<SaaSPaymentTransaction>.Filter.And(
+                Builders<SaaSPaymentTransaction>.Filter.Eq(t => t.Id, transactionId),
+                Builders<SaaSPaymentTransaction>.Filter.Eq(t => t.PaymentStatus, "Paid"),
+                Builders<SaaSPaymentTransaction>.Filter.Nin(t => t.ActivationStatus, new[] { "Activated", "ActivationPending" })
+            );
+
+            var lockUpdate = Builders<SaaSPaymentTransaction>.Update
+                .Set(t => t.ActivationStatus, "ActivationPending")
+                .Push(t => t.StateTransitions, new PaymentStateTransition
+                {
+                    TimestampUtc = DateTime.UtcNow,
+                    TimestampIst = DateTime.UtcNow.AddMinutes(330).ToString("dd MMM yyyy, hh:mm:ss tt IST"),
+                    FromStatus = transaction.ActivationStatus,
+                    ToStatus = "ActivationPending",
+                    Trigger = "ActivationInitiated",
+                    Details = "Starting subscription provisioning and workspace license synchronization."
+                });
+
+            var lockedTransaction = await _context.SaaSPaymentTransactions.FindOneAndUpdateAsync(lockFilter, lockUpdate);
+            if (lockedTransaction == null)
             {
-                _logger.LogInformation("[PAYMENT] Transaction {TxnRef} is already activated. Skipping duplicate activation.", transaction.TransactionRef);
-                return (true, string.Empty);
+                var current = await _context.SaaSPaymentTransactions.Find(t => t.Id == transactionId).FirstOrDefaultAsync();
+                if (current?.ActivationStatus == "Activated")
+                {
+                    _logger.LogInformation("[PAYMENT] Transaction {TxnRef} is already activated. Skipping duplicate concurrent activation.", current.TransactionRef);
+                    return (true, string.Empty);
+                }
+                if (current?.ActivationStatus == "ActivationPending")
+                {
+                    _logger.LogInformation("[PAYMENT] Transaction {TxnRef} activation is already in-progress by another thread. Skipping duplicate execution.", current.TransactionRef);
+                    return (true, string.Empty);
+                }
+                return (false, $"Cannot activate transaction: PaymentStatus is '{current?.PaymentStatus}' (must be 'Paid').");
             }
 
-            var prevActStatus = transaction.ActivationStatus;
-            transaction.ActivationStatus = "ActivationPending";
-            transaction.StateTransitions.Add(new PaymentStateTransition
-            {
-                TimestampUtc = DateTime.UtcNow,
-                TimestampIst = DateTime.UtcNow.AddMinutes(330).ToString("dd MMM yyyy, hh:mm:ss tt IST"),
-                FromStatus = prevActStatus,
-                ToStatus = "ActivationPending",
-                Trigger = "ActivationInitiated",
-                Details = "Starting subscription provisioning and workspace license synchronization."
-            });
-            await _context.SaaSPaymentTransactions.ReplaceOneAsync(t => t.Id == transaction.Id, transaction);
+            transaction = lockedTransaction;
 
             try
             {
@@ -856,8 +913,11 @@ namespace InventoryManagementSystem.Services
             try
             {
                 // 1. Process Paid but unactivated transactions (Permanent Recovery Queue)
+                // Filter strictly for transactions not yet marked Activated or currently ActivationPending (or stuck in ActivationPending > 5 mins)
                 var unactivated = await _context.SaaSPaymentTransactions
-                    .Find(t => t.PaymentStatus == "Paid" && t.ActivationStatus != "Activated")
+                    .Find(t => t.PaymentStatus == "Paid" 
+                            && t.ActivationStatus != "Activated"
+                            && (t.ActivationStatus != "ActivationPending" || t.LastReconciliationDate == null || t.LastReconciliationDate < DateTime.UtcNow.AddMinutes(-5)))
                     .ToListAsync();
 
                 foreach (var tx in unactivated)
@@ -878,10 +938,11 @@ namespace InventoryManagementSystem.Services
                 }
 
                 // 2. Process pending checkout attempts within last 7 days that have not been checked recently
-                //    Throttled to avoid unnecessary server load and external Razorpay rate limits
+                //    Skip attempts that customer explicitly dismissed or cancelled
                 var minRecheckThreshold = DateTime.UtcNow.AddMinutes(-30);
                 var pendingCandidates = await _context.SaaSPaymentTransactions
                     .Find(t => t.PaymentStatus == "Pending" 
+                            && !t.IsCustomerCancelled
                             && t.CreatedDate < DateTime.UtcNow.AddMinutes(-2) 
                             && t.CreatedDate > DateTime.UtcNow.AddDays(-7)
                             && (t.LastReconciliationDate == null || t.LastReconciliationDate < minRecheckThreshold)
@@ -1008,15 +1069,18 @@ namespace InventoryManagementSystem.Services
                 return (true, "Payment already confirmed.");
             }
 
+            var prevStatus = tx.PaymentStatus;
             tx.IsCustomerCancelled = true;
             tx.CustomerCancelledAt = DateTime.UtcNow;
+            tx.PaymentStatus = "Cancelled";
+            tx.ActivationStatus = "Cancelled";
 
             tx.StateTransitions.Add(new PaymentStateTransition
             {
                 TimestampUtc = DateTime.UtcNow,
                 TimestampIst = DateTime.UtcNow.AddMinutes(330).ToString("dd MMM yyyy, hh:mm:ss tt IST"),
-                FromStatus = tx.PaymentStatus,
-                ToStatus = tx.PaymentStatus,
+                FromStatus = prevStatus,
+                ToStatus = "Cancelled",
                 Trigger = "CustomerDismissedCheckout",
                 Details = !string.IsNullOrWhiteSpace(reason) ? reason.Trim() : "Customer closed or dismissed Razorpay Checkout modal."
             });

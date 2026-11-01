@@ -450,6 +450,10 @@
         </a>
     </div>
 
+    @{
+        var latestActivatedTxn = transactions?.FirstOrDefault(t => t.PaymentStatus == "Paid" && t.ActivationStatus == "Activated");
+    }
+
     @if (transactions != null && transactions.Any())
     {
         <div class="table-responsive">
@@ -483,6 +487,10 @@
                                 {
                                     <span class="badge bg-success-subtle text-success border border-success"><i class="bi bi-check-circle-fill me-1"></i>Paid</span>
                                 }
+                                else if (txn.PaymentStatus == "Cancelled" || txn.IsCustomerCancelled)
+                                {
+                                    <span class="badge bg-secondary-subtle text-secondary border border-secondary">Cancelled</span>
+                                }
                                 else
                                 {
                                     <span class="badge bg-warning-subtle text-warning border border-warning">@txn.PaymentStatus</span>
@@ -491,7 +499,18 @@
                             <td>
                                 @if (txn.ActivationStatus == "Activated")
                                 {
-                                    <span class="badge bg-success-subtle text-success"><i class="bi bi-check2-all me-1"></i>Active</span>
+                                    @if (txn.Id == latestActivatedTxn?.Id)
+                                    {
+                                        <span class="badge bg-success-subtle text-success"><i class="bi bi-check2-all me-1"></i>Active</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-info-subtle text-info border border-info-subtle"><i class="bi bi-check-circle me-1"></i>Applied</span>
+                                    }
+                                }
+                                else if (txn.PaymentStatus == "Cancelled" || txn.IsCustomerCancelled || txn.ActivationStatus == "Cancelled")
+                                {
+                                    <span class="badge bg-secondary">Cancelled</span>
                                 }
                                 else
                                 {

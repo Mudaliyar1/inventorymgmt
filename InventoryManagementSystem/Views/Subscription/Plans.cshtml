@@ -714,6 +714,15 @@
                                 btn.disabled = false;
                                 btn.innerHTML = originalHtml;
                             }
+                            if (data.orderId) {
+                                const fd = new FormData();
+                                fd.append('orderId', data.orderId);
+                                fd.append('reason', 'Customer closed or dismissed Razorpay popup on plans page.');
+                                fetch('@Url.Action("RecordCheckoutCancellation", "Subscription")', {
+                                    method: 'POST',
+                                    body: fd
+                                }).catch(function (e) { console.warn('Could not record cancellation:', e); });
+                            }
                         }
                     }
                 };
