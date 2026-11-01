@@ -55,19 +55,6 @@ namespace InventoryManagementSystem.Controllers
         [HttpGet]
         public async Task<IActionResult> Index()
         {
-            if (User.Identity != null && User.Identity.IsAuthenticated)
-            {
-                if (User.IsInRole(Role.SuperAdmin))
-                {
-                    return RedirectToAction("Dashboard", "PlatformAdmin");
-                }
-                if (User.IsInRole(Role.Supplier))
-                {
-                    return RedirectToAction("Index", "SupplierDashboard");
-                }
-                return RedirectToAction("Index", "Home");
-            }
-
             var packages = await _licenseService.GetPublicPackagesAsync();
             var settings = await _platformSettingsService.GetSettingsAsync();
             ViewBag.Packages = packages;

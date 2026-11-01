@@ -239,9 +239,18 @@
                             </button>
                             @if (isCurrent)
                             {
-                                <button type="button" class="btn-d btn-outline disabled" disabled>
-                                    <i class="bi bi-check2-circle me-1"></i> Current Plan
-                                </button>
+                                if (pkg.MonthlyPrice > 0)
+                                {
+                                    <button type="button" class="btn-d btn-success btn-choose-plan" id="btn-choose-@pkg.Id" onclick="initiateDirectRazorpayRenewal('@pkg.Id', '@pkg.Name')">
+                                        <i class="bi bi-arrow-repeat me-1"></i> Renew Current Plan
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn-d btn-outline disabled" disabled>
+                                        <i class="bi bi-check2-circle me-1"></i> Current Plan (Free)
+                                    </button>
+                                }
                             }
                             else if (pkg.MonthlyPrice <= 0)
                             {
@@ -252,7 +261,7 @@
                             else
                             {
                                 <button type="button" class="btn-d btn-primary btn-choose-plan" id="btn-choose-@pkg.Id" onclick="initiateDirectRazorpayRenewal('@pkg.Id', '@pkg.Name')">
-                                    <i class="bi bi-lightning-charge-fill me-1"></i> Choose Plan
+                                    <i class="bi bi-lightning-charge-fill me-1"></i> Choose / Upgrade Plan
                                 </button>
                             }
                         </div>

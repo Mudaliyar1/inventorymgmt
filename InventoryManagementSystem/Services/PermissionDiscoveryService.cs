@@ -43,7 +43,10 @@ namespace InventoryManagementSystem.Services
                     .ToList();
 
                 // Group action methods by logical action name to avoid duplicate HTTP verbs (e.g. GET Edit & POST Edit)
-                var distinctActionNames = actionMethods.Select(m => m.Name).Distinct(StringComparer.OrdinalIgnoreCase);
+                var distinctActionNames = actionMethods.Select(m => m.Name)
+                    .Where(n => !(string.Equals(controllerName, "SupplierOrder", StringComparison.OrdinalIgnoreCase) &&
+                                  (n.Equals("Delete", StringComparison.OrdinalIgnoreCase) || n.Equals("BulkDelete", StringComparison.OrdinalIgnoreCase))))
+                    .Distinct(StringComparer.OrdinalIgnoreCase);
 
                 foreach (var actionName in distinctActionNames)
                 {
@@ -107,6 +110,8 @@ namespace InventoryManagementSystem.Services
             "Sales" => "POS Billing & Invoices",
             "Customer" => "Customer Management",
             "Supplier" => "Supplier & Procurement",
+            "SupplierOrder" => "Supplier Order Management",
+            "PurchaseReturn" => "Supplier Purchase Returns",
             "Return" => "Device & Product Returns",
             "Exchange" => "Mobile Trade-In Exchange",
             "Repair" => "Service & Repair Tickets",
@@ -129,6 +134,8 @@ namespace InventoryManagementSystem.Services
             "Sales" => "bi-receipt-cutoff",
             "Customer" => "bi-person-vcard",
             "Supplier" => "bi-truck",
+            "SupplierOrder" => "bi-cart-check",
+            "PurchaseReturn" => "bi-box-arrow-left",
             "Return" => "bi-arrow-return-left",
             "Exchange" => "bi-arrow-repeat",
             "Repair" => "bi-wrench-adjustable",
@@ -154,11 +161,13 @@ namespace InventoryManagementSystem.Services
             "Repair" => 9,
             "Customer" => 10,
             "Supplier" => 11,
-            "Report" => 12,
-            "Admin" => 13,
-            "User" => 14,
-            "Settings" => 15,
-            "SystemLog" => 16,
+            "SupplierOrder" => 12,
+            "PurchaseReturn" => 13,
+            "Report" => 14,
+            "Admin" => 15,
+            "User" => 16,
+            "Settings" => 17,
+            "SystemLog" => 18,
             _ => 99
         };
 
@@ -166,7 +175,7 @@ namespace InventoryManagementSystem.Services
         {
             var name = actionName.ToLower();
 
-            if (name.Contains("create") || name.Contains("add") || name.Contains("stockin") || name.Contains("stockout") || name.Contains("process")) return "Create";
+            if (name.Contains("create") || name.Contains("add") || name.Contains("stockin") || name.Contains("stockout") || name.Contains("process") || name.Contains("submitorder") || name.Contains("review")) return "Create";
             if (name.Contains("edit") || name.Contains("update") || name.Contains("adjust") || name.Contains("resetpassword") || name.Contains("toggle") || name.Contains("save")) return "Edit";
             if (name.Contains("delete") || name.Contains("remove") || name.Contains("bulkdelete")) return "Delete";
             if (name.Contains("download") || name.Contains("export") || name.Contains("pdf")) return "Export";
@@ -192,6 +201,22 @@ namespace InventoryManagementSystem.Services
 
         private static string FormatDisplayName(string controllerName, string actionName, string actionType)
         {
+            if (controllerName.Equals("SupplierOrder", StringComparison.OrdinalIgnoreCase))
+            {
+                if (actionName.Equals("Index", StringComparison.OrdinalIgnoreCase))
+                    return "View Supplier Orders & History";
+                if (actionName.Equals("Create", StringComparison.OrdinalIgnoreCase))
+                    return "Create & Place Purchase Orders";
+                if (actionName.Equals("Review", StringComparison.OrdinalIgnoreCase))
+                    return "Review Order & Quantities";
+                if (actionName.Equals("SubmitOrder", StringComparison.OrdinalIgnoreCase))
+                    return "Submit / Dispatch Purchase Order";
+                if (actionName.Equals("Details", StringComparison.OrdinalIgnoreCase))
+                    return "View Purchase Order Details";
+                if (actionName.Equals("UpdateStatus", StringComparison.OrdinalIgnoreCase))
+                    return "Update Order Status Workflow";
+            }
+
             if (actionName.Equals("Index", StringComparison.OrdinalIgnoreCase))
                 return $"View {GetModuleName(controllerName)}";
 

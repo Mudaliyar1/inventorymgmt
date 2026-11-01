@@ -1599,6 +1599,32 @@ namespace InventoryManagementSystem.Controllers
 
             var pagedList = filtered.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
+            ViewBag.Brands = supplierProducts
+                .Where(p => !string.IsNullOrWhiteSpace(p.Brand))
+                .Select(p => p.Brand.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(b => b)
+                .ToList();
+
+            ViewBag.AllActiveProductsJson = System.Text.Json.JsonSerializer.Serialize(supplierProducts.Select(p => new
+            {
+                id = p.Id,
+                name = p.Name,
+                code = p.Code,
+                brand = p.Brand ?? string.Empty,
+                currentStock = p.CurrentStock,
+                isImeiRequired = p.IsImeiRequired,
+                purchasePrice = p.PurchasePrice,
+                sellingPrice = p.SellingPrice,
+                displayText = $"{p.Name} (SKU: {p.Code} - Qty: {p.CurrentStock}) - {(p.IsImeiRequired ? "Requires IMEI" : "Accessory")}"
+            }));
+
+            ViewBag.ProductsList = supplierProducts.Select(p => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
+            {
+                Value = p.Id,
+                Text = $"{p.Name} (SKU: {p.Code} - Qty: {p.CurrentStock}) - {(p.IsImeiRequired ? "Requires IMEI" : "Accessory")}"
+            }).ToList();
+
             var vm = new SupplierStockInViewModel
             {
                 Supplier = supplier,
@@ -1620,7 +1646,108 @@ namespace InventoryManagementSystem.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> StockIn(SupplierStockInViewModel form, string stockInMode)
+        public async Task<IActionResult> StockInDevice([FromForm] Device device)
+        {
+            var supplierId = CurrentSupplierId;
+            if (string.IsNullOrEmpty(supplierId)) return RedirectToAction("Login", "Account");
+            var supplier = await _supplierService.GetSupplierByIdAsync(supplierId);
+            var executedBy = supplier?.CompanyName ?? "Supplier";
+
+            if (device != null)
+            {
+                device.SupplierId = supplierId;
+                device.SupplierName = supplier?.CompanyName ?? "Supplier";
+            }
+
+            var (success, message) = await _stockService.StockInDeviceAsync(device, executedBy);
+            TempData["ToastMessage"] = message;
+            TempData["ToastType"] = success ? "success" : "danger";
+            return RedirectToAction(nameof(StockIn));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> StockInDeviceBatch([FromBody] BatchDeviceStockInRequest request)
+        {
+            try
+            {
+                var supplierId = CurrentSupplierId;
+                if (string.IsNullOrEmpty(supplierId)) return Json(new { success = false, message = "Not authenticated." });
+                var supplier = await _supplierService.GetSupplierByIdAsync(supplierId);
+                var executedBy = supplier?.CompanyName ?? "Supplier";
+
+                if (request == null || string.IsNullOrWhiteSpace(request.ProductId) || request.Devices == null || !request.Devices.Any())
+                {
+                    return Json(new { success = false, message = "No valid product or devices provided in batch." });
+                }
+
+                int addedCount = 0;
+                var errors = new List<string>();
+                var seenImeis = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var item in request.Devices)
+                {
+                    var imei1 = item.IMEI1?.Trim() ?? string.Empty;
+                    if (string.IsNullOrWhiteSpace(imei1)) continue;
+
+                    if (seenImeis.Contains(imei1))
+                    {
+                        errors.Add($"Duplicate IMEI '{imei1}' found within current batch.");
+                        continue;
+                    }
+                    seenImeis.Add(imei1);
+
+                    string? imei2Clean = !string.IsNullOrWhiteSpace(item.IMEI2) ? item.IMEI2.Trim() : null;
+                    if (imei2Clean != null)
+                    {
+                        if (seenImeis.Contains(imei2Clean))
+                        {
+                            errors.Add($"Duplicate IMEI 2 '{imei2Clean}' found within current batch.");
+                            continue;
+                        }
+                        seenImeis.Add(imei2Clean);
+                    }
+
+                    string? serialClean = !string.IsNullOrWhiteSpace(item.SerialNumber) ? item.SerialNumber.Trim() : null;
+
+                    var device = new Device
+                    {
+                        ProductId = request.ProductId,
+                        SupplierId = supplierId,
+                        SupplierName = supplier?.CompanyName ?? "Supplier",
+                        VariantId = request.VariantId,
+                        ColorId = request.ColorId,
+                        Variant = request.Variant,
+                        Color = request.Color,
+                        PurchasePrice = request.PurchasePrice,
+                        SellingPrice = request.SellingPrice,
+                        IMEI1 = imei1,
+                        IMEI2 = imei2Clean,
+                        SerialNumber = serialClean
+                    };
+
+                    var (success, msg) = await _stockService.StockInDeviceAsync(device, executedBy);
+                    if (success) addedCount++;
+                    else errors.Add($"IMEI '{imei1}': {msg}");
+                }
+
+                if (addedCount > 0)
+                {
+                    var responseMsg = $"Successfully received {addedCount} physical mobile units into stock!";
+                    if (errors.Any()) responseMsg += $" ({errors.Count} items skipped due to duplicates/validation).";
+                    return Json(new { success = true, addedCount, message = responseMsg, errors });
+                }
+
+                return Json(new { success = false, message = errors.FirstOrDefault() ?? "Failed to process batch stock-in.", errors });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "Error processing batch stock-in: " + ex.Message });
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> StockIn(SupplierStockInViewModel form, string? stockInMode)
         {
             var supplierId = CurrentSupplierId;
             if (string.IsNullOrEmpty(supplierId)) return RedirectToAction("Login", "Account");
@@ -1659,8 +1786,10 @@ namespace InventoryManagementSystem.Controllers
                     ProductCode = product.Code,
                     Brand = product.Brand,
                     ModelName = product.ModelName,
-                    Variant = product.Variant,
-                    Color = product.Color,
+                    Variant = form.VariantName ?? product.Variant,
+                    VariantId = form.VariantId,
+                    Color = form.ColorName ?? product.Color,
+                    ColorId = form.ColorId,
                     IMEI1 = form.Imei1.Trim(),
                     IMEI2 = string.IsNullOrWhiteSpace(form.Imei2) ? null : form.Imei2.Trim(),
                     SerialNumber = string.IsNullOrWhiteSpace(form.SerialNumber) ? null : form.SerialNumber.Trim(),
@@ -1713,8 +1842,10 @@ namespace InventoryManagementSystem.Controllers
                         ProductCode = product.Code,
                         Brand = product.Brand,
                         ModelName = product.ModelName,
-                        Variant = product.Variant,
-                        Color = product.Color,
+                        Variant = form.VariantName ?? product.Variant,
+                        VariantId = form.VariantId,
+                        Color = form.ColorName ?? product.Color,
+                        ColorId = form.ColorId,
                         IMEI1 = imei,
                         PurchasePrice = product.PurchasePrice,
                         SellingPrice = product.SellingPrice,
@@ -1756,7 +1887,7 @@ namespace InventoryManagementSystem.Controllers
             string reasonText = string.IsNullOrWhiteSpace(form.Reason) ? "Factory Shipment" : form.Reason;
             if (!string.IsNullOrWhiteSpace(form.Notes)) reasonText += $" ({form.Notes.Trim()})";
 
-            var stockSuccess = await _stockService.StockInAsync(product.Id, form.Quantity, reasonText, executedBy);
+            var stockSuccess = await _stockService.StockInAsync(product.Id, form.Quantity, reasonText, executedBy, form.VariantId, form.ColorId, form.VariantName, form.ColorName);
             if (stockSuccess)
             {
                 await _auditLogService.LogActivityAsync(
@@ -1826,6 +1957,32 @@ namespace InventoryManagementSystem.Controllers
 
             var pagedList = filtered.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
+            ViewBag.Brands = supplierProducts
+                .Where(p => !string.IsNullOrWhiteSpace(p.Brand))
+                .Select(p => p.Brand.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(b => b)
+                .ToList();
+
+            ViewBag.AllActiveProductsJson = System.Text.Json.JsonSerializer.Serialize(supplierProducts.Select(p => new
+            {
+                id = p.Id,
+                name = p.Name,
+                code = p.Code,
+                brand = p.Brand ?? string.Empty,
+                currentStock = p.CurrentStock,
+                isImeiRequired = p.IsImeiRequired,
+                purchasePrice = p.PurchasePrice,
+                sellingPrice = p.SellingPrice,
+                displayText = $"{p.Name} (SKU: {p.Code} - Qty: {p.CurrentStock}) - {(p.IsImeiRequired ? "Requires IMEI" : "Accessory")}"
+            }));
+
+            ViewBag.ProductsList = supplierProducts.Select(p => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
+            {
+                Value = p.Id,
+                Text = $"{p.Name} (SKU: {p.Code} - Qty: {p.CurrentStock}) - {(p.IsImeiRequired ? "Requires IMEI" : "Accessory")}"
+            }).ToList();
+
             var vm = new SupplierStockOutViewModel
             {
                 Supplier = supplier,
@@ -1847,7 +2004,22 @@ namespace InventoryManagementSystem.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> StockOut(SupplierStockOutViewModel form, string stockOutMode)
+        public async Task<IActionResult> StockOutDevice(string deviceId, string statusReason)
+        {
+            var supplierId = CurrentSupplierId;
+            if (string.IsNullOrEmpty(supplierId)) return RedirectToAction("Login", "Account");
+            var supplier = await _supplierService.GetSupplierByIdAsync(supplierId);
+            var executedBy = supplier?.CompanyName ?? "Supplier";
+
+            var (success, message) = await _stockService.StockOutDeviceAsync(deviceId, statusReason, executedBy);
+            TempData["ToastMessage"] = message;
+            TempData["ToastType"] = success ? "success" : "danger";
+            return RedirectToAction(nameof(StockOut));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> StockOut(SupplierStockOutViewModel form, string? stockOutMode)
         {
             var supplierId = CurrentSupplierId;
             if (string.IsNullOrEmpty(supplierId)) return RedirectToAction("Login", "Account");
@@ -1870,7 +2042,7 @@ namespace InventoryManagementSystem.Controllers
             }
 
             // Mode 1: Specific Device IMEI Issue
-            if (stockOutMode == "SpecificDevice")
+            if (stockOutMode == "SpecificDevice" || !string.IsNullOrWhiteSpace(form.DeviceId))
             {
                 if (string.IsNullOrWhiteSpace(form.DeviceId))
                 {
@@ -1912,7 +2084,7 @@ namespace InventoryManagementSystem.Controllers
             string reasonText = string.IsNullOrWhiteSpace(form.Reason) ? "Dispatched to Retailer" : form.Reason;
             if (!string.IsNullOrWhiteSpace(form.Notes)) reasonText += $" ({form.Notes.Trim()})";
 
-            var stockSuccess = await _stockService.StockOutAsync(product.Id, form.Quantity, reasonText, executedBy);
+            var stockSuccess = await _stockService.StockOutAsync(product.Id, form.Quantity, reasonText, executedBy, form.VariantId, form.ColorId, form.VariantName, form.ColorName);
             if (stockSuccess)
             {
                 await _auditLogService.LogActivityAsync(
@@ -1931,6 +2103,157 @@ namespace InventoryManagementSystem.Controllers
             }
 
             return RedirectToAction(nameof(StockOut));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAvailableDevicesForVariant(string productId, string? variantId = null, string? color = null)
+        {
+            if (string.IsNullOrWhiteSpace(productId)) return Json(new List<object>());
+            var devices = await _deviceRepository.GetAvailableDevicesForVariantAsync(productId, variantId, color);
+            var supplierId = CurrentSupplierId;
+            if (!string.IsNullOrEmpty(supplierId))
+            {
+                devices = devices.Where(d => d.SupplierId == supplierId);
+            }
+            return Json(devices.Select(d => new
+            {
+                id = d.Id,
+                imei1 = d.IMEI1,
+                imei2 = d.IMEI2,
+                serialNumber = d.SerialNumber,
+                variant = d.Variant,
+                variantId = d.VariantId,
+                color = d.Color,
+                colorId = d.ColorId,
+                displayText = $"{d.Brand} {d.ModelName} ({d.Variant} {d.Color}) - IMEI: {d.IMEI1}"
+            }));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAvailableDevicesForProduct(string productId)
+        {
+            if (string.IsNullOrWhiteSpace(productId)) return Json(new List<object>());
+            var devices = await _deviceRepository.GetAvailableDevicesForProductAsync(productId);
+            var supplierId = CurrentSupplierId;
+            if (!string.IsNullOrEmpty(supplierId))
+            {
+                devices = devices.Where(d => d.SupplierId == supplierId);
+            }
+            return Json(devices.Select(d => new
+            {
+                id = d.Id,
+                imei1 = d.IMEI1,
+                imei2 = d.IMEI2,
+                serialNumber = d.SerialNumber,
+                variant = d.Variant,
+                color = d.Color,
+                displayText = $"{d.Brand} {d.ModelName} ({d.Variant} {d.Color}) - IMEI: {d.IMEI1}"
+            }));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetProductVariants(string productId)
+        {
+            if (string.IsNullOrWhiteSpace(productId)) return Json(new List<object>());
+            var allProducts = await _productRepository.GetAllAsync();
+            var product = allProducts.FirstOrDefault(p => p.Id == productId);
+            if (product == null)
+            {
+                product = await _productService.GetProductByIdAsync(productId);
+            }
+            if (product == null) return Json(new List<object>());
+
+            var variants = product.GetEffectiveVariants();
+            if (variants == null || !variants.Any())
+            {
+                var defaultColorName = !string.IsNullOrWhiteSpace(product.Color) ? product.Color : "Standard";
+                variants = new List<ProductVariant>
+                {
+                    new ProductVariant
+                    {
+                        VariantId = "default-variant",
+                        Ram = product.Ram ?? string.Empty,
+                        Storage = product.Storage ?? string.Empty,
+                        Sku = product.Code ?? string.Empty,
+                        PurchasePrice = product.PurchasePrice,
+                        SellingPrice = product.SellingPrice,
+                        CurrentStock = product.CurrentStock,
+                        Colors = new List<ProductColor>
+                        {
+                            new ProductColor
+                            {
+                                ColorId = "default-color",
+                                Name = defaultColorName,
+                                CurrentStock = product.CurrentStock,
+                                PurchasePrice = product.PurchasePrice,
+                                SellingPrice = product.SellingPrice
+                            }
+                        }
+                    }
+                };
+            }
+
+            var result = new List<object>();
+            foreach (var v in variants)
+            {
+                var colors = (v.Colors != null && v.Colors.Any()) ? v.Colors : new List<ProductColor>
+                {
+                    new ProductColor
+                    {
+                        ColorId = $"{v.VariantId}-default-color",
+                        Name = !string.IsNullOrWhiteSpace(product.Color) ? product.Color : "Standard",
+                        CurrentStock = v.CurrentStock > 0 ? v.CurrentStock : product.CurrentStock,
+                        PurchasePrice = v.PurchasePrice > 0 ? v.PurchasePrice : product.PurchasePrice,
+                        SellingPrice = v.SellingPrice > 0 ? v.SellingPrice : product.SellingPrice
+                    }
+                };
+
+                var colorList = new List<object>();
+                foreach (var c in colors)
+                {
+                    int stockCount = c.CurrentStock;
+                    if (product.IsImeiRequired)
+                    {
+                        var availableDevices = await _deviceRepository.GetAvailableDevicesForVariantAsync(product.Id, v.VariantId, c.Name);
+                        var supplierId = CurrentSupplierId;
+                        if (!string.IsNullOrEmpty(supplierId))
+                        {
+                            availableDevices = availableDevices.Where(d => d.SupplierId == supplierId);
+                        }
+                        if (availableDevices != null && availableDevices.Any())
+                        {
+                            stockCount = availableDevices.Count();
+                        }
+                    }
+
+                    colorList.Add(new
+                    {
+                        colorId = c.ColorId,
+                        name = !string.IsNullOrWhiteSpace(c.Name) ? c.Name : "Standard",
+                        code = c.Code ?? string.Empty,
+                        availableStock = stockCount,
+                        purchasePrice = c.PurchasePrice > 0 ? c.PurchasePrice : (v.PurchasePrice > 0 ? v.PurchasePrice : product.PurchasePrice),
+                        sellingPrice = c.SellingPrice > 0 ? c.SellingPrice : (v.SellingPrice > 0 ? v.SellingPrice : product.SellingPrice)
+                    });
+                }
+
+                int variantStock = v.CurrentStock > 0 ? v.CurrentStock : (v.Colors != null && v.Colors.Any() ? v.Colors.Sum(c => c.CurrentStock) : product.CurrentStock);
+
+                result.Add(new
+                {
+                    variantId = v.VariantId,
+                    ram = v.Ram,
+                    storage = v.Storage,
+                    displayVariant = !string.IsNullOrWhiteSpace(v.DisplayVariantName) ? v.DisplayVariantName : (!string.IsNullOrWhiteSpace(product.DisplayVariant) ? product.DisplayVariant : "Standard"),
+                    sku = v.Sku,
+                    purchasePrice = v.PurchasePrice > 0 ? v.PurchasePrice : product.PurchasePrice,
+                    sellingPrice = v.SellingPrice > 0 ? v.SellingPrice : product.SellingPrice,
+                    availableStock = variantStock,
+                    colors = colorList
+                });
+            }
+
+            return Json(result);
         }
 
         [HttpGet]

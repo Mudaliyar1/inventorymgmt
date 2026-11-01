@@ -688,15 +688,61 @@ namespace InventoryManagementSystem.Controllers
         {
             if (string.IsNullOrWhiteSpace(productId)) return Json(new List<object>());
             var product = await _productService.GetProductByIdAsync(productId);
+            if (product == null)
+            {
+                var allProducts = await _productService.GetAllProductsAsync();
+                product = allProducts.FirstOrDefault(p => p.Id == productId);
+            }
             if (product == null) return Json(new List<object>());
 
             var variants = product.GetEffectiveVariants();
+            if (variants == null || !variants.Any())
+            {
+                var defaultColorName = !string.IsNullOrWhiteSpace(product.Color) ? product.Color : "Standard";
+                variants = new List<ProductVariant>
+                {
+                    new ProductVariant
+                    {
+                        VariantId = "default-variant",
+                        Ram = product.Ram ?? string.Empty,
+                        Storage = product.Storage ?? string.Empty,
+                        Sku = product.Code ?? string.Empty,
+                        PurchasePrice = product.PurchasePrice,
+                        SellingPrice = product.SellingPrice,
+                        CurrentStock = product.CurrentStock,
+                        Colors = new List<ProductColor>
+                        {
+                            new ProductColor
+                            {
+                                ColorId = "default-color",
+                                Name = defaultColorName,
+                                CurrentStock = product.CurrentStock,
+                                PurchasePrice = product.PurchasePrice,
+                                SellingPrice = product.SellingPrice
+                            }
+                        }
+                    }
+                };
+            }
+
             var result = new List<object>();
 
             foreach (var v in variants)
             {
+                var colors = (v.Colors != null && v.Colors.Any()) ? v.Colors : new List<ProductColor>
+                {
+                    new ProductColor
+                    {
+                        ColorId = $"{v.VariantId}-default-color",
+                        Name = !string.IsNullOrWhiteSpace(product.Color) ? product.Color : "Standard",
+                        CurrentStock = v.CurrentStock > 0 ? v.CurrentStock : product.CurrentStock,
+                        PurchasePrice = v.PurchasePrice > 0 ? v.PurchasePrice : product.PurchasePrice,
+                        SellingPrice = v.SellingPrice > 0 ? v.SellingPrice : product.SellingPrice
+                    }
+                };
+
                 var colorList = new List<object>();
-                foreach (var c in v.Colors ?? new List<ProductColor>())
+                foreach (var c in colors)
                 {
                     // Use actual physical stock for this variant color
                     int stockCount = c.CurrentStock;
@@ -712,8 +758,8 @@ namespace InventoryManagementSystem.Controllers
                     colorList.Add(new
                     {
                         colorId = c.ColorId,
-                        name = c.Name,
-                        code = c.Code,
+                        name = !string.IsNullOrWhiteSpace(c.Name) ? c.Name : "Standard",
+                        code = c.Code ?? string.Empty,
                         imageUrl = !string.IsNullOrEmpty(c.ImageUrl) ? c.ImageUrl : product.ImageUrl,
                         imageUrls = c.ImageUrls != null && c.ImageUrls.Any() ? c.ImageUrls : product.ImageUrls,
                         availableStock = stockCount,
@@ -729,7 +775,7 @@ namespace InventoryManagementSystem.Controllers
                     variantId = v.VariantId,
                     ram = v.Ram,
                     storage = v.Storage,
-                    displayVariant = v.DisplayVariantName,
+                    displayVariant = !string.IsNullOrWhiteSpace(v.DisplayVariantName) ? v.DisplayVariantName : (!string.IsNullOrWhiteSpace(product.DisplayVariant) ? product.DisplayVariant : "Standard"),
                     sku = v.Sku,
                     purchasePrice = v.PurchasePrice > 0 ? v.PurchasePrice : product.PurchasePrice,
                     sellingPrice = v.SellingPrice > 0 ? v.SellingPrice : product.SellingPrice,

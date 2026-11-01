@@ -32,6 +32,10 @@ namespace InventoryManagementSystem.ViewModels
         public string? Imei2 { get; set; }
         public string? SerialNumber { get; set; }
         public string? BulkImeis { get; set; }
+        public string? VariantId { get; set; }
+        public string? ColorId { get; set; }
+        public string? VariantName { get; set; }
+        public string? ColorName { get; set; }
     }
 
     public class SupplierStockOutViewModel
@@ -59,5 +63,9 @@ namespace InventoryManagementSystem.ViewModels
         public string Reason { get; set; } = "Dispatched to Retailer";
         public string? DeviceId { get; set; }
         public string? Notes { get; set; }
+        public string? VariantId { get; set; }
+        public string? ColorId { get; set; }
+        public string? VariantName { get; set; }
+        public string? ColorName { get; set; }
     }
 }

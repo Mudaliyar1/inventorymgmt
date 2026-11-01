@@ -1,13 +1,15 @@
 @model InventoryManagementSystem.ViewModels.SupplierStockOutViewModel
 @{
     ViewData["Title"] = "Supplier Stock Out — Inventory Outflow";
+    var brands = ViewBag.Brands as List<string> ?? new List<string>();
+    var allProductsJson = ViewBag.AllActiveProductsJson as string ?? "[]";
 }
 
 <!-- Page Header -->
 <div class="ph mb-4">
     <div>
         <h1 class="ph-title"><i class="bi bi-arrow-up-circle me-2" style="color:var(--danger)"></i>Supplier Stock Out</h1>
-        <p class="ph-sub">Deduct inventory units, dispatch stock to retailers, or write off damaged/scrapped mobile items.</p>
+        <p class="ph-sub">Deduct quantity or issue out specific physical device IMEIs with complete audit tracking from your vendor catalog.</p>
     </div>
     <div class="ph-actions">
         <a href="@Url.Action("StockIn")" class="btn-d btn-outline">
@@ -74,132 +76,218 @@
     </div>
 </div>
 
-<!-- Stock Out Operational Form Card -->
-<div class="card-d card-p mb-4" style="background:var(--bg-card);border:1px solid var(--border)">
-    <div class="d-flex flex-wrap align-items-center justify-content-between border-bottom pb-3 mb-4 gap-2" style="border-color:var(--border)!important">
-        <div>
-            <h5 class="fw-bold mb-1 text-danger"><i class="bi bi-dash-circle-fill me-2"></i>Issue / Stock Out Inventory</h5>
-            <p class="text-muted small mb-0">Select your outflow mode: standard quantity deduction or specific physical device IMEI issue.</p>
+<!-- Tabs Navigation Matching Shop Admin Format -->
+<ul class="nav nav-pills mb-4 gap-2" id="stockOutTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active rounded-pill px-4" id="out-imei-tab" data-bs-toggle="tab" data-bs-target="#out-imei-panel" type="button">
+            <i class="bi bi-upc-scan me-1"></i> Issue Specific IMEI Unit
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link rounded-pill px-4" id="out-bulk-tab" data-bs-toggle="tab" data-bs-target="#out-bulk-panel" type="button">
+            <i class="bi bi-boxes me-1"></i> Accessory Stock Deduction
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+    <!-- PANEL 1: ISSUE SPECIFIC IMEI -->
+    <div class="tab-pane fade show active" id="out-imei-panel">
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4">
+                <form action="@Url.Action("StockOutDevice", "SupplierDashboard")" method="post" id="stockOutDeviceForm">
+                    @Html.AntiForgeryToken()
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Select Brand <span class="text-secondary fw-normal">(Filter Models)</span></label>
+                            <select id="OutBrandSelect" class="form-select" onchange="onOutBrandChanged(this.value)">
+                                <option value="">-- All Brands --</option>
+                                @if (brands != null)
+                                {
+                                    foreach (var b in brands)
+                                    {
+                                        <option value="@b">@b</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Select Mobile Model <span class="text-danger">*</span></label>
+                            <select id="OutProductId" class="form-select" required onchange="onOutProductChanged(this.value)">
+                                <option value="">-- Select Product Model --</option>
+                                @if (Model.Products != null)
+                                {
+                                    foreach (var p in Model.Products)
+                                    {
+                                        <option value="@p.Id">@p.Name (SKU: @p.Code - Qty: @p.CurrentStock) - @(p.IsImeiRequired ? "Requires IMEI" : "Accessory")</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Filter by Storage / Variant</label>
+                            <select id="OutVariantSelect" class="form-select" onchange="filterAvailableDevices()" disabled>
+                                <option value="">-- All Variants --</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Filter by Color</label>
+                            <select id="OutColorSelect" class="form-select" onchange="filterAvailableDevices()" disabled>
+                                <option value="">-- All Colors --</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-12">
+                            <label class="form-label small fw-semibold">Select Physical IMEI to Issue <span class="text-danger">*</span></label>
+                            <select name="deviceId" id="DeviceSelect" class="form-select font-monospace fw-bold" required disabled onchange="onDeviceSelected(this.value)">
+                                <option value="">-- Select Model First --</option>
+                            </select>
+                            <div class="form-text small text-muted">Displays only active physical units currently in your vendor stock.</div>
+                        </div>
+
+                        <!-- LIVE DEVICE CARD PREVIEW MATCHING SHOP ADMIN -->
+                        <div class="col-12" id="DeviceDetailCard" style="display:none">
+                            <div class="p-3 rounded-4 bg-light border border-danger-subtle shadow-sm">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2 pb-2 border-bottom">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <span class="badge bg-danger rounded-pill px-3 py-2 fs-7 fw-bold">Ready to Issue Out</span>
+                                        <span class="fw-bold fs-6 text-dark" id="CardDeviceTitle">Mobile Device</span>
+                                    </div>
+                                    <span class="badge bg-secondary-subtle text-secondary border px-2 py-1 small" id="CardDeviceStatus">Status: Available</span>
+                                </div>
+                                <div class="row g-2 small">
+                                    <div class="col-md-3">
+                                        <span class="text-muted d-block">Primary IMEI 1:</span>
+                                        <span class="font-monospace fw-bold text-danger fs-6" id="CardIMEI1">-</span>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <span class="text-muted d-block">Secondary IMEI 2:</span>
+                                        <span class="font-monospace fw-semibold text-secondary" id="CardIMEI2">-</span>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <span class="text-muted d-block">Variant &amp; Color:</span>
+                                        <span class="fw-bold text-dark" id="CardVariantColor">-</span>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <span class="text-muted d-block">Serial Number:</span>
+                                        <span class="font-monospace text-muted" id="CardSerialNumber">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label small fw-semibold">Reason for Issue / Stock Out <span class="text-danger">*</span></label>
+                            <select name="statusReason" required class="form-select">
+                                <option value="Dispatched to Retailer">Dispatched to Retailer</option>
+                                <option value="Direct Retail Sale">Direct Retail Sale</option>
+                                <option value="Customer Order Fulfilled">Customer Order Fulfilled</option>
+                                <option value="Defective Unit / Scrapped">Defective Unit / Scrapped</option>
+                                <option value="UnderRepair">Sent for Repair / Workshop</option>
+                                <option value="CustomerReturn">Customer Replacement / Return</option>
+                                <option value="Warehouse Return">Warehouse Return</option>
+                                <option value="Damaged">Mark as Damaged / Scrap</option>
+                            </select>
+                        </div>
+                    </div>
+                    <hr class="my-4">
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="submit" class="btn btn-danger rounded-pill px-4"><i class="bi bi-dash-circle me-1"></i> Issue Out IMEI</button>
+                    </div>
+                </form>
+            </div>
         </div>
-        <ul class="nav nav-pills gap-2" id="stockOutModeTabs" role="tablist">
-            <li class="nav-item">
-                <button class="nav-link active rounded-pill px-3 py-1 fw-semibold small" id="mode-out-quantity-tab" data-bs-toggle="tab" data-bs-target="#mode-out-quantity" type="button" role="tab">
-                    <i class="bi bi-boxes me-1"></i> Bulk / Quantity Out
-                </button>
-            </li>
-            <li class="nav-item">
-                <button class="nav-link rounded-pill px-3 py-1 fw-semibold small" id="mode-out-device-tab" data-bs-toggle="tab" data-bs-target="#mode-out-device" type="button" role="tab">
-                    <i class="bi bi-phone me-1"></i> Specific Device (IMEI)
-                </button>
-            </li>
-        </ul>
     </div>
 
-    <div class="tab-content" id="stockOutModeTabContent">
-        <!-- TAB 1: BULK / QUANTITY STOCK OUT -->
-        <div class="tab-pane fade show active" id="mode-out-quantity" role="tabpanel">
-            <form method="post" action="@Url.Action("StockOut")">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="stockOutMode" value="Quantity" />
+    <!-- PANEL 2: BULK ACCESSORY STOCK DEDUCTION -->
+    <div class="tab-pane fade" id="out-bulk-panel">
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body p-4">
+                <form action="@Url.Action("StockOut", "SupplierDashboard")" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="stockOutMode" value="Quantity" />
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Select Brand <span class="text-secondary fw-normal">(Filter Items)</span></label>
+                            <select id="OutAccessoryBrandSelect" class="form-select" onchange="onOutAccessoryBrandChanged(this.value)">
+                                <option value="">-- All Brands --</option>
+                                @if (brands != null)
+                                {
+                                    foreach (var b in brands)
+                                    {
+                                        <option value="@b">@b</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Select Accessory Product <span class="text-danger">*</span></label>
+                            <select name="ProductId" class="form-select" id="OutAccessoryProductId" required onchange="onOutAccessoryChanged(this.value)">
+                                <option value="">-- Select Accessory Product --</option>
+                                @if (Model.Products != null)
+                                {
+                                    foreach (var p in Model.Products)
+                                    {
+                                        <option value="@p.Id">@p.Name (SKU: @p.Code - Qty: @p.CurrentStock) - @(p.IsImeiRequired ? "Requires IMEI" : "Accessory")</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Storage / Variant</label>
+                            <select id="OutAccessoryVariantSelect" class="form-select" onchange="onOutAccessoryVariantChanged(this.value)">
+                                <option value="">-- All / Base Variant --</option>
+                            </select>
+                            <input type="hidden" name="VariantId" id="OutAccessoryVariantId" />
+                            <input type="hidden" name="VariantName" id="OutAccessoryVariantName" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Color</label>
+                            <select id="OutAccessoryColorSelect" class="form-select" onchange="onOutAccessoryColorChanged(this.value)">
+                                <option value="">-- All / Base Color --</option>
+                            </select>
+                            <input type="hidden" name="ColorId" id="OutAccessoryColorId" />
+                            <input type="hidden" name="ColorName" id="OutAccessoryColorName" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Quantity to Remove <span class="text-danger">*</span></label>
+                            <input name="Quantity" type="number" min="1" class="form-control font-monospace fw-bold" placeholder="e.g. 5" required>
+                        </div>
 
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label small fw-semibold text-muted">Select Product Model <span class="text-danger">*</span></label>
-                        <select name="ProductId" id="outQtyProductId" class="form-select" required onchange="updateOutStockPreview(this, 'out-qty-preview', 'outQtyInput')">
-                            <option value="">-- Choose from your supplied catalog --</option>
-                            @foreach (var p in Model.Products)
-                            {
-                                <option value="@p.Id" data-stock="@p.CurrentStock" data-price="@p.PurchasePrice" data-sku="@p.Code">
-                                    @p.Name (@p.Brand @p.ModelName) — Available: @p.CurrentStock units
-                                </option>
-                            }
-                        </select>
-                        <div id="out-qty-preview" class="small mt-1 text-muted"></div>
+                        <!-- Accessory Live Stock Banner -->
+                        <div class="col-12" id="OutAccessoryBanner" style="display:none">
+                            <div class="p-3 rounded-3 d-flex align-items-center justify-content-between flex-wrap gap-2" style="background:rgba(239, 68, 68, 0.08);border:1px solid rgba(239, 68, 68, 0.25)">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div style="width:36px;height:36px;border-radius:10px;background:#ef4444;color:#fff;display:flex;align-items:center;justify-content:center">
+                                        <i class="bi bi-boxes"></i>
+                                    </div>
+                                    <div>
+                                        <span class="fw-bold text-danger" id="OutAccessoryTitle">Accessory Product</span>
+                                        <div class="small text-muted" id="OutAccessoryDetails">Current Inventory Status</div>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 rounded-pill fs-7 fw-bold" id="OutAccessoryStockBadge">
+                                        <i class="bi bi-box-seam me-1"></i> Available Stock: 0 Units
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-8">
+                            <label class="form-label small fw-semibold">Reason / Note <span class="text-danger">*</span></label>
+                            <input name="Reason" class="form-control" placeholder="e.g. Dispatched to Retailer, Defective Item, Sample Unit" required>
+                        </div>
                     </div>
-
-                    <div class="col-md-3">
-                        <label class="form-label small fw-semibold text-muted">Quantity to Deduct <span class="text-danger">*</span></label>
-                        <input type="number" name="Quantity" id="outQtyInput" class="form-control" min="1" max="10000" value="1" required />
+                    <hr class="my-4">
+                    <div class="d-flex justify-content-end gap-2">
+                        <button type="submit" class="btn btn-danger rounded-pill px-4"><i class="bi bi-dash-circle me-1"></i> Deduct Stock</button>
                     </div>
-
-                    <div class="col-md-3">
-                        <label class="form-label small fw-semibold text-muted">Deduction Reason <span class="text-danger">*</span></label>
-                        <select name="Reason" class="form-select" required>
-                            <option value="Dispatched to Retailer">Dispatched to Retailer</option>
-                            <option value="Defective Unit / Scrapped">Defective Unit / Scrapped</option>
-                            <option value="Recall / Re-inventory">Recall / Re-inventory</option>
-                            <option value="Wholesale Transfer">Wholesale Transfer</option>
-                            <option value="Warehouse Return">Warehouse Return</option>
-                            <option value="Direct Customer Sale">Direct Customer Sale</option>
-                            <option value="Inventory Loss / Damaged">Inventory Loss / Damaged</option>
-                        </select>
-                    </div>
-
-                    <div class="col-12">
-                        <label class="form-label small fw-semibold text-muted">Dispatch / Tracking / Reason Remarks (Optional)</label>
-                        <input type="text" name="Notes" class="form-control" placeholder="e.g. Shipment Waybill #WB-9920, Defective screen warranty return, Consignment #2..." />
-                    </div>
-
-                    <div class="col-12 text-end mt-3">
-                        <button type="submit" class="btn btn-danger px-4 rounded-pill">
-                            <i class="bi bi-dash-circle me-1"></i> Confirm & Stock Out Units
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </div>
-
-        <!-- TAB 2: SPECIFIC DEVICE IMEI ISSUE -->
-        <div class="tab-pane fade" id="mode-out-device" role="tabpanel">
-            <form method="post" action="@Url.Action("StockOut")">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="stockOutMode" value="SpecificDevice" />
-
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label small fw-semibold text-muted">Select Product Model <span class="text-danger">*</span></label>
-                        <select name="ProductId" id="outDeviceProductId" class="form-select" required onchange="loadProductDevices(this.value)">
-                            <option value="">-- Choose from your supplied catalog --</option>
-                            @foreach (var p in Model.Products)
-                            {
-                                <option value="@p.Id" data-stock="@p.CurrentStock">
-                                    @p.Name (@p.Brand @p.ModelName) — Available: @p.CurrentStock units
-                                </option>
-                            }
-                        </select>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label small fw-semibold text-muted">Select Physical IMEI <span class="text-danger">*</span></label>
-                        <select name="DeviceId" id="deviceSelectDropdown" class="form-select font-monospace" required disabled>
-                            <option value="">-- Select Product Model First --</option>
-                        </select>
-                        <div id="deviceCountIndicator" class="small mt-1 text-muted"></div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label small fw-semibold text-muted">Issue Reason <span class="text-danger">*</span></label>
-                        <select name="Reason" class="form-select" required>
-                            <option value="Sold">Sold / Dispatched</option>
-                            <option value="Damaged">Damaged / Defective</option>
-                            <option value="UnderRepair">Sent for Workshop Repair</option>
-                            <option value="Returned">Returned to Vendor</option>
-                            <option value="Scrapped">Scrapped Unit</option>
-                        </select>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label small fw-semibold text-muted">Issue Reference / Notes</label>
-                        <input type="text" name="Notes" class="form-control" placeholder="Invoice or dispatch note reference" />
-                    </div>
-
-                    <div class="col-12 text-end mt-3">
-                        <button type="submit" class="btn btn-danger px-4 rounded-pill">
-                            <i class="bi bi-upc-scan me-1"></i> Issue Out Physical IMEI
-                        </button>
-                    </div>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     </div>
 </div>
@@ -209,7 +297,7 @@
     <div class="d-flex flex-wrap align-items-center justify-content-between border-bottom pb-3 mb-3 gap-2" style="border-color:var(--border)!important">
         <div>
             <h6 class="fw-bold mb-0 text-danger"><i class="bi bi-clock-history me-2"></i>Recent Stock Out Activity & Audit Log</h6>
-            <span class="text-muted small">Displaying recent deduction and dispatch transactions for your supplied products.</span>
+            <span class="text-muted small">Displaying recent deduction/dispatch transactions for your supplied products.</span>
         </div>
         <form method="get" action="@Url.Action("StockOut")" class="d-flex gap-2">
             <div class="search-pill" style="max-width:280px">
@@ -231,7 +319,7 @@
                 <i class="bi bi-inbox" style="font-size:28px"></i>
             </div>
             <h6 class="fw-bold text-dark mb-1">No Stock Out Transactions Recorded Yet</h6>
-            <p class="text-muted small mb-0">No deductions or dispatches have been registered.</p>
+            <p class="text-muted small mb-0">Use the form above to record your first stock issue.</p>
         </div>
     }
     else
@@ -244,7 +332,7 @@
                         <th>Product Name & Specs</th>
                         <th>Units Deducted</th>
                         <th>Stock Transition</th>
-                        <th>Outflow Reason / Remarks</th>
+                        <th>Deduction Reason / Remarks</th>
                         <th>Attributed To</th>
                     </tr>
                 </thead>
@@ -278,7 +366,7 @@
                                 <strong class="text-dark">@t.CurrentStock</strong>
                             </td>
                             <td>
-                                <span class="d-block text-dark">@(string.IsNullOrWhiteSpace(t.Reason) ? "Stock Deduction" : t.Reason)</span>
+                                <span class="d-block text-dark">@(string.IsNullOrWhiteSpace(t.Reason) ? "Dispatched" : t.Reason)</span>
                             </td>
                             <td>
                                 <small class="text-muted">@(string.IsNullOrWhiteSpace(t.ExecutedBy) ? "Supplier" : t.ExecutedBy)</small>
@@ -313,70 +401,270 @@
 </div>
 
 @section Scripts {
-    <script>
-        function updateOutStockPreview(sel, previewId, inputId) {
-            const opt = sel.options[sel.selectedIndex];
-            const previewEl = document.getElementById(previewId);
-            const inputEl = document.getElementById(inputId);
-            if (!previewEl) return;
-            if (!opt || !opt.value) {
-                previewEl.innerHTML = '';
-                if (inputEl) inputEl.max = 10000;
-                return;
-            }
-            const stock = parseInt(opt.getAttribute('data-stock') || '0');
-            const price = opt.getAttribute('data-price') || '0';
-            const sku = opt.getAttribute('data-sku') || '';
+<script>
+let availableDevicesCache = [];
+const allActiveProducts = @Html.Raw(allProductsJson);
 
-            if (inputEl) {
-                inputEl.max = stock > 0 ? stock : 1;
-            }
+function populateProductDropdown(selectEl, products, placeholder, selectedValue) {
+    if (!selectEl) return;
+    let html = `<option value="">${placeholder}</option>`;
+    products.forEach(p => {
+        const isSel = (p.id === selectedValue) ? ' selected' : '';
+        html += `<option value="${p.id}"${isSel}>${p.displayText}</option>`;
+    });
+    selectEl.innerHTML = html;
+}
 
-            if (stock <= 0) {
-                previewEl.innerHTML = `<span class="badge bg-danger-subtle text-danger"><i class="bi bi-exclamation-octagon me-1"></i>Currently Out of Stock (0 units)</span>`;
-            } else {
-                previewEl.innerHTML = `<span class="badge bg-secondary-subtle text-secondary me-2">SKU: ${sku}</span><span class="badge bg-success-subtle text-success">Available in Stock: ${stock} units</span>`;
-            }
-        }
+function onOutBrandChanged(brand) {
+    const prodSelect = document.getElementById('OutProductId');
+    const currentVal = prodSelect.value;
+    let filtered = allActiveProducts;
+    if (brand) {
+        filtered = allActiveProducts.filter(p => (p.brand || '').toLowerCase() === brand.toLowerCase());
+    }
+    const matchCurrent = filtered.some(p => p.id === currentVal);
+    populateProductDropdown(prodSelect, filtered, '-- Select Product Model --', matchCurrent ? currentVal : '');
+    if (!matchCurrent) {
+        prodSelect.value = '';
+        onOutProductChanged('');
+    }
+}
 
-        async function loadProductDevices(productId) {
-            const dropdown = document.getElementById('deviceSelectDropdown');
-            const indicator = document.getElementById('deviceCountIndicator');
-            if (!dropdown) return;
+function onOutAccessoryBrandChanged(brand) {
+    const prodSelect = document.getElementById('OutAccessoryProductId');
+    const currentVal = prodSelect.value;
+    let filtered = allActiveProducts;
+    if (brand) {
+        filtered = allActiveProducts.filter(p => (p.brand || '').toLowerCase() === brand.toLowerCase());
+    }
+    const matchCurrent = filtered.some(p => p.id === currentVal);
+    populateProductDropdown(prodSelect, filtered, '-- Select Accessory Product --', matchCurrent ? currentVal : '');
+    if (!matchCurrent) {
+        prodSelect.value = '';
+        onOutAccessoryChanged('');
+    }
+}
 
-            if (!productId) {
-                dropdown.innerHTML = '<option value="">-- Select Product Model First --</option>';
-                dropdown.disabled = true;
-                if (indicator) indicator.innerHTML = '';
-                return;
-            }
+async function onOutProductChanged(pid) {
+    const devSelect = document.getElementById('DeviceSelect');
+    const varSelect = document.getElementById('OutVariantSelect');
+    const colorSelect = document.getElementById('OutColorSelect');
+    const detailCard = document.getElementById('DeviceDetailCard');
 
-            dropdown.innerHTML = '<option value="">Loading physical IMEIs...</option>';
-            dropdown.disabled = true;
+    if (detailCard) detailCard.style.display = 'none';
 
-            try {
-                const res = await fetch(`/SupplierDashboard/GetSupplierProductDevices?productId=${encodeURIComponent(productId)}`);
-                const devices = await res.json();
-
-                if (!devices || devices.length === 0) {
-                    dropdown.innerHTML = '<option value="">-- No In-Stock IMEIs Found --</option>';
-                    dropdown.disabled = true;
-                    if (indicator) indicator.innerHTML = '<span class="text-warning small"><i class="bi bi-exclamation-triangle me-1"></i>No individual physical IMEIs registered in stock for this product. Use the Bulk / Quantity tab instead.</span>';
-                    return;
-                }
-
-                let html = '<option value="">-- Select Specific IMEI Unit --</option>';
-                devices.forEach(d => {
-                    html += `<option value="${d.id}">${d.displayText}</option>`;
-                });
-                dropdown.innerHTML = html;
-                dropdown.disabled = false;
-                if (indicator) indicator.innerHTML = `<span class="text-success small"><i class="bi bi-check-circle me-1"></i>${devices.length} in-stock physical device(s) ready to issue.</span>`;
-            } catch (err) {
-                dropdown.innerHTML = '<option value="">-- Failed to load IMEIs --</option>';
-                dropdown.disabled = true;
-                if (indicator) indicator.innerHTML = '<span class="text-danger small">Error loading device IMEIs.</span>';
+    if (pid) {
+        const prodObj = allActiveProducts.find(p => p.id === pid);
+        if (prodObj && prodObj.brand) {
+            const brandSelect = document.getElementById('OutBrandSelect');
+            if (brandSelect && brandSelect.value !== prodObj.brand) {
+                brandSelect.value = prodObj.brand;
             }
         }
-    </script>
+    }
+
+    if (!pid) {
+        devSelect.innerHTML = '<option value="">-- Select Model First --</option>';
+        devSelect.disabled = true;
+        varSelect.innerHTML = '<option value="">-- All Variants --</option>';
+        varSelect.disabled = true;
+        colorSelect.innerHTML = '<option value="">-- All Colors --</option>';
+        colorSelect.disabled = true;
+        availableDevicesCache = [];
+        return;
+    }
+
+    devSelect.innerHTML = '<option value="">Loading available IMEIs...</option>';
+    devSelect.disabled = true;
+
+    try {
+        let varPromise = fetch(`/SupplierDashboard/GetProductVariants?productId=${encodeURIComponent(pid)}`)
+            .then(r => r.ok ? r.json() : fetch(`/Product/GetProductVariants?productId=${encodeURIComponent(pid)}`).then(r2 => r2.json()))
+            .catch(() => []);
+
+        const [devRes, variants] = await Promise.all([
+            fetch(`/SupplierDashboard/GetAvailableDevicesForProduct?productId=${encodeURIComponent(pid)}`),
+            varPromise
+        ]);
+
+        availableDevicesCache = await devRes.json();
+
+        // Populate Variants from both product variant definitions and actual in-stock devices
+        const variantsMap = new Map();
+        (variants || []).forEach(v => {
+            variantsMap.set(v.variantId, v.displayVariant);
+        });
+        (availableDevicesCache || []).forEach(d => {
+            if (d.variantId && !variantsMap.has(d.variantId)) {
+                variantsMap.set(d.variantId, d.variant || 'Standard');
+            } else if (d.variant && ![...variantsMap.values()].some(val => val.toLowerCase() === d.variant.toLowerCase())) {
+                variantsMap.set(d.variant, d.variant);
+            }
+        });
+
+        let vHtml = '<option value="">-- All Variants --</option>';
+        variantsMap.forEach((name, id) => {
+            vHtml += `<option value="${id}">${name}</option>`;
+        });
+        varSelect.innerHTML = vHtml;
+        varSelect.disabled = false;
+
+        // Populate Colors from both variant definitions and actual in-stock devices
+        const colorsSet = new Set();
+        (variants || []).forEach(v => {
+            (v.colors || []).forEach(c => { if (c.name) colorsSet.add(c.name); });
+        });
+        (availableDevicesCache || []).forEach(d => {
+            if (d.color) colorsSet.add(d.color);
+        });
+
+        let cHtml = '<option value="">-- All Colors --</option>';
+        colorsSet.forEach(c => {
+            cHtml += `<option value="${c}">${c}</option>`;
+        });
+        colorSelect.innerHTML = cHtml;
+        colorSelect.disabled = false;
+
+        filterAvailableDevices();
+    } catch (err) {
+        console.error('Error loading devices for product:', err);
+        devSelect.innerHTML = '<option value="">Failed to load devices</option>';
+    }
+}
+
+function filterAvailableDevices() {
+    const varVal = document.getElementById('OutVariantSelect').value;
+    const colorVal = document.getElementById('OutColorSelect').value;
+    const devSelect = document.getElementById('DeviceSelect');
+    const detailCard = document.getElementById('DeviceDetailCard');
+
+    if (detailCard) detailCard.style.display = 'none';
+
+    let filtered = availableDevicesCache;
+    if (varVal) {
+        filtered = filtered.filter(d => d.variantId === varVal || (d.variant && d.variant.toLowerCase().includes(varVal.toLowerCase())));
+    }
+    if (colorVal) {
+        filtered = filtered.filter(d => (d.color || '').toLowerCase() === colorVal.toLowerCase());
+    }
+
+    if (!filtered || filtered.length === 0) {
+        devSelect.innerHTML = '<option value="">-- No Active In-Stock Devices for Selected Filter --</option>';
+        devSelect.disabled = true;
+        return;
+    }
+
+    let html = '<option value="">-- Choose Physical Device IMEI (' + filtered.length + ' Available) --</option>';
+    filtered.forEach(d => {
+        html += `<option value="${d.id}">${d.displayText}</option>`;
+    });
+    devSelect.innerHTML = html;
+    devSelect.disabled = false;
+}
+
+function onDeviceSelected(devId) {
+    const detailCard = document.getElementById('DeviceDetailCard');
+    if (!detailCard) return;
+
+    if (!devId) {
+        detailCard.style.display = 'none';
+        return;
+    }
+
+    const device = availableDevicesCache.find(d => d.id === devId);
+    if (!device) {
+        detailCard.style.display = 'none';
+        return;
+    }
+
+    document.getElementById('CardDeviceTitle').innerText = device.displayText || 'Mobile Unit';
+    document.getElementById('CardIMEI1').innerText = device.imei1 || '-';
+    document.getElementById('CardIMEI2').innerText = device.imei2 || 'N/A';
+    document.getElementById('CardVariantColor').innerText = `${device.variant || 'Standard'} / ${device.color || 'Standard'}`;
+    document.getElementById('CardSerialNumber').innerText = device.serialNumber || 'None';
+
+    detailCard.style.display = 'block';
+}
+
+// ACCESSORY CASCADE
+let outAccessoryVariants = [];
+async function onOutAccessoryChanged(pid) {
+    const varSelect = document.getElementById('OutAccessoryVariantSelect');
+    const colorSelect = document.getElementById('OutAccessoryColorSelect');
+    const banner = document.getElementById('OutAccessoryBanner');
+
+    document.getElementById('OutAccessoryVariantId').value = '';
+    document.getElementById('OutAccessoryVariantName').value = '';
+    document.getElementById('OutAccessoryColorId').value = '';
+    document.getElementById('OutAccessoryColorName').value = '';
+    if (banner) banner.style.display = 'none';
+
+    if (pid) {
+        const prodObj = allActiveProducts.find(p => p.id === pid);
+        if (prodObj && prodObj.brand) {
+            const brandSelect = document.getElementById('OutAccessoryBrandSelect');
+            if (brandSelect && brandSelect.value !== prodObj.brand) {
+                brandSelect.value = prodObj.brand;
+            }
+        }
+    }
+
+    if (!pid) {
+        varSelect.innerHTML = '<option value="">-- All / Base Variant --</option>';
+        colorSelect.innerHTML = '<option value="">-- All / Base Color --</option>';
+        return;
+    }
+
+    try {
+        let res = await fetch(`/SupplierDashboard/GetProductVariants?productId=${encodeURIComponent(pid)}`);
+        if (!res.ok) {
+            res = await fetch(`/Product/GetProductVariants?productId=${encodeURIComponent(pid)}`);
+        }
+        outAccessoryVariants = await res.json();
+
+        let vHtml = '<option value="">-- All / Base Variant --</option>';
+        (outAccessoryVariants || []).forEach(v => {
+            vHtml += `<option value="${v.variantId}">${v.displayVariant}</option>`;
+        });
+        varSelect.innerHTML = vHtml;
+
+        const colorsSet = new Set();
+        (outAccessoryVariants || []).forEach(v => {
+            (v.colors || []).forEach(c => colorsSet.add(c.name));
+        });
+        let cHtml = '<option value="">-- All / Base Color --</option>';
+        colorsSet.forEach(c => {
+            cHtml += `<option value="${c}">${c}</option>`;
+        });
+        colorSelect.innerHTML = cHtml;
+
+        const prodObj = allActiveProducts.find(p => p.id === pid);
+        if (prodObj && banner) {
+            document.getElementById('OutAccessoryTitle').innerText = prodObj.name;
+            document.getElementById('OutAccessoryStockBadge').innerHTML = `<i class="bi bi-box-seam me-1"></i> Available Stock: ${prodObj.currentStock} Units`;
+            banner.style.display = 'block';
+        }
+    } catch (e) {
+        console.error('Error fetching accessory variants:', e);
+    }
+}
+
+function onOutAccessoryVariantChanged(vid) {
+    const vObj = outAccessoryVariants.find(v => v.variantId === vid);
+    document.getElementById('OutAccessoryVariantId').value = vid || '';
+    document.getElementById('OutAccessoryVariantName').value = vObj ? vObj.displayVariant : '';
+
+    if (vObj && vObj.availableStock !== undefined) {
+        const banner = document.getElementById('OutAccessoryBanner');
+        if (banner) {
+            document.getElementById('OutAccessoryStockBadge').innerHTML = `<i class="bi bi-box-seam me-1"></i> Available Stock: ${vObj.availableStock} Units`;
+            banner.style.display = 'block';
+        }
+    }
+}
+
+function onOutAccessoryColorChanged(cName) {
+    document.getElementById('OutAccessoryColorName').value = cName || '';
+}
+</script>
 }

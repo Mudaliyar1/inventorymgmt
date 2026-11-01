@@ -28,8 +28,8 @@
                 <span class="text-secondary">/</span>
                 <span class="text-warning fs-7 font-mono fw-bold">Renew License</span>
             </div>
-            <h1 class="h3 font-display fw-bold mb-0 text-light">Request License Renewal</h1>
-            <p class="text-secondary fs-7 mb-0">Submit a renewal request for <strong>@(tenant?.ShopName ?? "Your Shop")</strong> directly to SaaS Platform Administration.</p>
+            <h1 class="h3 font-display fw-bold mb-0 text-light">Renew & Extend Subscription</h1>
+            <p class="text-secondary fs-7 mb-0">Instant automated renewal for <strong>@(tenant?.ShopName ?? "Your Shop")</strong> — pay securely to extend your shop license immediately.</p>
         </div>
         <div class="d-flex align-items-center gap-2">
             <a href="@Url.Action("Plans", "Subscription")" class="btn btn-outline-info shadow-sm">
@@ -229,12 +229,12 @@
         <div class="col-lg-7">
             <div class="glass-card p-4 p-md-5 border-secondary">
                 <div class="d-flex align-items-center gap-2 mb-4 pb-2 border-bottom border-secondary border-opacity-25">
-                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-warning text-dark" style="width:34px;height:34px;">
-                        <i class="bi bi-rocket-takeoff-fill fs-6"></i>
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-success text-white" style="width:34px;height:34px;">
+                        <i class="bi bi-lightning-charge-fill fs-6"></i>
                     </span>
                     <div>
-                        <h4 class="font-display fw-bold text-light mb-0">Submit Renewal Request</h4>
-                        <span class="text-muted fs-8">SaaS Platform Administrator will verify and update your shop duration</span>
+                        <h4 class="font-display fw-bold text-light mb-0">Instant License Renewal &amp; Extension</h4>
+                        <span class="text-success fs-8 fw-semibold"><i class="bi bi-check-circle-fill me-1"></i>Automated activation — your license &amp; shop duration extend immediately upon payment</span>
                     </div>
                 </div>
 
@@ -260,13 +260,15 @@
                         <select name="packageId" id="packageSelect" class="form-select bg-dark border-secondary text-light py-2" onchange="onPackageSelectChange(this)">
                             @if (selectedPackage != null && selectedPackage.MonthlyPrice > 0)
                             {
-                                <option value="@selectedPackage.Id" selected="selected">
+                                var selYearly = selectedPackage.YearlyPrice > 0 ? selectedPackage.YearlyPrice : selectedPackage.MonthlyPrice * 12;
+                                <option value="@selectedPackage.Id" selected="selected" data-name="@selectedPackage.Name" data-monthly="@selectedPackage.MonthlyPrice" data-yearly="@selYearly">
                                     @selectedPackage.Name — ₹@selectedPackage.MonthlyPrice.ToString("N0")/mo @(isCustom ? "(Custom Plan)" : "")
                                 </option>
                             }
                             @foreach (var pkg in publicPackages.Where(p => (selectedPackage == null || p.Id != selectedPackage.Id) && p.MonthlyPrice > 0))
                             {
-                                <option value="@pkg.Id">
+                                var pkgYearly = pkg.YearlyPrice > 0 ? pkg.YearlyPrice : pkg.MonthlyPrice * 12;
+                                <option value="@pkg.Id" data-name="@pkg.Name" data-monthly="@pkg.MonthlyPrice" data-yearly="@pkgYearly">
                                     @pkg.Name — ₹@pkg.MonthlyPrice.ToString("N0")/mo
                                 </option>
                             }
@@ -279,9 +281,9 @@
                         <label class="form-label text-light fw-bold fs-7">
                             <i class="bi bi-calendar-check text-info me-1"></i>Requested Renewal Duration & Billing Cycle:
                         </label>
-                        <div class="row g-2">
+                        <div class="row g-3">
                             <div class="col-md-6">
-                                <div class="form-check p-3 rounded border border-secondary border-opacity-50" style="background:rgba(255,255,255,0.02)">
+                                <div class="form-check p-3 rounded border border-secondary border-opacity-50 h-100" style="background:rgba(255,255,255,0.02)">
                                     <input class="form-check-input" type="radio" name="requestedCycle" id="cycle1m" value="Monthly" checked onchange="updateDurationMonths(1)">
                                     <label class="form-check-label text-light fw-semibold ms-2" for="cycle1m">
                                         1 Month Extension
@@ -290,25 +292,7 @@
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="form-check p-3 rounded border border-secondary border-opacity-50" style="background:rgba(255,255,255,0.02)">
-                                    <input class="form-check-input" type="radio" name="requestedCycle" id="cycle3m" value="Quarterly" onchange="updateDurationMonths(3)">
-                                    <label class="form-check-label text-light fw-semibold ms-2" for="cycle3m">
-                                        3 Months (Quarterly)
-                                        <small class="d-block text-secondary font-mono">Quarterly Extension (90 Days)</small>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-check p-3 rounded border border-secondary border-opacity-50" style="background:rgba(255,255,255,0.02)">
-                                    <input class="form-check-input" type="radio" name="requestedCycle" id="cycle6m" value="Semi-Annual" onchange="updateDurationMonths(6)">
-                                    <label class="form-check-label text-light fw-semibold ms-2" for="cycle6m">
-                                        6 Months
-                                        <small class="d-block text-secondary font-mono">Half-Year Extension (180 Days)</small>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-check p-3 rounded border border-secondary border-opacity-50" style="background:rgba(255,255,255,0.02)">
+                                <div class="form-check p-3 rounded border border-secondary border-opacity-50 h-100" style="background:rgba(255,255,255,0.02)">
                                     <input class="form-check-input" type="radio" name="requestedCycle" id="cycle1y" value="Yearly" onchange="updateDurationMonths(12)">
                                     <label class="form-check-label text-light fw-semibold ms-2" for="cycle1y">
                                         1 Year (Annual)
@@ -318,6 +302,40 @@
                             </div>
                         </div>
                         <input type="hidden" name="durationMonths" id="durationMonthsInput" value="1" />
+                    </div>
+
+                    <!-- Detailed Payment & Verification Breakdown -->
+                    <div class="card rounded-3 p-3 mb-4 shadow-sm" style="background: rgba(14, 165, 233, 0.07); border: 1px solid rgba(14, 165, 233, 0.35);">
+                        <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-secondary border-opacity-25">
+                            <span class="text-light fw-bold fs-7">
+                                <i class="bi bi-receipt text-info me-2"></i>Detailed Renewal Amount &amp; Payment Breakdown
+                            </span>
+                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 fs-8">
+                                <i class="bi bi-lightning-charge-fill me-1"></i>Automated Instant Activation
+                            </span>
+                        </div>
+                        <div class="row g-2 fs-7 mb-2">
+                            <div class="col-sm-5 text-secondary">Plan / Package:</div>
+                            <div class="col-sm-7 text-sm-end text-light fw-semibold" id="breakdown-package-name">@(selectedPackage?.Name ?? "Selected Plan")</div>
+
+                            <div class="col-sm-5 text-secondary">Renewal Duration:</div>
+                            <div class="col-sm-7 text-sm-end text-light fw-semibold" id="breakdown-duration-text">1 Month Extension (30 Days)</div>
+
+                            <div class="col-sm-5 text-secondary">Billing Rate:</div>
+                            <div class="col-sm-7 text-sm-end text-light font-mono" id="breakdown-rate-text">₹@(selectedPackage?.MonthlyPrice.ToString("N0") ?? "0") / month</div>
+
+                            <div class="col-sm-5 text-secondary">Activation Status:</div>
+                            <div class="col-sm-7 text-sm-end text-success fw-semibold"><i class="bi bi-check-circle-fill me-1"></i>Automatic Extension Upon Payment</div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center pt-2 border-top border-secondary border-opacity-25">
+                            <div>
+                                <div class="fs-6 fw-bold text-light">Total Payable Amount</div>
+                                <div class="fs-8 text-secondary">Verify total amount before proceeding to Razorpay checkout</div>
+                            </div>
+                            <div class="text-end">
+                                <div class="fs-3 fw-bold text-info font-mono" id="breakdown-total-amount">₹@(selectedPackage?.MonthlyPrice.ToString("N0") ?? "0")</div>
+                            </div>
+                        </div>
                     </div>
 
                     @if (platformSettings?.EnableManualRenewalRequests == true)
@@ -375,7 +393,7 @@
                             {
                                 <button type="button" id="btn-pay-razorpay" class="btn btn-primary fw-bold px-4 py-2 shadow d-flex align-items-center gap-2" style="background:#0284c7;border-color:#0284c7;">
                                     <i class="bi bi-lightning-charge-fill"></i>
-                                    <span>Pay Online via Razorpay (Instant Activation)</span>
+                                    <span>Pay <span id="btnPayAmount">₹@(selectedPackage?.MonthlyPrice.ToString("N0") ?? "0")</span> via Razorpay (Instant Activation)</span>
                                 </button>
                             }
                             else
@@ -404,16 +422,57 @@
 @section Scripts {
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script>
+        function updatePriceBreakdown() {
+            const selectEl = document.getElementById('packageSelect');
+            if (!selectEl) return;
+            const opt = selectEl.options[selectEl.selectedIndex];
+            if (!opt) return;
+
+            const pkgName = opt.getAttribute('data-name') || opt.text.split('—')[0].trim();
+            const monthlyPrice = parseFloat(opt.getAttribute('data-monthly')) || 0;
+            const yearlyPrice = parseFloat(opt.getAttribute('data-yearly')) || (monthlyPrice * 12);
+
+            const cycleRadio = document.querySelector('input[name="requestedCycle"]:checked');
+            const isYearly = cycleRadio && cycleRadio.value === 'Yearly';
+
+            const durationText = isYearly ? '1 Year (Annual Plan - 365 Days)' : '1 Month Extension (30 Days)';
+            const rateText = isYearly ? ('₹' + yearlyPrice.toLocaleString('en-IN') + ' / year') : ('₹' + monthlyPrice.toLocaleString('en-IN') + ' / month');
+            const totalAmount = isYearly ? yearlyPrice : monthlyPrice;
+            const formattedTotal = '₹' + totalAmount.toLocaleString('en-IN');
+
+            const nameEl = document.getElementById('breakdown-package-name');
+            if (nameEl) nameEl.innerText = pkgName;
+
+            const durEl = document.getElementById('breakdown-duration-text');
+            if (durEl) durEl.innerText = durationText;
+
+            const rateEl = document.getElementById('breakdown-rate-text');
+            if (rateEl) rateEl.innerText = rateText;
+
+            const totalEl = document.getElementById('breakdown-total-amount');
+            if (totalEl) totalEl.innerText = formattedTotal;
+
+            const btnAmountEl = document.getElementById('btnPayAmount');
+            if (btnAmountEl) btnAmountEl.innerText = formattedTotal;
+        }
+
         function updateDurationMonths(months) {
             document.getElementById('durationMonthsInput').value = months;
+            updatePriceBreakdown();
         }
 
         function onPackageSelectChange(selectEl) {
+            updatePriceBreakdown();
             const pkgId = selectEl.value;
             if (pkgId) {
                 window.location.href = '@Url.Action("Renew", "Subscription")?packageId=' + encodeURIComponent(pkgId);
             }
         }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            updatePriceBreakdown();
+        });
+        updatePriceBreakdown();
 
         const payBtn = document.getElementById('btn-pay-razorpay');
         if (payBtn) {

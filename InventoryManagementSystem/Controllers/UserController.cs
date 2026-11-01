@@ -70,6 +70,13 @@ namespace InventoryManagementSystem.Controllers
             foreach (var group in allGroups)
             {
                 var isEnabled = await _featureCatalogService.IsFeatureEnabledForTenantAsync(tenantId, group.ControllerName);
+                if (!isEnabled && (group.ControllerName.Equals("SupplierOrder", StringComparison.OrdinalIgnoreCase) || 
+                                   group.ControllerName.Equals("PurchaseReturn", StringComparison.OrdinalIgnoreCase)))
+                {
+                    // Fallback: If tenant has SUPPLIERS active, ensure SupplierOrder and PurchaseReturn permissions are accessible
+                    isEnabled = await _featureCatalogService.IsFeatureEnabledForTenantAsync(tenantId, "Supplier");
+                }
+
                 if (isEnabled)
                 {
                     filtered.Add(group);

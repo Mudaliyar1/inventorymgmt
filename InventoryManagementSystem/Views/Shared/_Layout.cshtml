@@ -38,16 +38,18 @@
 </head>
 
 @{
-  var routeCtrl = ViewContext.RouteData.Values["controller"]?.ToString();
-  var routeAct  = ViewContext.RouteData.Values["action"]?.ToString();
-  var isPublicPage = (User.Identity?.IsAuthenticated != true);
+  var routeCtrl = ViewContext.RouteData.Values["controller"]?.ToString() ?? "";
+  var routeAct  = ViewContext.RouteData.Values["action"]?.ToString() ?? "";
+  var isLanding = string.Equals(routeCtrl, "Landing", StringComparison.OrdinalIgnoreCase);
+  var isPublicPage = isLanding || (User.Identity?.IsAuthenticated != true);
+  var showDashboardShell = !isLanding && (User.Identity?.IsAuthenticated == true);
 }
 <body class="@(isPublicPage ? "ecom-home-body" : "")"
   data-flash-msg="@TempData["ToastMessage"]"
   data-flash-type="@TempData["ToastType"]"
   data-perm-version="@((User.Identity?.IsAuthenticated == true) ? (await PermissionService.GetLiveUserStateAsync(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "")).PermissionVersion : 1)">
 
-@if (!isPublicPage)
+@if (showDashboardShell)
 {
   <!-- Liquid Glass Atmospheric Ambient Background Layer -->
   <div class="glass-atmosphere" aria-hidden="true">
@@ -58,7 +60,7 @@
   </div>
 }
 
-@if (User.Identity?.IsAuthenticated == true)
+@if (showDashboardShell)
 {
   var ctrl     = ViewContext.RouteData.Values["controller"]?.ToString();
   var act      = ViewContext.RouteData.Values["action"]?.ToString();
@@ -585,14 +587,17 @@
           </a>
         }
 
-        if (hasFeat("ORDER_MANAGEMENT"))
+        if (hasFeat("ORDER_MANAGEMENT") || hasFeat("SUPPLIERS"))
         {
-          <a href="@Url.Action("Index","SupplierOrder")"
-             class="sb-link @(ctrl=="SupplierOrder"?"active":"")"
-             data-bs-toggle="tooltip" data-bs-title="Order Management" data-bs-placement="right">
-            <i class="bi bi-cart-check sb-icon"></i>
-            <span class="sb-text">Order Management</span>
-          </a>
+          if (User.IsInRole(Role.Admin) || PermissionService.HasModuleAccess(User, "SupplierOrder") || PermissionService.HasPermission(User, "SupplierOrder", "Create"))
+          {
+            <a href="@Url.Action("Index","SupplierOrder")"
+               class="sb-link @(ctrl=="SupplierOrder"?"active":"")"
+               data-bs-toggle="tooltip" data-bs-title="Order Management" data-bs-placement="right">
+              <i class="bi bi-cart-check sb-icon"></i>
+              <span class="sb-text">Order Management</span>
+            </a>
+          }
         }
       }
 
@@ -700,6 +705,11 @@
 
       <!-- Right actions -->
       <div class="topbar-actions">
+
+        <!-- View Website Link -->
+        <a href="@Url.Action("Index", "Landing")" class="topbar-btn text-decoration-none d-none d-md-inline-flex align-items-center gap-1" title="View Public Website / Home" style="width:auto;padding:0 12px;font-size:12px;font-weight:600;border-radius:20px;">
+          <i class="bi bi-globe"></i> Website
+        </a>
 
         <span id="topbar-date" class="topbar-date"></span>
 
@@ -878,12 +888,30 @@ else
           </ul>
 
           <div class="d-flex align-items-center gap-3 pt-2 pt-lg-0 ecom-nav-actions">
-            <a href="@Url.Action("Login", "Account")" class="ecom-btn-signin text-decoration-none">
-              Sign In
-            </a>
-            <a href="@Url.Action("Register", "Landing")" class="ecom-btn-primary text-decoration-none">
-              Start Free Trial
-            </a>
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+              var dashboardUrl = User.IsInRole(Role.SuperAdmin) 
+                  ? Url.Action("Dashboard", "PlatformAdmin") 
+                  : User.IsInRole(Role.Supplier) 
+                      ? Url.Action("Index", "SupplierDashboard") 
+                      : Url.Action("Index", "Home");
+
+              <a href="@dashboardUrl" class="ecom-btn-primary text-decoration-none d-inline-flex align-items-center gap-1">
+                <i class="bi bi-speedometer2 me-1"></i> Dashboard
+              </a>
+              <a href="@Url.Action("Logout", "Account")" class="ecom-btn-signin text-decoration-none">
+                Sign Out
+              </a>
+            }
+            else
+            {
+              <a href="@Url.Action("Login", "Account")" class="ecom-btn-signin text-decoration-none">
+                Sign In
+              </a>
+              <a href="@Url.Action("Register", "Landing")" class="ecom-btn-primary text-decoration-none">
+                Start Free Trial
+              </a>
+            }
           </div>
         </div>
       </div>

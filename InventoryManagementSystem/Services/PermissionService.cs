@@ -137,6 +137,42 @@ namespace InventoryManagementSystem.Services
             if (state.Permissions.Contains(key, StringComparer.OrdinalIgnoreCase))
                 return true;
 
+            // SupplierOrder workflow action fallbacks (creating an order spans Create -> Review -> SubmitOrder -> Details)
+            if (controllerName.Equals("SupplierOrder", StringComparison.OrdinalIgnoreCase))
+            {
+                if (actionName.Equals("Review", StringComparison.OrdinalIgnoreCase) || actionName.Equals("SubmitOrder", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (state.Permissions.Contains("SupplierOrder.Create", StringComparer.OrdinalIgnoreCase) ||
+                        state.Permissions.Contains("SupplierOrder.SubmitOrder", StringComparer.OrdinalIgnoreCase) ||
+                        state.Permissions.Contains("SupplierOrder.Review", StringComparer.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+
+                if (actionName.Equals("Details", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (state.Permissions.Contains("SupplierOrder.Details", StringComparer.OrdinalIgnoreCase) ||
+                        state.Permissions.Contains("SupplierOrder.Index", StringComparer.OrdinalIgnoreCase) ||
+                        state.Permissions.Contains("SupplierOrder.Create", StringComparer.OrdinalIgnoreCase) ||
+                        state.Permissions.Any(p => p.StartsWith("SupplierOrder.", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            // Generic Details action fallback if user has Index / View
+            if (actionName.Equals("Details", StringComparison.OrdinalIgnoreCase))
+            {
+                if (state.Permissions.Contains($"{controllerName}.Index", StringComparer.OrdinalIgnoreCase) ||
+                    state.Permissions.Contains($"{controllerName}.View", StringComparer.OrdinalIgnoreCase) ||
+                    state.Permissions.Any(p => p.StartsWith($"{controllerName}.", StringComparison.OrdinalIgnoreCase)))
+                {
+                    return true;
+                }
+            }
+
             // Fallback for Index / View controller-level access check
             if (actionName.Equals("Index", StringComparison.OrdinalIgnoreCase) || actionName.Equals("View", StringComparison.OrdinalIgnoreCase))
             {
@@ -165,9 +201,33 @@ namespace InventoryManagementSystem.Services
                     return true;
 
                 var parts = permissionKey.Split('.');
-                if (parts.Length == 2 && (parts[1].Equals("Index", StringComparison.OrdinalIgnoreCase) || parts[1].Equals("View", StringComparison.OrdinalIgnoreCase)))
+                if (parts.Length == 2)
                 {
-                    return state.Permissions.Any(p => p.StartsWith($"{parts[0]}.", StringComparison.OrdinalIgnoreCase));
+                    var ctrl = parts[0];
+                    var act = parts[1];
+
+                    if (ctrl.Equals("SupplierOrder", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (act.Equals("Review", StringComparison.OrdinalIgnoreCase) || act.Equals("SubmitOrder", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (state.Permissions.Contains("SupplierOrder.Create", StringComparer.OrdinalIgnoreCase)) return true;
+                        }
+
+                        if (act.Equals("Details", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (state.Permissions.Contains("SupplierOrder.Index", StringComparer.OrdinalIgnoreCase) ||
+                                state.Permissions.Contains("SupplierOrder.Create", StringComparer.OrdinalIgnoreCase) ||
+                                state.Permissions.Any(p => p.StartsWith("SupplierOrder.", StringComparison.OrdinalIgnoreCase)))
+                            {
+                                return true;
+                            }
+                        }
+                    }
+
+                    if (act.Equals("Index", StringComparison.OrdinalIgnoreCase) || act.Equals("View", StringComparison.OrdinalIgnoreCase) || act.Equals("Details", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return state.Permissions.Any(p => p.StartsWith($"{ctrl}.", StringComparison.OrdinalIgnoreCase));
+                    }
                 }
                 return false;
             }

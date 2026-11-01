@@ -9,6 +9,9 @@
 
 <div class="pz-page-wrap">
     <div class="pz-container">
+        <form id="landingPricingCsrf" style="display:none">
+            @Html.AntiForgeryToken()
+        </form>
 
         <!-- A. Pricing Introduction with Correct Accent Order -->
         <div class="pz-section-head mb-4 text-center">
@@ -76,23 +79,41 @@
 
                                 <!-- Reference Matched CTA Button Directly Below Price -->
                                 <div class="pz-tier-cta-block">
-                                    @if (pkg.MonthlyPrice <= 0)
+                                    @if (User.Identity?.IsAuthenticated == true && (User.IsInRole(Role.Admin) || User.IsInRole(Role.Staff)))
                                     {
-                                        <a href="@Url.Action("Register", "Landing", new { packageId = pkg.Id, mode = "trial" })" class="@(pkg.IsFeatured ? "pz-btn-primary" : "pz-btn-dark") text-decoration-none text-center">
-                                            <span>@(pkg.HasTrial ? $"Start {pkg.GetTrialDisplay()} Free Trial" : "Get Started Free")</span>
-                                        </a>
-                                    }
-                                    else if (pkg.HasTrial && pkg.GetTrialTimeSpan() > TimeSpan.Zero)
-                                    {
-                                        <a href="@Url.Action("Register", "Landing", new { packageId = pkg.Id, mode = "trial" })" class="@(pkg.IsFeatured ? "pz-btn-primary" : "pz-btn-dark") text-decoration-none text-center">
-                                            <span>Start @pkg.GetTrialDisplay() Free Trial</span>
-                                        </a>
+                                        if (pkg.MonthlyPrice <= 0)
+                                        {
+                                            <a href="@Url.Action("Plans", "Subscription")" class="@(pkg.IsFeatured ? "pz-btn-primary" : "pz-btn-dark") text-decoration-none text-center">
+                                                <span>Manage Subscription</span>
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="@(pkg.IsFeatured ? "pz-btn-primary" : "pz-btn-dark") w-100 border-0 cursor-pointer text-center" id="btn-landing-renew-@pkg.Id" onclick="initiateLandingRazorpayRenewal('@pkg.Id', '@pkg.Name')">
+                                                <span><i class="bi bi-lightning-charge-fill me-1"></i> Subscribe / Renew Plan</span>
+                                            </button>
+                                        }
                                     }
                                     else
                                     {
-                                        <a href="@Url.Action("Register", "Landing", new { packageId = pkg.Id, mode = "paid" })" class="@(pkg.IsFeatured ? "pz-btn-primary" : "pz-btn-dark") text-decoration-none text-center">
-                                            <span>Subscribe &amp; Pay Online</span>
-                                        </a>
+                                        if (pkg.MonthlyPrice <= 0)
+                                        {
+                                            <a href="@Url.Action("Register", "Landing", new { packageId = pkg.Id, mode = "trial" })" class="@(pkg.IsFeatured ? "pz-btn-primary" : "pz-btn-dark") text-decoration-none text-center">
+                                                <span>@(pkg.HasTrial ? $"Start {pkg.GetTrialDisplay()} Free Trial" : "Get Started Free")</span>
+                                            </a>
+                                        }
+                                        else if (pkg.HasTrial && pkg.GetTrialTimeSpan() > TimeSpan.Zero)
+                                        {
+                                            <a href="@Url.Action("Register", "Landing", new { packageId = pkg.Id, mode = "trial" })" class="@(pkg.IsFeatured ? "pz-btn-primary" : "pz-btn-dark") text-decoration-none text-center">
+                                                <span>Start @pkg.GetTrialDisplay() Free Trial</span>
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <a href="@Url.Action("Register", "Landing", new { packageId = pkg.Id, mode = "paid" })" class="@(pkg.IsFeatured ? "pz-btn-primary" : "pz-btn-dark") text-decoration-none text-center">
+                                                <span>Subscribe &amp; Pay Online</span>
+                                            </a>
+                                        }
                                     }
                                 </div>
 
@@ -1058,7 +1079,105 @@
 </div>
 
 @section Scripts {
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script>
+        async function initiateLandingRazorpayRenewal(packageId, packageName) {
+            const isYearly = document.getElementById('billingToggle')?.checked;
+            const billingCycle = isYearly ? 'Yearly' : 'Monthly';
+
+            const tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+            const csrfToken = tokenInput ? tokenInput.value : '';
+
+            const btn = document.getElementById('btn-landing-renew-' + packageId);
+            const originalHtml = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span><span class="spinner-border spinner-border-sm me-1"></span> Connecting...</span>';
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('packageId', packageId);
+                formData.append('billingCycle', billingCycle);
+                formData.append('__RequestVerificationToken', csrfToken);
+
+                const response = await fetch('@Url.Action("InitiateRazorpayRenewal", "Subscription")', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (!data.success) {
+                    alert('Could not start Razorpay payment: ' + (data.message || 'Unknown error'));
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.innerHTML = originalHtml;
+                    }
+                    return;
+                }
+
+                const options = {
+                    key: data.keyId,
+                    amount: data.amountInPaise,
+                    currency: data.currency,
+                    name: 'SIMS SaaS Platform',
+                    description: data.packageName + ' Renewal (' + data.billingCycle + ')',
+                    order_id: data.orderId,
+                    handler: async function (paymentResponse) {
+                        if (btn) {
+                            btn.innerHTML = '<span><span class="spinner-border spinner-border-sm me-1"></span> Activating...</span>';
+                        }
+
+                        const verifyForm = new FormData();
+                        verifyForm.append('razorpay_order_id', paymentResponse.razorpay_order_id);
+                        verifyForm.append('razorpay_payment_id', paymentResponse.razorpay_payment_id);
+                        verifyForm.append('razorpay_signature', paymentResponse.razorpay_signature);
+                        verifyForm.append('__RequestVerificationToken', csrfToken);
+
+                        const verifyRes = await fetch('@Url.Action("VerifyRazorpayRenewal", "Subscription")', {
+                            method: 'POST',
+                            body: verifyForm
+                        });
+
+                        const verifyData = await verifyRes.json();
+                        if (verifyData.success) {
+                            alert('Payment successful! Your license has been upgraded/renewed immediately. Receipt #' + verifyData.receiptNumber);
+                            window.location.href = '@Url.Action("MyPlan", "Subscription")';
+                        } else {
+                            alert('Payment was processed but activation requires attention: ' + verifyData.message);
+                            window.location.reload();
+                        }
+                    },
+                    prefill: {
+                        name: data.customerName,
+                        email: data.customerEmail,
+                        contact: data.customerPhone
+                    },
+                    theme: {
+                        color: '#0284c7'
+                    },
+                    modal: {
+                        ondismiss: function () {
+                            if (btn) {
+                                btn.disabled = false;
+                                btn.innerHTML = originalHtml;
+                            }
+                        }
+                    }
+                };
+
+                const rzp = new Razorpay(options);
+                rzp.open();
+            } catch (err) {
+                console.error('Razorpay direct checkout error:', err);
+                alert('An unexpected error occurred while initiating Razorpay payment. Please try again.');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                }
+            }
+        }
+
         // ==========================================
         // Custom Package Calculator Logic & Configuration
         // ==========================================
@@ -1353,10 +1472,39 @@
 
             const regBtn = document.getElementById('detRegisterBtn');
             if (regBtn) {
-                regBtn.href = `@Url.Action("Register", "Landing")?packageId=${pkg.id || pkgId}`;
-                const btnSpan = regBtn.querySelector('span');
-                if (btnSpan) {
-                    btnSpan.innerText = (pMonthly === 0) ? 'Start Free' : `Start ${pkg.trialDays || 14}-Day Free Trial`;
+                @if (User.Identity?.IsAuthenticated == true && (User.IsInRole(Role.Admin) || User.IsInRole(Role.Staff)))
+                {
+                    <text>
+                    if (pMonthly > 0) {
+                        regBtn.href = 'javascript:void(0);';
+                        regBtn.onclick = function() {
+                            const modalEl = document.getElementById('packageDetailsModal');
+                            if (modalEl) {
+                                const bsModal = bootstrap.Modal.getInstance(modalEl);
+                                if (bsModal) bsModal.hide();
+                            }
+                            initiateLandingRazorpayRenewal(pkg.id || pkgId, pName);
+                        };
+                        const btnSpan = regBtn.querySelector('span');
+                        if (btnSpan) btnSpan.innerText = 'Subscribe / Renew Now';
+                    } else {
+                        regBtn.href = '@Url.Action("Plans", "Subscription")';
+                        regBtn.onclick = null;
+                        const btnSpan = regBtn.querySelector('span');
+                        if (btnSpan) btnSpan.innerText = 'Manage Subscription';
+                    }
+                    </text>
+                }
+                else
+                {
+                    <text>
+                    regBtn.href = `@Url.Action("Register", "Landing")?packageId=${pkg.id || pkgId}`;
+                    regBtn.onclick = null;
+                    const btnSpan = regBtn.querySelector('span');
+                    if (btnSpan) {
+                        btnSpan.innerText = (pMonthly === 0) ? 'Start Free' : `Start ${pkg.trialDays || 14}-Day Free Trial`;
+                    }
+                    </text>
                 }
             }
 

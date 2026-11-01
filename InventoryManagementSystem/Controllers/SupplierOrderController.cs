@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace InventoryManagementSystem.Controllers
 {
-    [Authorize(Roles = Role.Admin)]
+    [Authorize]
     public class SupplierOrderController : Controller
     {
         private readonly ISupplierOrderService _supplierOrderService;

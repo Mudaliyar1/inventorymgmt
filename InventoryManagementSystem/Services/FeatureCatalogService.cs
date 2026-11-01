@@ -124,6 +124,11 @@ namespace InventoryManagementSystem.Services
                 }
             }
 
+            if (enabled.Contains("SUPPLIERS", StringComparer.OrdinalIgnoreCase) && !enabled.Contains("ORDER_MANAGEMENT", StringComparer.OrdinalIgnoreCase))
+            {
+                enabled.Add("ORDER_MANAGEMENT");
+            }
+
             return enabled.Distinct().ToList();
         }
 
@@ -137,6 +142,13 @@ namespace InventoryManagementSystem.Services
                 string.Equals(controllerName, "Notifications", StringComparison.OrdinalIgnoreCase))
             {
                 return true;
+            }
+
+            if (string.Equals(controllerName, "SupplierOrder", StringComparison.OrdinalIgnoreCase))
+            {
+                var keys = await GetEnabledFeatureKeysForTenantAsync(tenantId);
+                return keys.Contains("ORDER_MANAGEMENT", StringComparer.OrdinalIgnoreCase) || 
+                       keys.Contains("SUPPLIERS", StringComparer.OrdinalIgnoreCase);
             }
 
             var feature = GetFeatureByControllerAndAction(controllerName, actionName);
