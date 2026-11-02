@@ -378,6 +378,13 @@
         <span class="sb-text">Damaged & Returned Stock</span>
       </a>
 
+      <a href="@Url.Action("DamagedProducts","SupplierDashboard")"
+         class="sb-link @(ctrl=="SupplierDashboard"&&act=="DamagedProducts"?"active":"")"
+         data-bs-toggle="tooltip" data-bs-title="Damaged & Repair Items" data-bs-placement="right">
+        <i class="bi bi-tools sb-icon" style="color:var(--warning)"></i>
+        <span class="sb-text">Damaged & Repair Items</span>
+      </a>
+
       <a href="@Url.Action("Profile","SupplierDashboard")"
          class="sb-link @(ctrl=="SupplierDashboard"&&act=="Profile"?"active":"")"
          data-bs-toggle="tooltip" data-bs-title="Supplier Profile" data-bs-placement="right">

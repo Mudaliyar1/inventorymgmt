@@ -34,11 +34,11 @@
     {
         totalAvailableStock = Model.Variants.Sum(v => 
             v.Colors != null && v.Colors.Any() 
-                ? v.Colors.Sum(c => c.CurrentStock > 0 ? c.CurrentStock : (c.InitialStock > 0 ? c.InitialStock : 0))
-                : (v.CurrentStock > 0 ? v.CurrentStock : (v.InitialStock > 0 ? v.InitialStock : 0))
+                ? v.Colors.Sum(c => c.CurrentStock)
+                : v.CurrentStock
         );
     }
-    if (totalAvailableStock == 0 && Model.CurrentStock > 0)
+    else
     {
         totalAvailableStock = Model.CurrentStock;
     }
@@ -68,7 +68,7 @@
                                 if (!string.IsNullOrEmpty(u) && !cImgs.Contains(u)) cImgs.Add(u);
                             }
                         }
-                        var stock = c.CurrentStock > 0 ? c.CurrentStock : (c.InitialStock > 0 ? c.InitialStock : 0);
+                        var stock = c.CurrentStock;
                         var cCost = c.PurchasePrice > 0 
                             ? c.PurchasePrice 
                             : (v.PurchasePrice > 0 
@@ -270,8 +270,8 @@
                             : (effectiveSellingPrice > 0 ? effectiveSellingPrice : vCost));
 
                     int vStock = variant.Colors != null && variant.Colors.Any()
-                        ? variant.Colors.Sum(c => c.CurrentStock > 0 ? c.CurrentStock : (c.InitialStock > 0 ? c.InitialStock : 0))
-                        : (variant.CurrentStock > 0 ? variant.CurrentStock : (variant.InitialStock > 0 ? variant.InitialStock : 0));
+                        ? variant.Colors.Sum(c => c.CurrentStock)
+                        : variant.CurrentStock;
                     if (vStock == 0 && Model.CurrentStock > 0 && Model.GetEffectiveVariants().Count == 1)
                     {
                         vStock = Model.CurrentStock;
@@ -299,11 +299,7 @@
                                         {
                                             var cCost = color.PurchasePrice > 0 ? color.PurchasePrice : (variant.PurchasePrice > 0 ? variant.PurchasePrice : (variant.SupplierPrice > 0 ? variant.SupplierPrice : effectiveCostPrice));
                                             var cRetail = color.SellingPrice > 0 ? color.SellingPrice : (variant.SellingPrice > 0 ? variant.SellingPrice : (effectiveSellingPrice > 0 ? effectiveSellingPrice : cCost));
-                                            var cStock = color.CurrentStock > 0 ? color.CurrentStock : (color.InitialStock > 0 ? color.InitialStock : 0);
-                                            if (cStock == 0 && vStock > 0 && (variant.Colors?.Count ?? 0) <= 1)
-                                            {
-                                                cStock = vStock;
-                                            }
+                                            var cStock = color.CurrentStock;
 
                                             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 border p-2 rounded small" style="background:var(--bg-card);border-color:var(--border)!important">
                                                 <div class="d-flex align-items-center gap-2">

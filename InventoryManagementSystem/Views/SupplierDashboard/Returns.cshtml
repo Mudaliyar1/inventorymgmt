@@ -10,6 +10,9 @@
         <p class="ph-sub">Comprehensive statistics, detailed filters, and claim management for returned & damaged stock</p>
     </div>
     <div class="ph-actions">
+        <a href="@Url.Action("DamagedProducts", "SupplierDashboard")" class="btn-d btn-outline me-2">
+            <i class="bi bi-tools me-1 text-warning"></i> Damaged &amp; Repair Items
+        </a>
         <a href="@Url.Action("Returns", "SupplierDashboard")" class="btn-d btn-outline me-2">
             <i class="bi bi-arrow-clockwise me-1"></i> Refresh Stats
         </a>
@@ -398,7 +401,8 @@
                                     <form method="post" action="@Url.Action("AcceptReturn", "SupplierDashboard")" class="d-inline">
                                         @Html.AntiForgeryToken()
                                         <input type="hidden" name="id" value="@ret.Id" />
-                                        <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Accept this purchase return claim #@ret.ReturnNumber?')">
+                                        <input type="hidden" name="disposition" value="@InventoryManagementSystem.Models.ReturnDispositionType.BackToInventory" />
+                                        <button type="submit" class="btn btn-sm btn-success" title="Quick Accept (Back to Inventory)" onclick="return confirm('Accept this purchase return claim #@ret.ReturnNumber and restock to active inventory?')">
                                             <i class="bi bi-check-lg"></i>
                                         </button>
                                     </form>

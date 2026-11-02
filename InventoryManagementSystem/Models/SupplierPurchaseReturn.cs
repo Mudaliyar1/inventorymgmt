@@ -118,6 +118,22 @@ namespace InventoryManagementSystem.Models
 
         [BsonElement("StockDeducted")]
         public bool StockDeducted { get; set; } = false;
+
+        // Supplier Acceptance Disposition & Damaged Repair Lifecycle Tracking
+        [BsonElement("ReturnDisposition")]
+        public string? ReturnDisposition { get; set; } // "Back to Inventory" or "Damaged / Sent for Repair"
+
+        [BsonElement("RepairStatus")]
+        public string? RepairStatus { get; set; } // "Under Repair", "Repaired & Restocked", "Scrapped / Written Off"
+
+        [BsonElement("RepairNotes")]
+        public string? RepairNotes { get; set; }
+
+        [BsonElement("RepairedAt")]
+        public DateTime? RepairedAt { get; set; }
+
+        [BsonElement("SupplierStockRestocked")]
+        public bool SupplierStockRestocked { get; set; } = false;
     }
 
     public class SupplierPurchaseReturnItem
@@ -127,6 +143,12 @@ namespace InventoryManagementSystem.Models
 
         [BsonElement("ProductName")]
         public string ProductName { get; set; } = string.Empty;
+
+        [BsonElement("Disposition")]
+        public string? Disposition { get; set; }
+
+        [BsonElement("RepairStatus")]
+        public string? RepairStatus { get; set; }
 
         [BsonElement("Brand")]
         public string Brand { get; set; } = string.Empty;
@@ -288,4 +310,28 @@ namespace InventoryManagementSystem.Models
         public const string ReplacementReceived = "Replacement Received";
         public const string NoFinancialAdjustment = "No Financial Adjustment";
     }
+
+    public static class ReturnDispositionType
+    {
+        public const string BackToInventory = "Back to Inventory";
+        public const string DamagedRepair = "Damaged / Sent for Repair";
+
+        public static readonly List<string> AllDispositions = new List<string>
+        {
+            BackToInventory, DamagedRepair
+        };
+    }
+
+    public static class ReturnRepairStatus
+    {
+        public const string UnderRepair = "Under Repair";
+        public const string RepairedAndRestocked = "Repaired & Restocked";
+        public const string Scrapped = "Scrapped / Written Off";
+
+        public static readonly List<string> AllStatuses = new List<string>
+        {
+            UnderRepair, RepairedAndRestocked, Scrapped
+        };
+    }
 }
+

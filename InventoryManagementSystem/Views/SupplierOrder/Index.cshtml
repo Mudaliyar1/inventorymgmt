@@ -6,6 +6,12 @@
     var currentStatus = ViewBag.Status as string;
     var selectedSupplierId = ViewBag.SupplierId as string;
     var search = ViewBag.Search as string;
+    int currentPage = ViewBag.CurrentPage is int cp ? cp : 1;
+    int totalPages = ViewBag.TotalPages is int tp ? tp : 1;
+    long totalCount = ViewBag.TotalCount is long tc ? tc : (Model?.Count() ?? 0);
+    int pageSize = 20;
+    long startRecord = totalCount == 0 ? 0 : ((currentPage - 1) * pageSize) + 1;
+    long endRecord = Math.Min(currentPage * pageSize, totalCount);
 }
 
 <!-- Page Header -->
@@ -44,6 +50,9 @@
     <a href="@Url.Action("Index", new { status = "Completed", supplierId = selectedSupplierId, search })" class="btn-d @(currentStatus == "Completed" ? "btn-primary" : "btn-outline") btn-sm-d">
         Completed (@(statusCounts.GetValueOrDefault("Completed", 0)))
     </a>
+    <a href="@Url.Action("Index", new { status = "Rejected", supplierId = selectedSupplierId, search })" class="btn-d @(currentStatus == "Rejected" ? "btn-danger" : "btn-outline") btn-sm-d">
+        Rejected (@(statusCounts.GetValueOrDefault("Rejected", 0)))
+    </a>
     <a href="@Url.Action("Index", new { status = "Cancelled", supplierId = selectedSupplierId, search })" class="btn-d @(currentStatus == "Cancelled" ? "btn-primary" : "btn-outline") btn-sm-d">
         Cancelled (@(statusCounts.GetValueOrDefault("Cancelled", 0)))
     </a>
@@ -52,12 +61,11 @@
 <!-- Detailed Filter Form -->
 <div class="card-d card-p mb-4">
     <form method="get" class="row g-3 align-items-end">
-        <input type="hidden" name="status" value="@currentStatus" />
-        <div class="col-md-5">
+        <div class="col-md-4">
             <label class="fg-label"><i class="bi bi-search me-1 text-primary"></i>Search Keyword</label>
             <input type="text" name="search" value="@search" class="fg-control" placeholder="Order #, Supplier Name, Email, Product..." />
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
             <label class="fg-label"><i class="bi bi-truck me-1 text-info"></i>Filter by Supplier</label>
             <select name="supplierId" class="fg-control">
                 <option value="">All Suppliers</option>
@@ -67,9 +75,23 @@
                 }
             </select>
         </div>
-        <div class="col-md-3 d-flex align-items-center gap-2">
+        <div class="col-md-3">
+            <label class="fg-label"><i class="bi bi-funnel me-1 text-warning"></i>Filter by Status</label>
+            <select name="status" class="fg-control">
+                <option value="">All Statuses</option>
+                <option value="Pending" selected="@(currentStatus == "Pending")">Pending</option>
+                <option value="Accepted" selected="@(currentStatus == "Accepted")">Accepted</option>
+                <option value="Processing" selected="@(currentStatus == "Processing")">Processing</option>
+                <option value="Shipped" selected="@(currentStatus == "Shipped")">Shipped</option>
+                <option value="Delivered" selected="@(currentStatus == "Delivered")">Delivered</option>
+                <option value="Completed" selected="@(currentStatus == "Completed")">Completed</option>
+                <option value="Rejected" selected="@(currentStatus == "Rejected")">Rejected</option>
+                <option value="Cancelled" selected="@(currentStatus == "Cancelled")">Cancelled</option>
+            </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-center gap-2">
             <button type="submit" class="btn-d btn-primary w-100"><i class="bi bi-funnel"></i> Apply Filter</button>
-            <a href="@Url.Action("Index")" class="btn-d btn-outline"><i class="bi bi-arrow-counterclockwise"></i></a>
+            <a href="@Url.Action("Index")" class="btn-d btn-outline" title="Clear Filters"><i class="bi bi-arrow-counterclockwise"></i></a>
         </div>
     </form>
 </div>
@@ -154,3 +176,47 @@
         </table>
     </div>
 </div>
+
+<!-- Pagination Controls Bar -->
+@if (totalPages > 1)
+{
+    <div class="d-flex flex-column flex-md-row align-items-center justify-content-between gap-3 bg-card p-3 rounded-3 mb-4" style="border:1px solid var(--border)">
+        <div class="text-muted style-sm" style="font-size:13px">
+            Showing <strong class="text-primary">@startRecord</strong> to <strong class="text-primary">@endRecord</strong> of <strong>@totalCount</strong> purchase orders
+        </div>
+        <nav aria-label="Purchase Order Pagination">
+            <ul class="pagination pagination-sm mb-0">
+                <!-- Previous Button -->
+                <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
+                    <a class="page-link style-pl" href="@Url.Action("Index", new { status = currentStatus, supplierId = selectedSupplierId, search, page = currentPage - 1 })">
+                        <i class="bi bi-chevron-left"></i> Prev
+                    </a>
+                </li>
+
+                <!-- Page Numbers -->
+                @for (int p = 1; p <= totalPages; p++)
+                {
+                    if (p == 1 || p == totalPages || (p >= currentPage - 2 && p <= currentPage + 2))
+                    {
+                        <li class="page-item @(p == currentPage ? "active" : "")">
+                            <a class="page-link style-pl" href="@Url.Action("Index", new { status = currentStatus, supplierId = selectedSupplierId, search, page = p })">
+                                @p
+                            </a>
+                        </li>
+                    }
+                    else if (p == currentPage - 3 || p == currentPage + 3)
+                    {
+                        <li class="page-item disabled"><span class="page-link style-pl">...</span></li>
+                    }
+                }
+
+                <!-- Next Button -->
+                <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
+                    <a class="page-link style-pl" href="@Url.Action("Index", new { status = currentStatus, supplierId = selectedSupplierId, search, page = currentPage + 1 })">
+                        Next <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+}

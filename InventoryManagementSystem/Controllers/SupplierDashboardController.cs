@@ -1465,7 +1465,7 @@ namespace InventoryManagementSystem.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AcceptReturn(string id, string? supplierNotes)
+        public async Task<IActionResult> AcceptReturn(string id, string? supplierNotes, string? disposition)
         {
             var supplierId = CurrentSupplierId;
             var returnRecord = await _purchaseReturnService.GetReturnByIdAsync(id);
@@ -1476,12 +1476,128 @@ namespace InventoryManagementSystem.Controllers
             }
 
             var executedBy = User.Identity?.Name ?? "Supplier";
-            var (success, message) = await _purchaseReturnService.AcceptReturnAsync(id, executedBy, supplierNotes);
+            var (success, message) = await _purchaseReturnService.AcceptReturnAsync(id, executedBy, supplierNotes, disposition);
 
             TempData["ToastMessage"] = message;
             TempData["ToastType"] = success ? "success" : "danger";
 
             return RedirectToAction(nameof(ReturnDetails), new { id = id });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> DamagedProducts(string? search, string? repairStatus, string? brand, int page = 1, int pageSize = 15)
+        {
+            var supplierId = CurrentSupplierId;
+            var allDamaged = (await _purchaseReturnService.GetDamagedReturnsForSupplierAsync(supplierId, search, repairStatus)).ToList();
+
+            if (!string.IsNullOrWhiteSpace(brand))
+            {
+                allDamaged = allDamaged.Where(r => r.Items.Any(i => i.Brand.Equals(brand, StringComparison.OrdinalIgnoreCase))).ToList();
+            }
+
+            // Flatten to items view models
+            var itemsList = new List<InventoryManagementSystem.ViewModels.DamagedProductItemViewModel>();
+            foreach (var ret in allDamaged)
+            {
+                foreach (var item in ret.Items)
+                {
+                    itemsList.Add(new InventoryManagementSystem.ViewModels.DamagedProductItemViewModel
+                    {
+                        ReturnId = ret.Id,
+                        ReturnNumber = ret.ReturnNumber,
+                        PurchaseOrderNumber = ret.PurchaseOrderNumber,
+                        ReturnedDate = ret.CreatedAt,
+                        Reason = ret.Reason,
+                        AdditionalRemarks = ret.AdditionalRemarks,
+
+                        ProductId = item.ProductId,
+                        ProductName = item.ProductName,
+                        Brand = item.Brand,
+                        ModelName = item.ModelName,
+                        Variant = item.Variant,
+                        Color = item.Color,
+                        Ram = item.Ram,
+                        Storage = item.Storage,
+                        ImageUrl = item.ImageUrl,
+                        Quantity = item.Quantity,
+                        UnitPrice = item.UnitPurchasePrice,
+                        TotalValue = item.ReturnValue > 0 ? item.ReturnValue : (item.Quantity * item.UnitPurchasePrice),
+                        Imeis = item.Imeis ?? new List<string>(),
+
+                        Disposition = ret.ReturnDisposition ?? ReturnDispositionType.DamagedRepair,
+                        RepairStatus = ret.RepairStatus ?? ReturnRepairStatus.UnderRepair,
+                        RepairNotes = ret.RepairNotes ?? ret.SupplierNotes,
+                        RepairedAt = ret.RepairedAt,
+                        IsRestocked = ret.SupplierStockRestocked
+                    });
+                }
+            }
+
+            int totalItems = itemsList.Count;
+            page = System.Math.Max(1, page);
+            pageSize = System.Math.Min(System.Math.Max(pageSize, 5), 100);
+            var pagedItems = itemsList.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+
+            var allSupplierReturns = (await _purchaseReturnService.GetSupplierReturnsAsync(supplierId, null, 1000)).ToList();
+            var allDamagedClaims = allSupplierReturns.Where(r => 
+                !string.Equals(r.ReturnDisposition, ReturnDispositionType.BackToInventory, StringComparison.OrdinalIgnoreCase) &&
+                (
+                    string.Equals(r.ReturnDisposition, ReturnDispositionType.DamagedRepair, StringComparison.OrdinalIgnoreCase) ||
+                    (!string.IsNullOrEmpty(r.RepairStatus) && !string.Equals(r.RepairStatus, ReturnRepairStatus.RepairedAndRestocked, StringComparison.OrdinalIgnoreCase)) ||
+                    (string.IsNullOrEmpty(r.ReturnDisposition) && r.Status == PurchaseReturnStatus.SupplierAccepted && (
+                        string.Equals(r.Reason, PurchaseReturnReason.DamagedOnArrival, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(r.Reason, PurchaseReturnReason.Defective, StringComparison.OrdinalIgnoreCase)
+                    ))
+                )
+            ).ToList();
+
+            var viewModel = new InventoryManagementSystem.ViewModels.SupplierDamagedProductsViewModel
+            {
+                Items = pagedItems,
+                TotalDamagedUnits = allDamagedClaims.Sum(r => r.TotalQuantity),
+                UnderRepairUnits = allDamagedClaims.Where(r => string.IsNullOrEmpty(r.RepairStatus) || r.RepairStatus == ReturnRepairStatus.UnderRepair).Sum(r => r.TotalQuantity),
+                RepairedRestockedUnits = allDamagedClaims.Where(r => r.RepairStatus == ReturnRepairStatus.RepairedAndRestocked).Sum(r => r.TotalQuantity),
+                ScrappedUnits = allDamagedClaims.Where(r => r.RepairStatus == ReturnRepairStatus.Scrapped).Sum(r => r.TotalQuantity),
+                TotalDamagedValue = allDamagedClaims.Sum(r => r.TotalReturnValue),
+
+                Search = search,
+                RepairStatus = repairStatus,
+                Brand = brand,
+                Page = page,
+                PageSize = pageSize,
+                TotalItems = totalItems,
+
+                Brands = allDamagedClaims.SelectMany(r => r.Items).Select(i => i.Brand).Where(b => !string.IsNullOrWhiteSpace(b)).Distinct().OrderBy(b => b).ToList(),
+                RepairStatuses = ReturnRepairStatus.AllStatuses
+            };
+
+            return View(viewModel);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateRepairStatus(string returnId, string newRepairStatus, string? repairNotes, string? returnUrl)
+        {
+            var supplierId = CurrentSupplierId;
+            var returnRecord = await _purchaseReturnService.GetReturnByIdAsync(returnId);
+
+            if (returnRecord == null || !string.Equals(returnRecord.SupplierId, supplierId, StringComparison.OrdinalIgnoreCase))
+            {
+                return NotFound();
+            }
+
+            var executedBy = User.Identity?.Name ?? "Supplier";
+            var (success, message) = await _purchaseReturnService.UpdateDamagedItemRepairStatusAsync(returnId, newRepairStatus, repairNotes, executedBy);
+
+            TempData["ToastMessage"] = message;
+            TempData["ToastType"] = success ? "success" : "danger";
+
+            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+            {
+                return Redirect(returnUrl);
+            }
+
+            return RedirectToAction(nameof(DamagedProducts));
         }
 
         [HttpPost]

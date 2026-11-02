@@ -129,18 +129,35 @@
 
             @if (Model.Status == InventoryManagementSystem.Models.PurchaseReturnStatus.Submitted || Model.Status == InventoryManagementSystem.Models.PurchaseReturnStatus.SupplierNotified)
             {
-                <div class="alert alert-info border-0 rounded-3 mb-3">
-                    <i class="bi bi-info-circle me-1"></i> This return request is pending your review. You can Accept or Reject it below.
+                <div class="alert alert-info border-0 rounded-3 mb-3" style="font-size:13px">
+                    <i class="bi bi-info-circle me-1"></i> This return request is pending your review. Choose your stock action (Back to Inventory or Damaged / Sent for Repair) and accept or reject below.
                 </div>
 
                 <form method="post" action="@Url.Action("AcceptReturn", "SupplierDashboard")" class="mb-3">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="id" value="@Model.Id" />
-                    <div class="mb-2">
-                        <label class="form-label text-muted fw-semibold" style="font-size:12px">Supplier Acceptance Notes (Optional)</label>
-                        <textarea name="supplierNotes" class="form-control form-control-sm" rows="2" placeholder="Notes for admin regarding replacement or refund settlement..."></textarea>
+                    
+                    <!-- Disposition Dropdown -->
+                    <div class="mb-3">
+                        <label class="form-label text-dark fw-bold" style="font-size:12px">
+                            <i class="bi bi-diagram-3 text-primary me-1"></i>Action on Returned Items (Disposition)
+                        </label>
+                        <select name="disposition" class="form-select form-select-sm" id="dispositionSelector" onchange="updateDispositionHelp(this.value)">
+                            <option value="Damaged / Sent for Repair" selected>🛠️ Damaged / Sent for Repair (Quarantine in Damaged Inventory)</option>
+                            <option value="Back to Inventory">📦 Back to Inventory (Restock directly to active supplier catalog)</option>
+                        </select>
+                        <div id="dispositionHelpText" class="mt-2 p-2 rounded-2" style="font-size:11px;background:var(--bg-tertiary);border:1px solid var(--border)">
+                            <i class="bi bi-tools text-warning me-1"></i>
+                            <strong>Damaged / Sent for Repair:</strong> Deducts stock from shop admin and routes to your <strong>Damaged & Repair Items</strong> ledger. Will <u>not</u> increase your active sellable inventory until repaired.
+                        </div>
                     </div>
-                    <button type="submit" class="btn btn-success w-100" onclick="return confirm('Confirm accepting return claim #@Model.ReturnNumber?')">
+
+                    <div class="mb-3">
+                        <label class="form-label text-muted fw-semibold" style="font-size:12px">Supplier Acceptance Notes (Optional)</label>
+                        <textarea name="supplierNotes" class="form-control form-control-sm" rows="2" placeholder="Notes for admin regarding repair, replacement or refund..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-success w-100 fw-bold" onclick="return confirm('Confirm accepting return claim #@Model.ReturnNumber with selected disposition?')">
                         <i class="bi bi-check-circle me-1"></i> Accept Return Request
                     </button>
                 </form>
@@ -166,6 +183,91 @@
                     <strong class="text-dark fs-5">@Model.Status</strong>
                 </div>
 
+                <!-- Accepted Disposition Details Box -->
+                @if (!string.IsNullOrEmpty(Model.ReturnDisposition))
+                {
+                    var isBackToInv = Model.ReturnDisposition == InventoryManagementSystem.Models.ReturnDispositionType.BackToInventory;
+                    <div class="mb-3 p-3 rounded-3" style="background:@(isBackToInv ? "rgba(16, 185, 129, 0.1)" : "rgba(245, 158, 11, 0.1)");border:1px solid @(isBackToInv ? "rgba(16, 185, 129, 0.3)" : "rgba(245, 158, 11, 0.3)")">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <span class="fw-bold" style="font-size:12px;color:@(isBackToInv ? "#10b981" : "#f59e0b")">
+                                <i class="bi @(isBackToInv ? "bi-box-seam" : "bi-tools") me-1"></i>Accepted Disposition
+                            </span>
+                            <span class="badge @(isBackToInv ? "bg-success" : "bg-warning text-dark")">@Model.ReturnDisposition</span>
+                        </div>
+                        <div style="font-size:12px;color:var(--text-secondary)">
+                            @if (isBackToInv)
+                            {
+                                <span><i class="bi bi-check2 text-success me-1"></i>Items were restocked directly to your active supplier inventory. Shop admin stock was deducted.</span>
+                            }
+                            else
+                            {
+                                <span><i class="bi bi-tools text-warning me-1"></i>Items segregated into Damaged Inventory (not added to sellable stock). Shop stock was deducted.</span>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <!-- Damaged Repair Management Quick Actions (if Damaged / Sent for Repair) -->
+                @if (Model.ReturnDisposition == InventoryManagementSystem.Models.ReturnDispositionType.DamagedRepair || (!string.IsNullOrEmpty(Model.RepairStatus) && Model.ReturnDisposition != InventoryManagementSystem.Models.ReturnDispositionType.BackToInventory))
+                {
+                    var repStatus = Model.RepairStatus ?? InventoryManagementSystem.Models.ReturnRepairStatus.UnderRepair;
+                    var repBadgeClass = repStatus switch
+                    {
+                        InventoryManagementSystem.Models.ReturnRepairStatus.RepairedAndRestocked => "bg-success",
+                        InventoryManagementSystem.Models.ReturnRepairStatus.Scrapped => "bg-danger",
+                        _ => "bg-warning text-dark"
+                    };
+
+                    <div class="card-d card-p mb-3 p-3 rounded-3" style="background:var(--bg-tertiary);border:1px solid var(--border)">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <span class="fw-bold text-dark" style="font-size:12px"><i class="bi bi-wrench-adjustable me-1 text-primary"></i>Repair Lifecycle Status</span>
+                            <span class="badge @repBadgeClass">@repStatus</span>
+                        </div>
+
+                        @if (repStatus == InventoryManagementSystem.Models.ReturnRepairStatus.RepairedAndRestocked)
+                        {
+                            <div class="alert alert-success py-2 px-3 mb-2" style="font-size:12px">
+                                <i class="bi bi-check-circle-fill me-1"></i> Repaired and restocked to your catalog on @(Model.RepairedAt?.ToIst().ToString("dd-MMM-yyyy hh:mm tt IST") ?? "N/A").
+                            </div>
+                        }
+                        else if (repStatus == InventoryManagementSystem.Models.ReturnRepairStatus.Scrapped)
+                        {
+                            <div class="alert alert-danger py-2 px-3 mb-2" style="font-size:12px">
+                                <i class="bi bi-x-octagon-fill me-1"></i> Items marked as permanently scrapped / written off.
+                            </div>
+                        }
+
+                        <form method="post" action="@Url.Action("UpdateRepairStatus", "SupplierDashboard")" class="mt-2">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="returnId" value="@Model.Id" />
+                            <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+
+                            <div class="mb-2">
+                                <label class="form-label text-muted fw-semibold" style="font-size:11px">Update Repair Outcome</label>
+                                <select name="newRepairStatus" class="form-select form-select-sm">
+                                    <option value="@InventoryManagementSystem.Models.ReturnRepairStatus.UnderRepair" selected="@(repStatus == InventoryManagementSystem.Models.ReturnRepairStatus.UnderRepair ? "selected" : null)">🛠️ Under Repair (Currently being fixed)</option>
+                                    <option value="@InventoryManagementSystem.Models.ReturnRepairStatus.RepairedAndRestocked" selected="@(repStatus == InventoryManagementSystem.Models.ReturnRepairStatus.RepairedAndRestocked ? "selected" : null)">✅ Repaired &amp; Restock to Inventory</option>
+                                    <option value="@InventoryManagementSystem.Models.ReturnRepairStatus.Scrapped" selected="@(repStatus == InventoryManagementSystem.Models.ReturnRepairStatus.Scrapped ? "selected" : null)">❌ Scrapped / Written Off (Unrepairable)</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-2">
+                                <input type="text" name="repairNotes" class="form-control form-control-sm" placeholder="Repair action notes..." value="@Model.RepairNotes" style="font-size:12px" />
+                            </div>
+
+                            <button type="submit" class="btn btn-sm btn-outline-primary w-100">
+                                <i class="bi bi-arrow-repeat me-1"></i> Update Repair Status
+                            </button>
+                        </form>
+
+                        <div class="text-center mt-2">
+                            <a href="@Url.Action("DamagedProducts", "SupplierDashboard")" class="text-decoration-none" style="font-size:12px">
+                                <i class="bi bi-box-arrow-up-right me-1"></i> Open Damaged Products Ledger
+                            </a>
+                        </div>
+                    </div>
+                }
+
                 @if (!string.IsNullOrEmpty(Model.SupplierNotes))
                 {
                     <div class="mb-3 p-3 rounded-3" style="background:var(--bg-tertiary)">
@@ -182,7 +284,7 @@
                     </div>
                 }
 
-                <!-- Update Status Form for Accepted / Processing Returns -->
+                <!-- Update Status Form for Processing / Shipped / Completed -->
                 <form method="post" action="@Url.Action("UpdatePurchaseReturnStatus", "SupplierDashboard")" class="mt-3 border-top pt-3" style="border-color:var(--border)!important">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="returnId" value="@Model.Id" />
@@ -210,3 +312,16 @@
         </div>
     </div>
 </div>
+
+<script>
+    function updateDispositionHelp(val) {
+        var box = document.getElementById('dispositionHelpText');
+        if (!box) return;
+        if (val === 'Back to Inventory') {
+            box.innerHTML = '<i class="bi bi-box-seam text-success me-1"></i><strong>Back to Inventory:</strong> Products will be immediately <u>restocked into your supplier catalog</u> inventory and deducted from the shop admin.';
+        } else {
+            box.innerHTML = '<i class="bi bi-tools text-warning me-1"></i><strong>Damaged / Sent for Repair:</strong> Deducts stock from shop admin and routes items to your <strong>Damaged & Repair Items</strong> ledger. Will <u>not</u> increase your active sellable inventory until repaired.';
+        }
+    }
+</script>
+

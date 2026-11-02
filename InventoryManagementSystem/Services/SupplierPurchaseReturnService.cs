@@ -278,7 +278,11 @@ namespace InventoryManagementSystem.Services
             return (true, $"Return #{returnRecord.ReturnNumber} status updated to '{newStatus}'.");
         }
 
-        public async Task<(bool Success, string Message)> AcceptReturnAsync(string returnId, string executedBy, string? supplierNotes = null)
+        public async Task<(bool Success, string Message)> AcceptReturnAsync(
+            string returnId, 
+            string executedBy, 
+            string? supplierNotes = null, 
+            string? disposition = null)
         {
             if (string.IsNullOrWhiteSpace(returnId)) return (false, "Return ID is required.");
 
@@ -298,15 +302,46 @@ namespace InventoryManagementSystem.Services
                 returnRecord.SupplierNotes = supplierNotes;
             }
 
-            // Deduct stock from Admin Shop Catalog (SupplierId == null) if not already deducted
+            var effectiveDisposition = string.IsNullOrWhiteSpace(disposition) 
+                ? ReturnDispositionType.BackToInventory 
+                : disposition.Trim();
+
+            returnRecord.ReturnDisposition = effectiveDisposition;
+
+            // 1. Always deduct stock from Admin Shop Catalog (SupplierId == null) if not already deducted
             await DeductStockForReturnAsync(returnRecord, executedBy);
+
+            string remarksMsg;
+            if (effectiveDisposition.Equals(ReturnDispositionType.BackToInventory, StringComparison.OrdinalIgnoreCase))
+            {
+                // Restock directly to Supplier Inventory
+                await RestockToSupplierInventoryAsync(returnRecord, executedBy);
+                returnRecord.RepairStatus = null;
+                returnRecord.RepairNotes = null;
+                returnRecord.RepairedAt = null;
+                remarksMsg = supplierNotes ?? $"Supplier accepted return #{returnRecord.ReturnNumber} and restocked products back to supplier active inventory. Shop stock deducted.";
+            }
+            else
+            {
+                // Damaged / Sent for Repair: DO NOT add to supplier active sellable inventory!
+                returnRecord.SupplierStockRestocked = false;
+                returnRecord.RepairStatus = ReturnRepairStatus.UnderRepair;
+                returnRecord.RepairNotes = supplierNotes;
+                remarksMsg = supplierNotes ?? $"Supplier accepted return #{returnRecord.ReturnNumber} as Damaged / Sent for Repair (placed in Damaged Inventory, not added to active stock). Shop stock deducted.";
+            }
+
+            foreach (var item in returnRecord.Items)
+            {
+                item.Disposition = returnRecord.ReturnDisposition;
+                item.RepairStatus = returnRecord.RepairStatus;
+            }
 
             returnRecord.Timeline.Add(new PurchaseReturnTimelineEvent
             {
                 Status = PurchaseReturnStatus.SupplierAccepted,
                 UpdatedBy = executedBy,
                 Timestamp = DateTime.UtcNow,
-                Remarks = supplierNotes ?? $"Supplier accepted purchase return request #{returnRecord.ReturnNumber}. Shop stock deducted."
+                Remarks = remarksMsg
             });
 
             await _returnRepository.UpdateAsync(returnRecord.Id, returnRecord);
@@ -315,9 +350,195 @@ namespace InventoryManagementSystem.Services
                 "SUPPLIER_RETURN_ACCEPTED",
                 executedBy,
                 returnRecord.ReturnNumber,
-                $"Supplier accepted Return #{returnRecord.ReturnNumber}. Product stock deducted from Admin Shop Dashboard.");
+                $"Supplier accepted Return #{returnRecord.ReturnNumber} with disposition '{effectiveDisposition}'. Shop stock deducted.");
 
-            return (true, $"Purchase Return #{returnRecord.ReturnNumber} has been accepted by supplier! Product stock has been deducted from shop catalog.");
+            string successMessage = effectiveDisposition.Equals(ReturnDispositionType.BackToInventory, StringComparison.OrdinalIgnoreCase)
+                ? $"Purchase Return #{returnRecord.ReturnNumber} accepted! Products have been restocked to your supplier catalog and deducted from shop stock."
+                : $"Purchase Return #{returnRecord.ReturnNumber} accepted as Damaged / Sent for Repair. Products routed to Damaged Items management without adding to active catalog stock (shop stock deducted).";
+
+            return (true, successMessage);
+        }
+
+        public async Task<(bool Success, string Message)> UpdateDamagedItemRepairStatusAsync(
+            string returnId, 
+            string newRepairStatus, 
+            string? repairNotes, 
+            string executedBy)
+        {
+            if (string.IsNullOrWhiteSpace(returnId)) return (false, "Return ID is required.");
+            var returnRecord = await _returnRepository.GetByIdAsync(returnId);
+            if (returnRecord == null) return (false, "Purchase return record not found.");
+
+            returnRecord.RepairStatus = newRepairStatus;
+            if (!string.IsNullOrWhiteSpace(repairNotes))
+            {
+                returnRecord.RepairNotes = repairNotes;
+            }
+            returnRecord.UpdatedAt = DateTime.UtcNow;
+
+            string timelineMsg;
+            if (newRepairStatus.Equals(ReturnRepairStatus.RepairedAndRestocked, StringComparison.OrdinalIgnoreCase))
+            {
+                returnRecord.RepairedAt = DateTime.UtcNow;
+                if (!returnRecord.SupplierStockRestocked)
+                {
+                    await RestockToSupplierInventoryAsync(returnRecord, executedBy);
+                }
+                timelineMsg = $"Repairs completed on returned items. Products restocked to supplier active inventory by {executedBy}. Notes: {repairNotes ?? "-"}";
+            }
+            else if (newRepairStatus.Equals(ReturnRepairStatus.Scrapped, StringComparison.OrdinalIgnoreCase))
+            {
+                timelineMsg = $"Damaged items marked as Scrapped / Written Off by {executedBy}. Notes: {repairNotes ?? "-"}";
+            }
+            else
+            {
+                timelineMsg = $"Repair status updated to '{newRepairStatus}' by {executedBy}. Notes: {repairNotes ?? "-"}";
+            }
+
+            foreach (var item in returnRecord.Items)
+            {
+                item.RepairStatus = newRepairStatus;
+            }
+
+            returnRecord.Timeline.Add(new PurchaseReturnTimelineEvent
+            {
+                Status = returnRecord.Status,
+                UpdatedBy = executedBy,
+                Timestamp = DateTime.UtcNow,
+                Remarks = timelineMsg
+            });
+
+            await _returnRepository.UpdateAsync(returnRecord.Id, returnRecord);
+
+            await _auditLogService.LogActivityAsync(
+                "DAMAGED_RETURN_REPAIR_UPDATED",
+                executedBy,
+                returnRecord.ReturnNumber,
+                $"Updated damaged return #{returnRecord.ReturnNumber} repair status to '{newRepairStatus}'.");
+
+            return (true, $"Damaged claim #{returnRecord.ReturnNumber} repair status updated to '{newRepairStatus}'.");
+        }        public async Task<IEnumerable<SupplierPurchaseReturn>> GetDamagedReturnsForSupplierAsync(
+            string supplierId, 
+            string? search = null, 
+            string? repairStatus = null)
+        {
+            var allReturns = await _returnRepository.GetSupplierReturnsAsync(supplierId, null, 1000);
+            
+            // STRICT BUSINESS RULE:
+            // If return disposition is "Back to Inventory", it must NEVER appear in the defective/damaged list!
+            var damaged = allReturns.Where(r => 
+                !string.Equals(r.ReturnDisposition, ReturnDispositionType.BackToInventory, StringComparison.OrdinalIgnoreCase) &&
+                (
+                    string.Equals(r.ReturnDisposition, ReturnDispositionType.DamagedRepair, StringComparison.OrdinalIgnoreCase) ||
+                    (!string.IsNullOrEmpty(r.RepairStatus) && !string.Equals(r.RepairStatus, ReturnRepairStatus.RepairedAndRestocked, StringComparison.OrdinalIgnoreCase)) ||
+                    (string.IsNullOrEmpty(r.ReturnDisposition) && r.Status == PurchaseReturnStatus.SupplierAccepted && (
+                        string.Equals(r.Reason, PurchaseReturnReason.DamagedOnArrival, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(r.Reason, PurchaseReturnReason.Defective, StringComparison.OrdinalIgnoreCase)
+                    ))
+                )
+            );
+
+            if (!string.IsNullOrWhiteSpace(repairStatus))
+            {
+                damaged = damaged.Where(r => string.Equals(r.RepairStatus, repairStatus, StringComparison.OrdinalIgnoreCase) ||
+                    (repairStatus == ReturnRepairStatus.UnderRepair && string.IsNullOrEmpty(r.RepairStatus)));
+            }
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var s = search.Trim();
+                damaged = damaged.Where(r =>
+                    r.ReturnNumber.Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                    r.PurchaseOrderNumber.Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                    r.Items.Any(i => i.ProductName.Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                                     i.Brand.Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                                     i.ModelName.Contains(s, StringComparison.OrdinalIgnoreCase) ||
+                                     (i.Imeis != null && i.Imeis.Any(imei => imei.Contains(s, StringComparison.OrdinalIgnoreCase)))));
+            }
+
+            return damaged.OrderByDescending(r => r.CreatedAt);
+        }
+
+        private async Task RestockToSupplierInventoryAsync(SupplierPurchaseReturn returnRecord, string executedBy)
+        {
+            if (returnRecord.SupplierStockRestocked) return;
+
+            var allProducts = await _context.Products.Find(FilterDefinition<Product>.Empty).ToListAsync();
+            var supplierProducts = allProducts.Where(p => p.SupplierId == returnRecord.SupplierId).ToList();
+
+            foreach (var item in returnRecord.Items)
+            {
+                // Find matching supplier product
+                var supplierProduct = supplierProducts.FirstOrDefault(p => p.Id == item.ProductId);
+                if (supplierProduct == null)
+                {
+                    supplierProduct = supplierProducts.FirstOrDefault(p =>
+                        (!string.IsNullOrEmpty(p.Code) && p.Code.Equals(item.ProductId, StringComparison.OrdinalIgnoreCase)) ||
+                        (p.Brand.Equals(item.Brand, StringComparison.OrdinalIgnoreCase) &&
+                         p.ModelName.Equals(item.ModelName, StringComparison.OrdinalIgnoreCase) &&
+                         (string.IsNullOrEmpty(item.Variant) || p.Variant.Equals(item.Variant, StringComparison.OrdinalIgnoreCase)) &&
+                         (string.IsNullOrEmpty(item.Color) || p.Color.Equals(item.Color, StringComparison.OrdinalIgnoreCase))));
+                }
+
+                if (supplierProduct != null)
+                {
+                    int prevStock = supplierProduct.CurrentStock;
+                    supplierProduct.CurrentStock += item.Quantity;
+
+                    // If variants exist, match and increment variant & color stock
+                    if (supplierProduct.Variants != null && supplierProduct.Variants.Any())
+                    {
+                        var matchingVariant = FindMatchingVariant(supplierProduct, item.Variant, item.Ram, item.Storage);
+
+                        if (matchingVariant != null)
+                        {
+                            if (matchingVariant.Colors != null && matchingVariant.Colors.Any())
+                            {
+                                var matchingColor = FindMatchingColor(matchingVariant, item.Color);
+                                if (matchingColor != null)
+                                {
+                                    matchingColor.CurrentStock += item.Quantity;
+                                }
+                                matchingVariant.CurrentStock = matchingVariant.Colors.Sum(c => c.CurrentStock);
+                            }
+                            else
+                            {
+                                matchingVariant.CurrentStock += item.Quantity;
+                            }
+
+                            supplierProduct.CurrentStock = supplierProduct.Variants.Sum(v => v.Colors != null && v.Colors.Any() ? v.Colors.Sum(c => c.CurrentStock) : v.CurrentStock);
+                        }
+                    }
+
+                    supplierProduct.UpdatedDate = DateTime.UtcNow;
+                    await _context.Products.ReplaceOneAsync(p => p.Id == supplierProduct.Id, supplierProduct);
+
+                    // Create Stock Transaction Movement for Supplier restock
+                    await _stockTxRepository.CreateAsync(new StockTransaction
+                    {
+                        TenantId = returnRecord.TenantId,
+                        ProductId = supplierProduct.Id,
+                        ProductName = supplierProduct.Name,
+                        ProductCode = supplierProduct.Code,
+                        ExecutedBy = executedBy,
+                        Username = executedBy,
+                        Quantity = item.Quantity,
+                        Type = "Stock In",
+                        Reason = $"Purchase Return Restocked to Supplier Inventory (#{returnRecord.ReturnNumber})",
+                        PreviousStock = prevStock,
+                        CurrentStock = supplierProduct.CurrentStock,
+                        Source = "Supplier Return Restocked",
+                        UnitCost = item.UnitPurchasePrice,
+                        Brand = supplierProduct.Brand,
+                        ModelName = supplierProduct.ModelName,
+                        Variant = item.Variant ?? supplierProduct.Variant,
+                        Color = item.Color ?? supplierProduct.Color,
+                        Timestamp = DateTime.UtcNow
+                    });
+                }
+            }
+
+            returnRecord.SupplierStockRestocked = true;
         }
 
         public async Task<(bool Success, string Message)> RejectReturnAsync(string returnId, string executedBy, string rejectionReason)
@@ -643,8 +864,9 @@ namespace InventoryManagementSystem.Services
 
         private async Task DeductStockForReturnAsync(SupplierPurchaseReturn returnRecord, string executedBy)
         {
-            var allProducts = await _productRepository.GetAllAsync();
-            var shopProducts = allProducts.Where(p => string.IsNullOrWhiteSpace(p.SupplierId)).ToList();
+            var allProducts = await _context.Products.Find(FilterDefinition<Product>.Empty).ToListAsync();
+            var shopProducts = allProducts.Where(p => string.IsNullOrWhiteSpace(p.SupplierId) &&
+                (string.IsNullOrEmpty(returnRecord.TenantId) || string.IsNullOrEmpty(p.TenantId) || p.TenantId == returnRecord.TenantId)).ToList();
 
             foreach (var item in returnRecord.Items)
             {
@@ -653,12 +875,38 @@ namespace InventoryManagementSystem.Services
                 {
                     int prevStock = shopProduct.CurrentStock;
                     shopProduct.CurrentStock = System.Math.Max(0, shopProduct.CurrentStock - item.Quantity);
+
+                    // Deduct from matching variant and color
+                    if (shopProduct.Variants != null && shopProduct.Variants.Any())
+                    {
+                        var matchingVariant = FindMatchingVariant(shopProduct, item.Variant, item.Ram, item.Storage);
+                        if (matchingVariant != null)
+                        {
+                            if (matchingVariant.Colors != null && matchingVariant.Colors.Any())
+                            {
+                                var matchingColor = FindMatchingColor(matchingVariant, item.Color);
+                                if (matchingColor != null)
+                                {
+                                    matchingColor.CurrentStock = System.Math.Max(0, matchingColor.CurrentStock - item.Quantity);
+                                }
+                                matchingVariant.CurrentStock = matchingVariant.Colors.Sum(c => c.CurrentStock);
+                            }
+                            else
+                            {
+                                matchingVariant.CurrentStock = System.Math.Max(0, matchingVariant.CurrentStock - item.Quantity);
+                            }
+
+                            shopProduct.CurrentStock = shopProduct.Variants.Sum(v => v.Colors != null && v.Colors.Any() ? v.Colors.Sum(c => c.CurrentStock) : v.CurrentStock);
+                        }
+                    }
+
                     shopProduct.UpdatedDate = DateTime.UtcNow;
-                    await _productRepository.UpdateAsync(shopProduct.Id, shopProduct);
+                    await _context.Products.ReplaceOneAsync(p => p.Id == shopProduct.Id, shopProduct);
 
                     // Log Stock Transaction Movement (Admin Shop Inventory Stock Out)
                     await _stockTxRepository.CreateAsync(new StockTransaction
                     {
+                        TenantId = returnRecord.TenantId,
                         ProductId = shopProduct.Id,
                         ProductName = shopProduct.Name,
                         ProductCode = shopProduct.Code,
@@ -673,8 +921,8 @@ namespace InventoryManagementSystem.Services
                         UnitCost = item.UnitPurchasePrice,
                         Brand = shopProduct.Brand,
                         ModelName = shopProduct.ModelName,
-                        Variant = shopProduct.Variant,
-                        Color = shopProduct.Color,
+                        Variant = item.Variant ?? shopProduct.Variant,
+                        Color = item.Color ?? shopProduct.Color,
                         Timestamp = DateTime.UtcNow
                     });
                 }
@@ -764,6 +1012,60 @@ namespace InventoryManagementSystem.Services
             }
 
             return null;
+        }
+
+        private static ProductVariant? FindMatchingVariant(Product prod, string? variantName, string? ram, string? storage)
+        {
+            if (prod.Variants == null || !prod.Variants.Any()) return null;
+
+            var vClean = variantName?.Trim() ?? string.Empty;
+            var rClean = ram?.Trim() ?? string.Empty;
+            var sClean = storage?.Trim() ?? string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(vClean))
+            {
+                var match = prod.Variants.FirstOrDefault(v =>
+                    v.DisplayVariantName.Equals(vClean, StringComparison.OrdinalIgnoreCase) ||
+                    v.Storage.Equals(vClean, StringComparison.OrdinalIgnoreCase) ||
+                    $"{v.Ram} / {v.Storage}".Equals(vClean, StringComparison.OrdinalIgnoreCase) ||
+                    $"{v.Ram}/{v.Storage}".Equals(vClean, StringComparison.OrdinalIgnoreCase) ||
+                    v.Storage.Replace("GB", "", StringComparison.OrdinalIgnoreCase).Trim().Equals(vClean.Replace("GB", "", StringComparison.OrdinalIgnoreCase).Trim(), StringComparison.OrdinalIgnoreCase));
+                if (match != null) return match;
+            }
+
+            if (!string.IsNullOrWhiteSpace(sClean))
+            {
+                var match = prod.Variants.FirstOrDefault(v =>
+                    v.Storage.Equals(sClean, StringComparison.OrdinalIgnoreCase) ||
+                    v.Storage.Replace("GB", "", StringComparison.OrdinalIgnoreCase).Trim().Equals(sClean.Replace("GB", "", StringComparison.OrdinalIgnoreCase).Trim(), StringComparison.OrdinalIgnoreCase));
+                if (match != null) return match;
+            }
+
+            if (!string.IsNullOrWhiteSpace(rClean))
+            {
+                var match = prod.Variants.FirstOrDefault(v =>
+                    v.Ram.Equals(rClean, StringComparison.OrdinalIgnoreCase) ||
+                    v.Ram.Replace("GB", "", StringComparison.OrdinalIgnoreCase).Trim().Equals(rClean.Replace("GB", "", StringComparison.OrdinalIgnoreCase).Trim(), StringComparison.OrdinalIgnoreCase));
+                if (match != null) return match;
+            }
+
+            return prod.Variants.FirstOrDefault();
+        }
+
+        private static ProductColor? FindMatchingColor(ProductVariant variant, string? colorName)
+        {
+            if (variant.Colors == null || !variant.Colors.Any()) return null;
+
+            var cClean = colorName?.Trim() ?? string.Empty;
+            if (!string.IsNullOrWhiteSpace(cClean))
+            {
+                var match = variant.Colors.FirstOrDefault(c =>
+                    c.Name.Trim().Equals(cClean, StringComparison.OrdinalIgnoreCase) ||
+                    c.Name.Replace(" ", "").Equals(cClean.Replace(" ", ""), StringComparison.OrdinalIgnoreCase));
+                if (match != null) return match;
+            }
+
+            return variant.Colors.FirstOrDefault();
         }
     }
 }

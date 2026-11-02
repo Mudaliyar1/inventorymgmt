@@ -1,0 +1,329 @@
+@model InventoryManagementSystem.ViewModels.SupplierDamagedProductsViewModel
+@{
+    ViewData["Title"] = "Damaged & Returned Products Management";
+}
+
+<!-- Page Header -->
+<div class="ph">
+    <div>
+        <h1 class="ph-title"><i class="bi bi-tools me-2" style="color:var(--warning)"></i>Damaged &amp; Returned Products Management</h1>
+        <p class="ph-sub">Track and manage returned defective hardware, repair lifecycles, quarantine inventory, and restock actions</p>
+    </div>
+    <div class="ph-actions">
+        <a href="@Url.Action("Returns", "SupplierDashboard")" class="btn-d btn-outline me-2">
+            <i class="bi bi-box-seam me-1"></i> Return Claims &amp; Analytics
+        </a>
+        <a href="@Url.Action("DamagedProducts", "SupplierDashboard")" class="btn-d btn-primary">
+            <i class="bi bi-arrow-clockwise me-1"></i> Refresh Ledger
+        </a>
+    </div>
+</div>
+
+<!-- 1. KPI Metrics Summary Cards Grid -->
+<div class="row g-3 mb-4">
+    <!-- Total Damaged / Returned Units -->
+    <div class="col-12 col-sm-6 col-xl">
+        <div class="card-d card-p border-start border-4 border-danger h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted text-uppercase fw-semibold" style="font-size:11px;letter-spacing:0.5px">Total Damaged Units</span>
+                    <h3 class="mb-0 mt-1 fw-bold text-danger">@Model.TotalDamagedUnits</h3>
+                    <small class="text-muted" style="font-size:12px">Total Value: ₹@Model.TotalDamagedValue.ToString("N2")</small>
+                </div>
+                <div class="p-3 rounded-3" style="background:rgba(239, 68, 68, 0.1);color:#ef4444">
+                    <i class="bi bi-exclamation-octagon fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Currently Under Repair -->
+    <div class="col-12 col-sm-6 col-xl">
+        <div class="card-d card-p border-start border-4 border-warning h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted text-uppercase fw-semibold" style="font-size:11px;letter-spacing:0.5px">Under Repair</span>
+                    <h3 class="mb-0 mt-1 fw-bold text-warning">@Model.UnderRepairUnits</h3>
+                    <small class="text-muted" style="font-size:12px">Quarantined from catalog</small>
+                </div>
+                <div class="p-3 rounded-3" style="background:rgba(245, 158, 11, 0.1);color:#f59e0b">
+                    <i class="bi bi-wrench-adjustable fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Repaired & Restocked -->
+    <div class="col-12 col-sm-6 col-xl">
+        <div class="card-d card-p border-start border-4 border-success h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted text-uppercase fw-semibold" style="font-size:11px;letter-spacing:0.5px">Repaired &amp; Restocked</span>
+                    <h3 class="mb-0 mt-1 fw-bold text-success">@Model.RepairedRestockedUnits</h3>
+                    <small class="text-muted" style="font-size:12px">Re-added to active inventory</small>
+                </div>
+                <div class="p-3 rounded-3" style="background:rgba(16, 185, 129, 0.1);color:#10b981">
+                    <i class="bi bi-check-circle fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scrapped / Written Off -->
+    <div class="col-12 col-sm-6 col-xl">
+        <div class="card-d card-p border-start border-4 border-secondary h-100">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <span class="text-muted text-uppercase fw-semibold" style="font-size:11px;letter-spacing:0.5px">Scrapped / Written Off</span>
+                    <h3 class="mb-0 mt-1 fw-bold text-secondary">@Model.ScrappedUnits</h3>
+                    <small class="text-muted" style="font-size:12px">Final loss write-offs</small>
+                </div>
+                <div class="p-3 rounded-3" style="background:rgba(107, 114, 128, 0.15);color:#9ca3af">
+                    <i class="bi bi-trash fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 2. Detailed Filter Card -->
+<div class="card-d card-p mb-4">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-5">
+            <label class="fg-label"><i class="bi bi-search me-1 text-primary"></i>Keyword Search</label>
+            <input type="text" name="search" value="@Model.Search" class="fg-control" placeholder="Search by Product, SKU, IMEI, Return #, PO #..." />
+        </div>
+        <div class="col-md-3">
+            <label class="fg-label"><i class="bi bi-funnel me-1 text-warning"></i>Repair Status</label>
+            <select name="repairStatus" class="fg-control">
+                <option value="">All Repair Statuses</option>
+                @foreach (var st in Model.RepairStatuses)
+                {
+                    <option value="@st" selected="@(Model.RepairStatus == st ? "selected" : null)">@st</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="fg-label"><i class="bi bi-tag me-1 text-info"></i>Brand</label>
+            <select name="brand" class="fg-control">
+                <option value="">All Brands</option>
+                @foreach (var b in Model.Brands)
+                {
+                    <option value="@b" selected="@(Model.Brand == b ? "selected" : null)">@b</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-center gap-2">
+            <button type="submit" class="btn-d btn-primary w-100"><i class="bi bi-funnel"></i> Filter</button>
+            <a href="@Url.Action("DamagedProducts", "SupplierDashboard")" class="btn-d btn-outline" title="Reset Filters"><i class="bi bi-arrow-counterclockwise"></i></a>
+        </div>
+    </form>
+</div>
+
+<!-- 3. Damaged Products Table Card -->
+<div class="card-d card-p p-0 overflow-hidden mb-4">
+    <div class="table-responsive">
+        <table class="table align-middle mb-0" style="font-size:13px">
+            <thead class="table-dark">
+                <tr>
+                    <th class="ps-3 py-3">Product Details &amp; Hardware Specs</th>
+                    <th class="py-3">Return &amp; PO Reference</th>
+                    <th class="py-3">Returned Date</th>
+                    <th class="py-3">Defect Reason</th>
+                    <th class="py-3 text-center">Qty</th>
+                    <th class="py-3">Total Value</th>
+                    <th class="py-3">Repair Status</th>
+                    <th class="py-3 text-end pe-4">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model.Items == null || !Model.Items.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="bi bi-tools text-muted d-block mb-2" style="font-size:36px"></i>
+                            No damaged or returned items found matching the selected filter criteria.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    int index = 0;
+                    foreach (var item in Model.Items)
+                    {
+                        index++;
+                        var modalId = "repairModal_" + index;
+                        var badgeClass = item.RepairStatus switch
+                        {
+                            InventoryManagementSystem.Models.ReturnRepairStatus.RepairedAndRestocked => "bg-success",
+                            InventoryManagementSystem.Models.ReturnRepairStatus.Scrapped => "bg-danger",
+                            _ => "bg-warning text-dark"
+                        };
+
+                        <tr>
+                            <!-- Product Details & Specs -->
+                            <td class="ps-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <img src="@item.ImageUrl" alt="@item.ProductName" class="rounded" style="width:44px;height:44px;object-fit:cover;background:var(--bg-tertiary)" onerror="this.onerror=null;this.src='/images/product-placeholder.png'" />
+                                    <div>
+                                        <div class="fw-bold text-dark" style="font-size:14px">@item.ProductName</div>
+                                        <div class="text-muted" style="font-size:11px">
+                                            @item.Brand @item.ModelName
+                                            @if (!string.IsNullOrEmpty(item.Variant)) { <span class="badge bg-secondary-subtle text-dark ms-1">@item.Variant</span> }
+                                            @if (!string.IsNullOrEmpty(item.Color)) { <span class="badge bg-secondary-subtle text-dark ms-1">@item.Color</span> }
+                                        </div>
+                                        @if (item.Imeis != null && item.Imeis.Any())
+                                        {
+                                            <div class="d-flex flex-wrap gap-1 mt-1">
+                                                @foreach (var imei in item.Imeis)
+                                                {
+                                                    <span class="badge bg-danger-subtle text-danger" style="font-size:10px">IMEI: @imei</span>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </td>
+
+                            <!-- Return & PO Numbers -->
+                            <td>
+                                <a href="@Url.Action("ReturnDetails", "SupplierDashboard", new { id = item.ReturnId })" class="fw-bold text-decoration-none text-primary d-block">
+                                    #@item.ReturnNumber
+                                </a>
+                                <small class="text-muted d-block">PO: @(string.IsNullOrEmpty(item.PurchaseOrderNumber) ? "N/A" : (item.PurchaseOrderNumber.StartsWith("#") ? item.PurchaseOrderNumber : "#" + item.PurchaseOrderNumber))</small>
+                            </td>
+
+                            <!-- Returned Date -->
+                            <td>
+                                <div>@item.ReturnedDate.ToIst().ToString("dd-MMM-yyyy")</div>
+                                <small class="text-muted">@item.ReturnedDate.ToIst().ToString("hh:mm tt IST")</small>
+                            </td>
+
+                            <!-- Defect Reason -->
+                            <td>
+                                <span class="badge bg-danger-subtle text-danger px-2 py-1">@item.Reason</span>
+                                @if (!string.IsNullOrEmpty(item.AdditionalRemarks))
+                                {
+                                    <small class="text-muted d-block mt-1 text-truncate" style="max-width:180px" title="@item.AdditionalRemarks">
+                                        @item.AdditionalRemarks
+                                    </small>
+                                }
+                            </td>
+
+                            <!-- Quantity -->
+                            <td class="text-center">
+                                <span class="badge bg-secondary fs-6 px-2 py-1">@item.Quantity</span>
+                            </td>
+
+                            <!-- Total Value -->
+                            <td>
+                                <strong class="text-danger">₹@item.TotalValue.ToString("N2")</strong>
+                            </td>
+
+                            <!-- Current Repair Status -->
+                            <td>
+                                <span class="badge @badgeClass px-2 py-1">@item.RepairStatus</span>
+                                @if (item.IsRestocked)
+                                {
+                                    <small class="text-success d-block mt-1"><i class="bi bi-check-circle me-1"></i>Catalog Restocked</small>
+                                }
+                                @if (!string.IsNullOrEmpty(item.RepairNotes))
+                                {
+                                    <small class="text-muted d-block mt-1 text-truncate" style="max-width:160px" title="@item.RepairNotes">
+                                        <i class="bi bi-info-circle me-1"></i>@item.RepairNotes
+                                    </small>
+                                }
+                            </td>
+
+                            <!-- Actions -->
+                            <td class="text-end pe-4">
+                                <div class="d-inline-flex gap-1 align-items-center">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#@modalId" title="Update Repair Status">
+                                        <i class="bi bi-wrench me-1"></i> Update
+                                    </button>
+                                    <a href="@Url.Action("ReturnDetails", "SupplierDashboard", new { id = item.ReturnId })" class="btn btn-sm btn-ghost" title="View Return Claim">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </div>
+
+                                <!-- Update Repair Status Modal -->
+                                <div class="modal fade text-start" id="@modalId" tabindex="-1" aria-labelledby="@(modalId)_Label" aria-hidden="true">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content" style="background:var(--bg-card);border:1px solid var(--border)">
+                                            <div class="modal-header border-bottom" style="border-color:var(--border)!important">
+                                                <h5 class="modal-title fw-bold" id="@(modalId)_Label">
+                                                    <i class="bi bi-tools text-warning me-2"></i>Update Repair Status — #@item.ReturnNumber
+                                                </h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <form method="post" action="@Url.Action("UpdateRepairStatus", "SupplierDashboard")">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="returnId" value="@item.ReturnId" />
+                                                <input type="hidden" name="returnUrl" value="@Context.Request.Path@Context.Request.QueryString" />
+
+                                                <div class="modal-body">
+                                                    <div class="mb-3 p-3 rounded-3" style="background:var(--bg-tertiary)">
+                                                        <div class="fw-bold text-dark">@item.ProductName</div>
+                                                        <small class="text-muted">@item.Brand @item.ModelName | Variant: @item.Variant | Qty: @item.Quantity Units</small>
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label text-dark fw-bold" style="font-size:12px">Repair Outcome / Status</label>
+                                                        <select name="newRepairStatus" class="form-select form-select-sm">
+                                                            <option value="@InventoryManagementSystem.Models.ReturnRepairStatus.UnderRepair" selected="@(item.RepairStatus == InventoryManagementSystem.Models.ReturnRepairStatus.UnderRepair ? "selected" : null)">🛠️ Under Repair (Currently in diagnosis/service)</option>
+                                                            <option value="@InventoryManagementSystem.Models.ReturnRepairStatus.RepairedAndRestocked" selected="@(item.RepairStatus == InventoryManagementSystem.Models.ReturnRepairStatus.RepairedAndRestocked ? "selected" : null)">✅ Repaired &amp; Restock to Inventory (Add back to catalog)</option>
+                                                            <option value="@InventoryManagementSystem.Models.ReturnRepairStatus.Scrapped" selected="@(item.RepairStatus == InventoryManagementSystem.Models.ReturnRepairStatus.Scrapped ? "selected" : null)">❌ Scrapped / Written Off (Unrepairable write-off)</option>
+                                                        </select>
+                                                        <small class="text-muted d-block mt-1">Selecting 'Repaired &amp; Restock' will automatically credit these units back into your active supplier sellable catalog.</small>
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label text-muted fw-semibold" style="font-size:12px">Repair Action Notes</label>
+                                                        <textarea name="repairNotes" class="form-control form-control-sm" rows="3" placeholder="Describe the parts replaced, technician notes, or reason for scrap...">@item.RepairNotes</textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer border-top" style="border-color:var(--border)!important">
+                                                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-primary btn-sm">
+                                                        <i class="bi bi-save me-1"></i> Save Changes
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 4. Pagination Bar -->
+    @if (Model.TotalPages > 1)
+    {
+        <div class="d-flex align-items-center justify-content-between p-3 border-top" style="border-color:var(--border)!important">
+            <small class="text-muted">
+                Showing @(((Model.Page - 1) * Model.PageSize) + 1) to @Math.Min(Model.Page * Model.PageSize, Model.TotalItems) of @Model.TotalItems entries
+            </small>
+
+            <nav aria-label="Page navigation">
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                        <a class="page-link" href="@Url.Action("DamagedProducts", "SupplierDashboard", new { search = Model.Search, repairStatus = Model.RepairStatus, brand = Model.Brand, pageSize = Model.PageSize, page = Model.Page - 1 })">Previous</a>
+                    </li>
+                    @for (int p = 1; p <= Model.TotalPages; p++)
+                    {
+                        <li class="page-item @(Model.Page == p ? "active" : "")">
+                            <a class="page-link" href="@Url.Action("DamagedProducts", "SupplierDashboard", new { search = Model.Search, repairStatus = Model.RepairStatus, brand = Model.Brand, pageSize = Model.PageSize, page = p })">@p</a>
+                        </li>
+                    }
+                    <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                        <a class="page-link" href="@Url.Action("DamagedProducts", "SupplierDashboard", new { search = Model.Search, repairStatus = Model.RepairStatus, brand = Model.Brand, pageSize = Model.PageSize, page = Model.Page + 1 })">Next</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
+</div>

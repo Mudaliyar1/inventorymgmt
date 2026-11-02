@@ -17,11 +17,11 @@
     {
         totalAvailableStock = Model.Variants.Sum(v => 
             v.Colors != null && v.Colors.Any() 
-                ? v.Colors.Sum(c => c.CurrentStock > 0 ? c.CurrentStock : (c.InitialStock > 0 ? c.InitialStock : 0))
-                : (v.CurrentStock > 0 ? v.CurrentStock : (v.InitialStock > 0 ? v.InitialStock : 0))
+                ? v.Colors.Sum(c => c.CurrentStock)
+                : v.CurrentStock
         );
     }
-    if (totalAvailableStock == 0 && Model.CurrentStock > 0)
+    else
     {
         totalAvailableStock = Model.CurrentStock;
     }
@@ -122,8 +122,8 @@
                     @foreach (var variant in Model.GetEffectiveVariants())
                     {
                         int vStock = variant.Colors != null && variant.Colors.Any()
-                            ? variant.Colors.Sum(c => c.CurrentStock > 0 ? c.CurrentStock : (c.InitialStock > 0 ? c.InitialStock : 0))
-                            : (variant.CurrentStock > 0 ? variant.CurrentStock : (variant.InitialStock > 0 ? variant.InitialStock : 0));
+                            ? variant.Colors.Sum(c => c.CurrentStock)
+                            : variant.CurrentStock;
 
                         var vCost = variant.PurchasePrice > 0 ? variant.PurchasePrice : (variant.SupplierPrice > 0 ? variant.SupplierPrice : Model.PurchasePrice);
                         var vRetail = variant.SellingPrice > 0 ? variant.SellingPrice : Model.SellingPrice;
@@ -150,7 +150,7 @@
                                             {
                                                 var cCost = color.PurchasePrice > 0 ? color.PurchasePrice : vCost;
                                                 var cRetail = color.SellingPrice > 0 ? color.SellingPrice : vRetail;
-                                                var cStock = color.CurrentStock > 0 ? color.CurrentStock : (color.InitialStock > 0 ? color.InitialStock : 0);
+                                                var cStock = color.CurrentStock;
 
                                                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 border p-2 rounded small" style="background:var(--bg-card);border-color:var(--border)!important">
                                                     <div class="d-flex align-items-center gap-2">
