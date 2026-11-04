@@ -1252,15 +1252,170 @@ function addVariantCard(ram = '', storage = '', purPrice = '', sellPrice = '', i
     return vIndex;
 }
 
+function showUndoToast(title, message, undoCallback, timeoutSecs = 10) {
+    let stack = document.getElementById('toast-stack');
+    if (!stack) {
+        stack = document.createElement('div');
+        stack.id = 'toast-stack';
+        stack.className = 'toast-stack';
+        document.body.appendChild(stack);
+    }
+
+    const toastId = 'undo_toast_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    const toast = document.createElement('div');
+    toast.className = 'toast-item toast-warning shadow-lg';
+    toast.id = toastId;
+    toast.style.background = 'var(--card-bg, #ffffff)';
+    toast.style.border = '1px solid var(--border-color, #e2e8f0)';
+    toast.style.borderLeft = '4px solid #f59e0b';
+    toast.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1)';
+    toast.style.color = 'var(--text-primary, #1e293b)';
+    toast.style.minWidth = '320px';
+    toast.style.maxWidth = '420px';
+    toast.style.zIndex = '99999';
+
+    let remaining = timeoutSecs;
+    toast.innerHTML = `
+        <div class="toast-icon-w" style="background:#fef3c7;color:#d97706;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="bi bi-arrow-counterclockwise fs-5"></i>
+        </div>
+        <div class="toast-body flex-grow-1 ms-1">
+            <div class="toast-title fw-bold" style="color:#d97706;font-size:13px"><i class="bi bi-trash3 me-1"></i>${title}</div>
+            <div class="toast-msg small mb-2" style="color:var(--text-secondary, #64748b)">${message}</div>
+            <div class="d-flex align-items-center gap-2">
+                <button type="button" class="btn btn-warning btn-sm fw-bold px-3 py-1 shadow-sm undo-btn" style="border-radius:6px;font-size:12px;background:#f59e0b;border-color:#d97706;color:#ffffff">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i> Undo
+                </button>
+                <span class="countdown-text" style="font-size:11px;color:var(--text-muted, #94a3b8)">Dismiss in <strong class="secs-count" style="color:var(--text-primary, #334155)">${remaining}s</strong></span>
+            </div>
+        </div>
+        <button type="button" class="toast-close border-0 bg-transparent text-muted ms-2 p-1" style="font-size:16px;cursor:pointer;line-height:1" title="Dismiss"><i class="bi bi-x-lg"></i></button>
+    `;
+
+    stack.appendChild(toast);
+
+    let dismissed = false;
+    let timer = null;
+    const dismissToast = () => {
+        if (dismissed) return;
+        dismissed = true;
+        if (timer) clearInterval(timer);
+        toast.classList.add('hiding');
+        setTimeout(() => toast.remove(), 250);
+    };
+
+    const undoBtn = toast.querySelector('.undo-btn');
+    if (undoBtn) {
+        undoBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            dismissToast();
+            if (typeof undoCallback === 'function') {
+                undoCallback();
+            }
+        });
+    }
+
+    const closeBtn = toast.querySelector('.toast-close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            dismissToast();
+        });
+    }
+
+    timer = setInterval(() => {
+        remaining--;
+        const secsSpan = toast.querySelector('.secs-count');
+        if (secsSpan) {
+            secsSpan.textContent = remaining + 's';
+        }
+        if (remaining <= 0) {
+            dismissToast();
+        }
+    }, 1000);
+}
+
 function removeVariantCard(target) {
     const card = typeof target === 'number' 
         ? document.getElementById(`variantCard_${target}`) 
         : target.closest('.card[id^="variantCard_"]');
-    if (card) {
-        card.remove();
-        reindexVariants();
+    if (!card) return;
+
+    const ramVal = (card.querySelector('input[name$=".Ram"]')?.value || '').trim();
+    const storageVal = (card.querySelector('input[name$=".Storage"]')?.value || '').trim();
+    const titleEl = card.querySelector('h6');
+    const titleText = titleEl ? titleEl.textContent.trim() : 'Variant';
+    
+    let variantDesc = '';
+    if (ramVal || storageVal) {
+        variantDesc = (ramVal ? ramVal + ' / ' : '') + (storageVal || '');
+    } else {
+        variantDesc = titleText;
     }
+
+    const stockInp = card.querySelector('input[name$=".CurrentStock"]') || card.querySelector('input[name$=".InitialStock"]');
+    const stockVal = stockInp ? parseInt(stockInp.value || '0', 10) : 0;
+    const stockMsg = stockVal > 0 ? ` (${stockVal} units in stock)` : '';
+
+    if (!confirm(`Are you sure you want to remove variant "${variantDesc}"${stockMsg}?`)) {
+        return;
+    }
+
+    const parent = card.parentNode;
+    const nextSibling = card.nextSibling;
+    card.remove();
+    reindexVariants();
+
+    showUndoToast('Variant Removed', `Variant "${variantDesc}" was removed.`, function() {
+        if (nextSibling && nextSibling.parentNode === parent) {
+            parent.insertBefore(card, nextSibling);
+        } else {
+            parent.appendChild(card);
+        }
+        reindexVariants();
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        if (window.showToast) {
+            window.showToast(`Variant "${variantDesc}" restored!`, 'success');
+        }
+    });
 }
+
+function removeColorRow(target) {
+    const row = target.closest('.row[id^="colorRow_"]') || target.closest('.row');
+    if (!row) return;
+
+    const nameInp = row.querySelector('input[name*="].Name"]');
+    const colorName = (nameInp?.value || 'Color option').trim();
+
+    const stockInp = row.querySelector('input[name*="].CurrentStock"]') || row.querySelector('input[name*="].InitialStock"]');
+    const stockVal = stockInp ? parseInt(stockInp.value || '0', 10) : 0;
+    const stockMsg = stockVal > 0 ? ` (${stockVal} units in stock)` : '';
+
+    if (!confirm(`Are you sure you want to remove color "${colorName}"${stockMsg}?`)) {
+        return;
+    }
+
+    const parent = row.parentNode;
+    const nextSibling = row.nextSibling;
+    row.remove();
+    reindexVariants();
+
+    showUndoToast('Color Removed', `Color "${colorName}" was removed.`, function() {
+        if (nextSibling && nextSibling.parentNode === parent) {
+            parent.insertBefore(row, nextSibling);
+        } else {
+            parent.appendChild(row);
+        }
+        reindexVariants();
+        row.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        if (window.showToast) {
+            window.showToast(`Color "${colorName}" restored!`, 'success');
+        }
+    });
+}
+
 
 function copyVariantCard(target) {
     const srcCard = typeof target === 'number' 
@@ -1386,7 +1541,7 @@ function addColorRow(vIndex, colorName = '', colorCode = '', initialStock = '0',
             <span class="badge bg-light text-dark border color-file-badge mt-1 d-none">0 files</span>
         </div>
         <div class="col-md-1 text-end">
-            <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="this.closest('.row').remove()">
+            <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="removeColorRow(this)" title="Remove this color option">
                 <i class="bi bi-x-circle fs-6"></i>
             </button>
         </div>
